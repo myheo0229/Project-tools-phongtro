@@ -15,10 +15,10 @@
     --page-padding: 2.54cm;
 
     --font-main: "Times New Roman", Times, serif;
-    --font-size-body: 17px;
-    --font-size-title: 22px;
-    --font-size-room: 20px;
-    --font-size-total: 26px;
+    --font-size-body: 21px;
+    --font-size-title: 29px;
+    --font-size-room: 24px;
+    --font-size-total: 29px;
 
     --color-text: #000;
     --color-line: #000; /* màu đường chấm chấm */
@@ -82,7 +82,7 @@ body {
         height: 210mm;
         box-shadow: none;
         margin: 0;
-        padding: 12mm 14mm;
+        padding: var(--page-padding);
     }
 }
 
@@ -131,9 +131,21 @@ body {
     margin: 0 6px;
     min-width: 20px;
 }
+ /* đoạn chấm ngắn, dùng quanh số điện/nước */
 .row-fill.short {
-    flex: 0 1 60px;
-} /* đoạn chấm ngắn, dùng quanh số điện/nước */
+    flex: 0 1 50px;
+}
+.row-fill.long{
+    min-width: 130px;
+}
+/* điều chỉnh khoảng cách = 999 x 999 */
+.size-gap1{
+    margin-right: 30px;
+}
+
+.size-gap2{
+    margin: 0 40px;
+}
 
 .row-value {
     font-weight: bold;
@@ -163,5 +175,14 @@ body {
     margin-left: 6px;
 }
 .total-box sup {
-    font-size: 0.6em;
+    font-size: 23px;
+}
+
+sup{
+    position: relative;
+    top: -6px;
+}
+
+.unit{
+    top: -8px;
 }
