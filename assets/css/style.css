@@ -1,0 +1,167 @@
+/* ============================================================
+   STYLE.CSS - style riêng cho phiếu thu tiền nhà
+   Chạy SAU reset.css (xem thứ tự link trong index.html)
+   ============================================================ */
+
+/* ---- biến dùng chung - đổi ở đây áp dụng cho toàn trang ---- */
+@page {
+    size: A4 landscape;
+    margin: 0;
+}
+
+:root {
+    --page-width: 297mm;
+    --page-height: 210mm;
+    --page-padding: 2.54cm;
+
+    --font-main: "Times New Roman", Times, serif;
+    --font-size-body: 17px;
+    --font-size-title: 22px;
+    --font-size-room: 20px;
+    --font-size-total: 26px;
+
+    --color-text: #000;
+    --color-line: #000; /* màu đường chấm chấm */
+    --color-mark: #999; /* màu dấu góc trang */
+
+    --row-gap: 30px; /* khoảng cách giữa các dòng chính */
+}
+
+html,
+body {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: #d9d9d9; /* chỉ để nhìn thấy mép trang trên trình duyệt, không ảnh hưởng lúc in/xuất PDF */
+    display: flex;
+    justify-content: center;
+    padding: 24px 0;
+    font-family: var(--font-main);
+}
+
+/* ============================================================
+   TRANG (1 tờ = 1 phiếu thu)
+   ============================================================ */
+.page {
+    position: relative;
+    width: var(--page-width);
+    height: var(--page-height);
+    box-sizing: border-box;
+    background: #fff;
+    box-shadow: 0 0 0 1px #bbb; /* viền nhẹ để thấy mép trang trên màn hình */
+    padding: var(--page-padding);
+    color: var(--color-text);
+    font-size: var(--font-size-body);
+}
+
+@media print {
+    @page {
+        size: A4 landscape;
+        margin: 0;
+    }
+
+    html,
+    body {
+        background: #fff;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        display: block;
+        padding: 0;
+        background: #fff;
+    }
+
+    .page {
+        width: 297mm;
+        height: 210mm;
+        box-shadow: none;
+        margin: 0;
+        padding: 12mm 14mm;
+    }
+}
+
+/* ============================================================
+   PHẦN ĐẦU: tiêu đề / phòng / ngày
+   ============================================================ */
+
+.header {
+    text-align: center;
+    /* margin-top: 50px; */
+    margin-bottom: 26px;
+}
+
+.title {
+    font-weight: bold;
+    font-size: var(--font-size-title);
+    margin-bottom: 10px;
+}
+
+.room {
+    font-weight: bold;
+    font-size: var(--font-size-room);
+    margin-bottom: 10px;
+}
+
+.date {
+    font-style: italic;
+    text-align: right;
+    margin-bottom: 22px;
+}
+
+/* ============================================================
+   CÁC DÒNG NỘI DUNG - dùng chung 1 class .row cho mọi dòng
+   .row-fill = đoạn chấm chấm co giãn (leader dots)
+   ============================================================ */
+.content .row {
+    display: flex;
+    align-items: baseline;
+    margin-bottom: var(--row-gap);
+    white-space: nowrap;
+}
+
+.row-fill {
+    flex: 1 1 auto;
+    border-bottom: 1px dotted var(--color-line);
+    margin: 0 6px;
+    min-width: 20px;
+}
+.row-fill.short {
+    flex: 0 1 60px;
+} /* đoạn chấm ngắn, dùng quanh số điện/nước */
+
+.row-value {
+    font-weight: bold;
+}
+.row-value sup {
+    font-size: 0.7em;
+}
+
+.meter-value {
+    font-weight: bold;
+}
+
+/* dòng phụ (dòng tính toán, thụt vào, không có nhãn ở đầu) */
+.calc-row .row-fill:first-child {
+    flex: 0 1 30px;
+}
+
+/* dòng tổng cộng - có khung số tiền */
+.total-row {
+    margin-top: 6px;
+}
+.total-box {
+    border: 1.5px solid #333;
+    padding: 6px 16px;
+    font-weight: bold;
+    font-size: var(--font-size-total);
+    margin-left: 6px;
+}
+.total-box sup {
+    font-size: 0.6em;
+}
