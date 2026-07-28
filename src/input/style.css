@@ -20,6 +20,7 @@
   --bg-card: #ffffff;
   --bg-table-header: #f8fafc;
   --bg-input: #ffffff;
+  --bg-input-locked: #e2e8f0;
 
   --text-main: #0f172a;
   --text-muted: #64748b;
@@ -337,9 +338,9 @@ body {
 /* CỐ ĐỊNH KÍCH THƯỚC CỘT (TABLE-LAYOUT: FIXED) */
 .data-table {
   width: 100%;
-  table-layout: fixed; /* Khóa kích thước các cột không bị nhúc nhích khi gõ số */
+  table-layout: fixed;
   border-collapse: collapse;
-  text-align: center; /* CĂN GIỮA TẤT CẢ CÁC CỘT MẶC ĐỊNH */
+  text-align: center;
   font-size: 14px;
 }
 
@@ -348,7 +349,7 @@ body {
   padding: 8px 6px;
   border-bottom: 1px solid var(--border-light);
   white-space: nowrap;
-  text-align: center; /* CĂN GIỮA NỘI DUNG */
+  text-align: center;
   vertical-align: middle;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -368,7 +369,6 @@ body {
   text-align: center;
 }
 
-/* RIÊNG CỘT TỔNG CỘNG THÌ KHÔNG CẦN CĂN GIỮA (CĂN PHẢI) */
 .data-table th.col-total,
 .data-table td.col-total {
   text-align: right;
@@ -385,17 +385,17 @@ body {
   font-size: 13px;
 }
 
-/* KÍCH THƯỚC Ô NHẬP DỮ LIỆU LỚN HƠN, DỄ THAO TÁC */
+/* KÍCH THƯỚC Ô NHẬP DỮ LIỆU LỚN HƠN */
 .table-input {
   width: 100%;
-  height: 38px; /* Tăng chiều cao ô nhập */
+  height: 38px;
   padding: 6px 8px;
   border: 1.5px solid var(--border-color);
   border-radius: var(--radius-sm);
   font-family: inherit;
-  font-size: 14px; /* Tăng cỡ chữ */
+  font-size: 14px;
   font-weight: 600;
-  text-align: center; /* Căn giữa số trong ô nhập */
+  text-align: center;
   background: var(--bg-input);
   transition: all 0.15s ease;
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
@@ -411,6 +411,16 @@ body {
 .table-input.editable-meter {
   background: #fffbe6;
   border-color: #ffe58f;
+}
+
+/* KHÓA Ô ĐIỆN CŨ / NƯỚC CŨ THEO LỊCH SỬ THÁNG TRƯỚC */
+.table-input.locked-input {
+  background-color: #e2e8f0 !important;
+  color: #64748b !important;
+  border-color: #cbd5e1 !important;
+  cursor: not-allowed !important;
+  font-weight: 600;
+  box-shadow: none;
 }
 
 /* VALUE HIGHLIGHTS */
@@ -461,7 +471,7 @@ body {
   background: rgba(74, 222, 128, 0.15);
   border-radius: var(--radius-sm);
   padding-right: 12px;
-  text-align: right; /* Căn phải cho Tổng Doanh Thu */
+  text-align: right;
 }
 
 /* ============================================================

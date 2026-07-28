@@ -1,5 +1,6 @@
 /* ============================================================
-   RENDERER.JS - LOGIC MÀN HÌNH NHẬP LIỆU (EXCEL-STYLE KEYBOARD & DIRECT DOM UPDATES)
+   RENDERER.JS - LOGIC MÀN HÌNH NHẬP LIỆU
+   Lưu & Đọc dữ liệu chỉ số điện nước qua IPC (Electron Bridge window.api)
    ============================================================ */
 
 // Cấu hình mặc định
@@ -13,21 +14,184 @@ let appSettings = {
   tyLeHaoTai: 0.07
 };
 
-// Dữ liệu mẫu 12 phòng
+// Dữ liệu ban đầu mặc định cho Tháng 07/2026
+const INITIAL_JULY_2026_DATA = [
+  { phong: "1A", dienCu: 5302,  dienMoi: 5379,  nuocCu: 577, nuocMoi: 583 },
+  { phong: "1B", dienCu: 10936, dienMoi: 11024, nuocCu: 806, nuocMoi: 811 },
+  { phong: "2A", dienCu: 20406, dienMoi: 20599, nuocCu: 609, nuocMoi: 612 },
+  { phong: "2B", dienCu: 2172,  dienMoi: 2551,  nuocCu: 487, nuocMoi: 495 },
+  { phong: "3A", dienCu: 10897, dienMoi: 11040, nuocCu: 581, nuocMoi: 585 },
+  { phong: "3B", dienCu: 10054, dienMoi: 10154, nuocCu: 650, nuocMoi: 654 },
+  { phong: "4A", dienCu: 7987,  dienMoi: 8098,  nuocCu: 644, nuocMoi: 650 },
+  { phong: "4B", dienCu: 8428,  dienMoi: 8571,  nuocCu: 681, nuocMoi: 689 },
+  { phong: "5A", dienCu: 10773, dienMoi: 10849, nuocCu: 720, nuocMoi: 726 },
+  { phong: "5B", dienCu: 9800,  dienMoi: 9835,  nuocCu: 791, nuocMoi: 797 },
+  { phong: "6A", dienCu: 7885,  dienMoi: 8048,  nuocCu: 563, nuocMoi: 578 },
+  { phong: "6B", dienCu: 13336, dienMoi: 13449, nuocCu: 760, nuocMoi: 768 }
+];
+
+// Danh sách cố định 12 phòng
+const DEFAULT_ROOM_NAMES = [
+  "1A", "1B", "2A", "2B", "3A", "3B",
+  "4A", "4B", "5A", "5B", "6A", "6B"
+];
+
+// Dữ liệu làm việc hiện tại của 12 phòng
 let roomsData = [];
 
 /**
  * Format số có dấu chấm phân cách hàng nghìn (VD: 14110 -> 14.110)
  */
 function formatNumber(num) {
-  if (num === null || num === undefined || isNaN(num)) return '0';
+  if (num === null || num === undefined || isNaN(num) || num === '') return '0';
   return Number(num).toLocaleString('vi-VN');
 }
 
+/**
+ * Tính ra tháng liền trước dạng YYYY-MM (VD: 2026-08 -> 2026-07, 2026-01 -> 2025-12)
+ */
+function getPreviousMonthStr(monthYearStr) {
+  if (!monthYearStr || !monthYearStr.includes('-')) return '';
+  const [yearStr, monthStr] = monthYearStr.split('-');
+  let year = parseInt(yearStr, 10);
+  let month = parseInt(monthStr, 10) - 1;
+  if (month < 1) {
+    month = 12;
+    year -= 1;
+  }
+  const formattedMonth = String(month).padStart(2, '0');
+  return `${year}-${formattedMonth}`;
+}
+
+/**
+ * Đọc file settings qua IPC (window.api.loadSettingsData)
+ */
+async function loadSettingsFile() {
+  if (window.api && typeof window.api.loadSettingsData === 'function') {
+    try {
+      const data = await window.api.loadSettingsData();
+      if (data && !data.error) {
+        appSettings = {
+          dienThoai: data.dienThoai || appSettings.dienThoai,
+          giaPhong: data.giaPhong || appSettings.giaPhong,
+          giaDien: data.giaDien || appSettings.giaDien,
+          giaNuoc: data.giaNuoc || appSettings.giaNuoc,
+          tienRac: data.tienRac || data.rac || appSettings.tienRac,
+          tienInternet: data.tienInternet || data.internet || appSettings.tienInternet,
+          tyLeHaoTai: data.tyLeHaoTai || data.tileHaoTai || appSettings.tyLeHaoTai
+        };
+        return;
+      }
+    } catch (e) {
+      console.error('Lỗi khi đọc settings qua IPC:', e);
+    }
+  }
+
+  // Backup từ localStorage
+  try {
+    const local = localStorage.getItem('phongtro_settings');
+    if (local) {
+      const data = JSON.parse(local);
+      appSettings = { ...appSettings, ...data };
+    }
+  } catch (e) {}
+}
+
+/**
+ * Ghi file settings qua IPC (window.api.saveSettingsData)
+ */
+async function saveSettingsFile() {
+  const saveData = {
+    dienThoai: appSettings.dienThoai,
+    giaPhong: appSettings.giaPhong,
+    giaDien: appSettings.giaDien,
+    giaNuoc: appSettings.giaNuoc,
+    tienRac: appSettings.tienRac,
+    rac: appSettings.tienRac,
+    tienInternet: appSettings.tienInternet,
+    internet: appSettings.tienInternet,
+    tyLeHaoTai: appSettings.tyLeHaoTai,
+    tileHaoTai: appSettings.tyLeHaoTai
+  };
+
+  try {
+    localStorage.setItem('phongtro_settings', JSON.stringify(saveData));
+  } catch (e) {}
+
+  if (window.api && typeof window.api.saveSettingsData === 'function') {
+    try {
+      const res = await window.api.saveSettingsData(saveData);
+      return res && !res.error;
+    } catch (e) {
+      console.error('Lỗi khi ghi settings qua IPC:', e);
+    }
+  }
+  return true;
+}
+
+/**
+ * Đọc file history qua IPC (window.api.loadMonthData)
+ */
+async function readHistoryFile(monthYearStr) {
+  if (!monthYearStr) return null;
+
+  // 1. Thử đọc từ Electron IPC
+  if (window.api && typeof window.api.loadMonthData === 'function') {
+    try {
+      const res = await window.api.loadMonthData(monthYearStr);
+      if (res && !res.error) {
+        return res;
+      }
+    } catch (e) {
+      console.error('Lỗi khi đọc dữ liệu qua IPC:', e);
+    }
+  }
+
+  // 2. Thử đọc từ localStorage
+  try {
+    const local = localStorage.getItem(`history_${monthYearStr}`);
+    if (local) {
+      return JSON.parse(local);
+    }
+  } catch (e) {}
+
+  // 3. Fallback dữ liệu ban đầu cho Tháng 07/2026
+  if (monthYearStr === '2026-07') {
+    return INITIAL_JULY_2026_DATA;
+  }
+
+  return null;
+}
+
+/**
+ * Ghi dữ liệu tháng qua IPC (window.api.saveMonthData)
+ */
+async function writeHistoryFile(monthYearStr, data) {
+  if (!monthYearStr) return false;
+
+  // 1. Backup vào localStorage
+  try {
+    localStorage.setItem(`history_${monthYearStr}`, JSON.stringify(data));
+  } catch (e) {}
+
+  // 2. Gửi IPC lên Electron Main Process
+  if (window.api && typeof window.api.saveMonthData === 'function') {
+    try {
+      const res = await window.api.saveMonthData(monthYearStr, data);
+      return res && !res.error;
+    } catch (e) {
+      console.error('Lỗi khi ghi dữ liệu qua IPC:', e);
+      return false;
+    }
+  }
+  return true;
+}
+
 // Khởi tạo ứng dụng
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadSettingsFile();
   initSettingsForm();
-  loadRoomsForMonth(document.getElementById('month-year-select').value);
+  await loadRoomsForMonth(document.getElementById('month-year-select').value);
 
   // Lắng nghe sự kiện bàn phím phím Enter & Tab kiểu Excel cho toàn bảng
   document.getElementById('rooms-table-body').addEventListener('keydown', handleTableKeyDown);
@@ -63,34 +227,62 @@ function initSettingsForm() {
 }
 
 /**
- * Tải dữ liệu phòng cho tháng/năm được chọn
+ * Tải và tính toán tự động khóa/điền dữ liệu phòng cho tháng/năm được chọn
  */
-function loadRoomsForMonth(monthYearStr) {
-  const sampleData = [
-    { phong: "1A", dienCu: 12100, dienMoi: 12210, nuocCu: 640, nuocMoi: 648 },
-    { phong: "1B", dienCu: 9800,  dienMoi: 9915,  nuocCu: 510, nuocMoi: 517 },
-    { phong: "2A", dienCu: 15400, dienMoi: 15530, nuocCu: 810, nuocMoi: 820 },
-    { phong: "2B", dienCu: 11200, dienMoi: 11305, nuocCu: 600, nuocMoi: 606 },
-    { phong: "3A", dienCu: 8900,  dienMoi: 9020,  nuocCu: 430, nuocMoi: 438 },
-    { phong: "3B", dienCu: 14100, dienMoi: 14210, nuocCu: 720, nuocMoi: 727 },
-    { phong: "4A", dienCu: 17300, dienMoi: 17440, nuocCu: 910, nuocMoi: 920 },
-    { phong: "4B", dienCu: 10500, dienMoi: 10610, nuocCu: 580, nuocMoi: 586 },
-    { phong: "5A", dienCu: 13300, dienMoi: 13415, nuocCu: 690, nuocMoi: 698 },
-    { phong: "5B", dienCu: 16200, dienMoi: 16325, nuocCu: 850, nuocMoi: 859 },
-    { phong: "6A", dienCu: 12800, dienMoi: 12910, nuocCu: 670, nuocMoi: 676 },
-    { phong: "6B", dienCu: 13336, dienMoi: 13449, nuocCu: 760, nuocMoi: 768 }
-  ];
+async function loadRoomsForMonth(currentMonthYearStr) {
+  // 1. Đọc dữ liệu lịch sử của chính tháng hiện tại (qua IPC)
+  const currentMonthData = await readHistoryFile(currentMonthYearStr);
 
-  roomsData = sampleData.map(r => ({
-    ...r,
-    tienPhong: r.tienPhong || appSettings.giaPhong
-  }));
+  // 2. Tính ra tháng liền trước và đọc file lịch sử tháng liền trước (qua IPC)
+  const prevMonthStr = getPreviousMonthStr(currentMonthYearStr);
+  const prevMonthData = await readHistoryFile(prevMonthStr);
+
+  // 3. Xây dựng mảng dữ liệu 12 phòng với logic điền & khóa riêng từng phòng
+  roomsData = DEFAULT_ROOM_NAMES.map(phongName => {
+    const currRoom = currentMonthData
+      ? currentMonthData.find(r => r.phong === phongName)
+      : null;
+
+    const prevRoom = prevMonthData
+      ? prevMonthData.find(r => r.phong === phongName)
+      : null;
+
+    let dienCu = currRoom && currRoom.dienCu !== undefined ? currRoom.dienCu : '';
+    let isDienCuLocked = false;
+
+    if (prevRoom && prevRoom.dienMoi !== undefined && prevRoom.dienMoi !== null && prevRoom.dienMoi !== '') {
+      dienCu = prevRoom.dienMoi;
+      isDienCuLocked = true;
+    }
+
+    let nuocCu = currRoom && currRoom.nuocCu !== undefined ? currRoom.nuocCu : '';
+    let isNuocCuLocked = false;
+
+    if (prevRoom && prevRoom.nuocMoi !== undefined && prevRoom.nuocMoi !== null && prevRoom.nuocMoi !== '') {
+      nuocCu = prevRoom.nuocMoi;
+      isNuocCuLocked = true;
+    }
+
+    const dienMoi = currRoom && currRoom.dienMoi !== undefined ? currRoom.dienMoi : '';
+    const nuocMoi = currRoom && currRoom.nuocMoi !== undefined ? currRoom.nuocMoi : '';
+
+    return {
+      phong: phongName,
+      dienCu: dienCu,
+      dienMoi: dienMoi,
+      nuocCu: nuocCu,
+      nuocMoi: nuocMoi,
+      tienPhong: appSettings.giaPhong,
+      isDienCuLocked,
+      isNuocCuLocked
+    };
+  });
 
   renderInitialTable();
 }
 
 /**
- * Render khởi tạo cấu trúc 12 dòng vào Bảng (Chỉ dựng DOM 1 lần duy nhất)
+ * Render cấu trúc 12 dòng vào Bảng nhập dữ liệu
  */
 function renderInitialTable() {
   const tbody = document.getElementById('rooms-table-body');
@@ -100,28 +292,59 @@ function renderInitialTable() {
     const tr = document.createElement('tr');
     tr.setAttribute('data-row-index', index);
 
+    const dienCuVal = room.dienCu !== undefined && room.dienCu !== null ? room.dienCu : '';
+    const nuocCuVal = room.nuocCu !== undefined && room.nuocCu !== null ? room.nuocCu : '';
+
     tr.innerHTML = `
       <td class="col-stt">${index + 1}</td>
       <td class="col-phong"><span class="room-badge">${room.phong}</span></td>
       
-      <!-- Điện Cũ -->
+      <!-- Điện Cũ (Tự động điền & khóa nếu có lịch sử tháng trước) -->
       <td class="col-meter">
-        <input type="number" class="table-input" data-row="${index}" data-field="dienCu" value="${room.dienCu}" oninput="handleInputChange(${index}, 'dienCu', this.value)" onfocus="this.select()">
+        <input type="number" 
+               class="table-input ${room.isDienCuLocked ? 'locked-input' : ''}" 
+               data-row="${index}" 
+               data-field="dienCu" 
+               value="${dienCuVal}" 
+               ${room.isDienCuLocked ? 'readonly' : ''} 
+               oninput="handleInputChange(${index}, 'dienCu', this.value)" 
+               onfocus="this.select()">
       </td>
-      <!-- Điện Mới -->
+
+      <!-- Điện Mới (Luôn mở khóa cho người dùng nhập tay) -->
       <td class="col-meter">
-        <input type="number" class="table-input editable-meter" data-row="${index}" data-field="dienMoi" value="${room.dienMoi}" oninput="handleInputChange(${index}, 'dienMoi', this.value)" onfocus="this.select()">
+        <input type="number" 
+               class="table-input editable-meter" 
+               data-row="${index}" 
+               data-field="dienMoi" 
+               value="${room.dienMoi !== undefined && room.dienMoi !== null ? room.dienMoi : ''}" 
+               oninput="handleInputChange(${index}, 'dienMoi', this.value)" 
+               onfocus="this.select()">
       </td>
       <!-- Số Điện Tiêu Thụ -->
       <td class="col-kwh val-calc cell-dien-kwh">0 kWh</td>
 
-      <!-- Nước Cũ -->
+      <!-- Nước Cũ (Tự động điền & khóa nếu có lịch sử tháng trước) -->
       <td class="col-meter">
-        <input type="number" class="table-input" data-row="${index}" data-field="nuocCu" value="${room.nuocCu}" oninput="handleInputChange(${index}, 'nuocCu', this.value)" onfocus="this.select()">
+        <input type="number" 
+               class="table-input ${room.isNuocCuLocked ? 'locked-input' : ''}" 
+               data-row="${index}" 
+               data-field="nuocCu" 
+               value="${nuocCuVal}" 
+               ${room.isNuocCuLocked ? 'readonly' : ''} 
+               oninput="handleInputChange(${index}, 'nuocCu', this.value)" 
+               onfocus="this.select()">
       </td>
-      <!-- Nước Mới -->
+
+      <!-- Nước Mới (Luôn mở khóa cho người dùng nhập tay) -->
       <td class="col-meter">
-        <input type="number" class="table-input editable-meter" data-row="${index}" data-field="nuocMoi" value="${room.nuocMoi}" oninput="handleInputChange(${index}, 'nuocMoi', this.value)" onfocus="this.select()">
+        <input type="number" 
+               class="table-input editable-meter" 
+               data-row="${index}" 
+               data-field="nuocMoi" 
+               value="${room.nuocMoi !== undefined && room.nuocMoi !== null ? room.nuocMoi : ''}" 
+               oninput="handleInputChange(${index}, 'nuocMoi', this.value)" 
+               onfocus="this.select()">
       </td>
       <!-- Số Nước Tiêu Thụ -->
       <td class="col-kwh val-calc cell-nuoc-khoi">0 m³</td>
@@ -148,10 +371,10 @@ function renderInitialTable() {
 }
 
 /**
- * Xử lý khi người dùng nhập số (Không hủy/dựng lại DOM => Không bao giờ mất focus)
+ * Xử lý khi người dùng nhập số
  */
 function handleInputChange(index, field, value) {
-  const numVal = Number(value) || 0;
+  const numVal = value !== '' ? Number(value) : '';
   roomsData[index][field] = numVal;
 
   // Cập nhật UI riêng dòng đó & Footer
@@ -170,8 +393,8 @@ function updateRowUI(index) {
   const roomCalc = typeof calcRoom === 'function' 
     ? calcRoom(room, appSettings)
     : {
-        dienKwh: Math.max(0, room.dienMoi - room.dienCu),
-        nuocKhoi: Math.max(0, room.nuocMoi - room.nuocCu),
+        dienKwh: Math.max(0, (Number(room.dienMoi) || 0) - (Number(room.dienCu) || 0)),
+        nuocKhoi: Math.max(0, (Number(room.nuocMoi) || 0) - (Number(room.nuocCu) || 0)),
         tienDien: 0, tienNuoc: 0, tienPhong: appSettings.giaPhong,
         rac: appSettings.tienRac, internet: appSettings.tienInternet,
         haoTaiKwh: 0, tienHaoTai: 0, tongCong: 0
@@ -248,7 +471,6 @@ function handleTableKeyDown(event) {
 
   if (event.key === 'Enter') {
     event.preventDefault();
-    // Di chuyển xuống phòng tiếp theo (Enter) hoặc lên phòng trước (Shift + Enter)
     const targetRowIndex = event.shiftKey ? rowIndex - 1 : rowIndex + 1;
     const targetInput = document.querySelector(`.table-input[data-row="${targetRowIndex}"][data-field="${field}"]`);
 
@@ -256,7 +478,6 @@ function handleTableKeyDown(event) {
       targetInput.focus();
       targetInput.select();
     } else if (!event.shiftKey && targetRowIndex >= roomsData.length) {
-      // Nếu hết phòng cuối, di chuyển sang cột tiếp theo của phòng đầu tiên (1A)
       const nextField = getNextField(field);
       if (nextField) {
         const firstInput = document.querySelector(`.table-input[data-row="0"][data-field="${nextField}"]`);
@@ -267,7 +488,6 @@ function handleTableKeyDown(event) {
       }
     }
   } else if (event.key === 'Tab') {
-    // Tự động select nội dung ô tiếp theo khi nhấn Tab
     setTimeout(() => {
       if (document.activeElement && document.activeElement.classList.contains('table-input')) {
         document.activeElement.select();
@@ -291,16 +511,16 @@ function getNextField(currentField) {
 /**
  * Sự kiện chọn Tháng - Năm
  */
-function onMonthYearChange() {
+async function onMonthYearChange() {
   const monthYear = document.getElementById('month-year-select').value;
-  loadRoomsForMonth(monthYear);
+  await loadRoomsForMonth(monthYear);
   showToast(`Đã chuyển sang ${monthYear}`, 'success');
 }
 
 /**
  * Lưu Cài Đặt Giá
  */
-function saveSettings(event) {
+async function saveSettings(event) {
   event.preventDefault();
   appSettings.giaPhong = Number(document.getElementById('set-giaPhong').value) || 0;
   appSettings.giaDien = Number(document.getElementById('set-giaDien').value) || 0;
@@ -310,27 +530,47 @@ function saveSettings(event) {
   appSettings.tyLeHaoTai = (Number(document.getElementById('set-tileHaoTai').value) || 0) / 100;
   appSettings.dienThoai = document.getElementById('set-dienThoai').value;
 
+  const ok = await saveSettingsFile();
+
   roomsData.forEach(r => {
     r.tienPhong = appSettings.giaPhong;
   });
 
-  // Re-render UI
   roomsData.forEach((_, idx) => updateRowUI(idx));
   updateFooterTotals();
-  showToast("Đã lưu thiết lập giá thành công!", 'success');
+  if (ok) {
+    showToast("Đã lưu cài đặt giá vào file thành công!", 'success');
+  } else {
+    showToast("Đã cập nhật cài đặt giá!", 'success');
+  }
 }
 
 /**
  * Nút Lưu Dữ Liệu
  */
-function saveData() {
-  showToast("Đã lưu dữ liệu chỉ số thành công!", 'success');
+async function saveData() {
+  const currentMonthYear = document.getElementById('month-year-select').value;
+  const saveDataArray = roomsData.map(r => ({
+    phong: r.phong,
+    dienCu: Number(r.dienCu) || 0,
+    dienMoi: Number(r.dienMoi) || 0,
+    nuocCu: Number(r.nuocCu) || 0,
+    nuocMoi: Number(r.nuocMoi) || 0
+  }));
+
+  const success = await writeHistoryFile(currentMonthYear, saveDataArray);
+  if (success) {
+    showToast(`Đã lưu dữ liệu file data/history/${currentMonthYear}.json thành công!`, 'success');
+  } else {
+    showToast(`Có lỗi xảy ra khi lưu file ${currentMonthYear}.json!`, 'error');
+  }
 }
 
 /**
  * Nút Lưu & Xuất Hình Ảnh
  */
-function exportReceipts() {
+async function exportReceipts() {
+  await saveData();
   showToast("Đang tạo & xuất hình ảnh phiếu thu cho 12 phòng...", 'success');
 }
 
