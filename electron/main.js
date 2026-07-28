@@ -4,8 +4,20 @@ const fs = require('fs');
 const { PDFDocument } = require('pdf-lib');
 
 const PROJECT_ROOT = path.join(__dirname, '..');
-const DATA_DIR = path.join(PROJECT_ROOT, 'data', 'history');
-const SETTINGS_FILE = path.join(PROJECT_ROOT, 'data', 'settings.json');
+
+// Xác định thư mục lưu trữ dữ liệu
+const getDataRoot = () => {
+  // Khi chạy bản Portable, biến môi trường này sẽ chứa đường dẫn tới thư mục đặt file .exe
+  if (process.env.PORTABLE_EXECUTABLE_DIR) {
+    return process.env.PORTABLE_EXECUTABLE_DIR;
+  }
+  // Mặc định (lúc dev) thì lưu trong thư mục project
+  return PROJECT_ROOT;
+};
+
+const DATA_ROOT = getDataRoot();
+const DATA_DIR = path.join(DATA_ROOT, 'data', 'history');
+const SETTINGS_FILE = path.join(DATA_ROOT, 'data', 'settings.json');
 
 const { toReceiptData } = require(path.join(PROJECT_ROOT, 'src', 'shared', 'format.js'));
 

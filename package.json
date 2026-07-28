@@ -4,16 +4,40 @@
   "description": "Phần mềm quản lý và xuất phiếu thu tiền nhà trọ",
   "main": "electron/main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder --win"
   },
   "keywords": [],
-  "author": "",
+  "author": "Lê Công Bá Nhân",
   "license": "ISC",
   "dependencies": {
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^3.11.174"
   },
   "devDependencies": {
-    "electron": "^43.2.0"
+    "electron": "^43.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.lecongba.quanlyphongtro",
+    "productName": "Quản Lý Phòng Trọ",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "logo.ico",
+      "target": [
+        "portable"
+      ]
+    },
+    "portable": {
+      "artifactName": "${productName}_Portable_v${version}.${ext}"
+    },
+    "files": [
+      "data/**/*",
+      "electron/**/*",
+      "src/**/*",
+      "package.json"
+    ]
   }
 }
