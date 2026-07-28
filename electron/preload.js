@@ -1,9 +1,21 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Expose safe IPC APIs for renderer process
 contextBridge.exposeInMainWorld('api', {
+  // Quản lý lưu/đọc dữ liệu chỉ số tháng
   saveMonthData: (monthKey, data) => ipcRenderer.invoke('month-data:save', monthKey, data),
   loadMonthData: (monthKey) => ipcRenderer.invoke('month-data:load', monthKey),
-  saveSettingsData: (data) => ipcRenderer.invoke('settings-data:save', data),
-  loadSettingsData: () => ipcRenderer.invoke('settings-data:load')
+
+  // Quản lý lưu/đọc cài đặt giá & thư mục gốc
+  saveSettings: (data) => ipcRenderer.invoke('settings:save', data),
+  loadSettings: () => ipcRenderer.invoke('settings:load'),
+
+  // Chọn thư mục trên Windows qua dialog native
+  pickFolder: () => ipcRenderer.invoke('dialog:pick-folder'),
+
+  // Xuất ảnh JPG & file PDF gộp
+  exportReceipts: (monthKey, roomDataList) => ipcRenderer.invoke('export:receipts', monthKey, roomDataList),
+  onExportProgress: (callback) => {
+    ipcRenderer.removeAllListeners('export:progress');
+    ipcRenderer.on('export:progress', (event, data) => callback(data));
+  }
 });

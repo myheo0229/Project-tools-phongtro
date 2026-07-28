@@ -1,10 +1,10 @@
 /* ============================================================
    RENDERER.JS - LOGIC MÀN HÌNH NHẬP LIỆU
-   Lưu & Đọc dữ liệu chỉ số điện nước qua IPC (Electron Bridge window.api)
    ============================================================ */
 
 // Cấu hình mặc định
 let appSettings = {
+  baseFolder: "",
   dienThoai: "0982 141 407",
   giaPhong: 2200000,
   giaDien: 2900,
@@ -48,7 +48,60 @@ function formatNumber(num) {
 }
 
 /**
- * Tính ra tháng liền trước dạng YYYY-MM (VD: 2026-08 -> 2026-07, 2026-01 -> 2025-12)
+ * Tạo danh sách Tháng/Năm động trong dropdown:
+ * min = cố định 2026-07
+ * max = tháng hiện tại của hệ thống tính động bằng new Date()
+ */
+function populateMonthSelect() {
+  const select = document.getElementById('month-year-select');
+  if (!select) return;
+  select.innerHTML = '';
+
+  const minYear = 2026;
+  const minMonth = 7; // Mốc cố định 2026-07
+
+  // Mở rộng danh sách 30 năm tới tương lai (từ năm 2026 đến năm 2056)
+  const maxYear = minYear + 30;
+  const maxMonth = 12;
+
+  const list = [];
+  let currentY = minYear;
+  let currentM = minMonth;
+
+  while (currentY < maxYear || (currentY === maxYear && currentM <= maxMonth)) {
+    const monthKey = `${currentY}-${String(currentM).padStart(2, '0')}`;
+    list.push({
+      key: monthKey,
+      label: `Tháng ${String(currentM).padStart(2, '0')}/${currentY}`
+    });
+
+    currentM++;
+    if (currentM > 12) {
+      currentM = 1;
+      currentY++;
+    }
+  }
+
+  // Hiển thị danh sách từ Tháng 07/2026 đến Tháng 12/2056
+  list.forEach(item => {
+    const option = document.createElement('option');
+    option.value = item.key;
+    option.textContent = item.label;
+    select.appendChild(option);
+  });
+
+  // Mặc định chọn tháng hiện tại của hệ thống (VD: 2026-07)
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  if (select.querySelector(`option[value="${currentMonthKey}"]`)) {
+    select.value = currentMonthKey;
+  } else if (select.options.length > 0) {
+    select.value = select.options[0].value;
+  }
+}
+
+/**
+ * Tính ra tháng liền trước dạng YYYY-MM (VD: 2026-08 -> 2026-07)
  */
 function getPreviousMonthStr(monthYearStr) {
   if (!monthYearStr || !monthYearStr.includes('-')) return '';
@@ -64,26 +117,30 @@ function getPreviousMonthStr(monthYearStr) {
 }
 
 /**
- * Đọc file settings qua IPC (window.api.loadSettingsData)
+ * Đọc file settings qua IPC (window.api.loadSettingsData hoặc loadSettings)
  */
 async function loadSettingsFile() {
-  if (window.api && typeof window.api.loadSettingsData === 'function') {
-    try {
-      const data = await window.api.loadSettingsData();
-      if (data && !data.error) {
-        appSettings = {
-          dienThoai: data.dienThoai || appSettings.dienThoai,
-          giaPhong: data.giaPhong || appSettings.giaPhong,
-          giaDien: data.giaDien || appSettings.giaDien,
-          giaNuoc: data.giaNuoc || appSettings.giaNuoc,
-          tienRac: data.tienRac || data.rac || appSettings.tienRac,
-          tienInternet: data.tienInternet || data.internet || appSettings.tienInternet,
-          tyLeHaoTai: data.tyLeHaoTai || data.tileHaoTai || appSettings.tyLeHaoTai
-        };
-        return;
+  if (window.api) {
+    const loadFn = window.api.loadSettings || window.api.loadSettingsData;
+    if (typeof loadFn === 'function') {
+      try {
+        const data = await loadFn();
+        if (data && !data.error) {
+          appSettings = {
+            baseFolder: data.baseFolder || appSettings.baseFolder || "",
+            dienThoai: data.dienThoai || appSettings.dienThoai,
+            giaPhong: data.giaPhong || appSettings.giaPhong,
+            giaDien: data.giaDien || appSettings.giaDien,
+            giaNuoc: data.giaNuoc || appSettings.giaNuoc,
+            tienRac: data.tienRac || data.rac || appSettings.tienRac,
+            tienInternet: data.tienInternet || data.internet || appSettings.tienInternet,
+            tyLeHaoTai: data.tyLeHaoTai || data.tileHaoTai || appSettings.tyLeHaoTai
+          };
+          return;
+        }
+      } catch (e) {
+        console.error('Lỗi khi đọc settings qua IPC:', e);
       }
-    } catch (e) {
-      console.error('Lỗi khi đọc settings qua IPC:', e);
     }
   }
 
@@ -98,10 +155,11 @@ async function loadSettingsFile() {
 }
 
 /**
- * Ghi file settings qua IPC (window.api.saveSettingsData)
+ * Ghi file settings qua IPC (window.api.saveSettingsData hoặc saveSettings)
  */
 async function saveSettingsFile() {
   const saveData = {
+    baseFolder: appSettings.baseFolder,
     dienThoai: appSettings.dienThoai,
     giaPhong: appSettings.giaPhong,
     giaDien: appSettings.giaDien,
@@ -118,12 +176,15 @@ async function saveSettingsFile() {
     localStorage.setItem('phongtro_settings', JSON.stringify(saveData));
   } catch (e) {}
 
-  if (window.api && typeof window.api.saveSettingsData === 'function') {
-    try {
-      const res = await window.api.saveSettingsData(saveData);
-      return res && !res.error;
-    } catch (e) {
-      console.error('Lỗi khi ghi settings qua IPC:', e);
+  if (window.api) {
+    const saveFn = window.api.saveSettings || window.api.saveSettingsData;
+    if (typeof saveFn === 'function') {
+      try {
+        const res = await saveFn(saveData);
+        return res && !res.error;
+      } catch (e) {
+        console.error('Lỗi khi ghi settings qua IPC:', e);
+      }
     }
   }
   return true;
@@ -135,7 +196,6 @@ async function saveSettingsFile() {
 async function readHistoryFile(monthYearStr) {
   if (!monthYearStr) return null;
 
-  // 1. Thử đọc từ Electron IPC
   if (window.api && typeof window.api.loadMonthData === 'function') {
     try {
       const res = await window.api.loadMonthData(monthYearStr);
@@ -147,7 +207,6 @@ async function readHistoryFile(monthYearStr) {
     }
   }
 
-  // 2. Thử đọc từ localStorage
   try {
     const local = localStorage.getItem(`history_${monthYearStr}`);
     if (local) {
@@ -155,7 +214,6 @@ async function readHistoryFile(monthYearStr) {
     }
   } catch (e) {}
 
-  // 3. Fallback dữ liệu ban đầu cho Tháng 07/2026
   if (monthYearStr === '2026-07') {
     return INITIAL_JULY_2026_DATA;
   }
@@ -169,12 +227,10 @@ async function readHistoryFile(monthYearStr) {
 async function writeHistoryFile(monthYearStr, data) {
   if (!monthYearStr) return false;
 
-  // 1. Backup vào localStorage
   try {
     localStorage.setItem(`history_${monthYearStr}`, JSON.stringify(data));
   } catch (e) {}
 
-  // 2. Gửi IPC lên Electron Main Process
   if (window.api && typeof window.api.saveMonthData === 'function') {
     try {
       const res = await window.api.saveMonthData(monthYearStr, data);
@@ -189,9 +245,20 @@ async function writeHistoryFile(monthYearStr, data) {
 
 // Khởi tạo ứng dụng
 document.addEventListener('DOMContentLoaded', async () => {
+  populateMonthSelect();
   await loadSettingsFile();
   initSettingsForm();
   await loadRoomsForMonth(document.getElementById('month-year-select').value);
+
+  // Đăng ký lắng nghe tiến trình xuất ảnh/PDF
+  if (window.api && typeof window.api.onExportProgress === 'function') {
+    window.api.onExportProgress((data) => {
+      const btnText = document.getElementById('btn-save-export-text');
+      if (btnText && data && data.current) {
+        btnText.textContent = `Đang xuất... ${data.current}/${data.total}`;
+      }
+    });
+  }
 
   // Lắng nghe sự kiện bàn phím phím Enter & Tab kiểu Excel cho toàn bảng
   document.getElementById('rooms-table-body').addEventListener('keydown', handleTableKeyDown);
@@ -217,6 +284,7 @@ function switchTab(tabName) {
  * Load form Cài đặt
  */
 function initSettingsForm() {
+  document.getElementById('set-baseFolder').value = appSettings.baseFolder || "";
   document.getElementById('set-giaPhong').value = appSettings.giaPhong;
   document.getElementById('set-giaDien').value = appSettings.giaDien;
   document.getElementById('set-giaNuoc').value = appSettings.giaNuoc;
@@ -227,17 +295,30 @@ function initSettingsForm() {
 }
 
 /**
+ * Chọn thư mục lưu xuất phiếu thu qua Windows dialog native
+ */
+async function pickBaseFolder() {
+  if (window.api && typeof window.api.pickFolder === 'function') {
+    const selectedFolder = await window.api.pickFolder();
+    if (selectedFolder) {
+      appSettings.baseFolder = selectedFolder;
+      document.getElementById('set-baseFolder').value = selectedFolder;
+      await saveSettingsFile();
+      showToast('Đã chọn thư mục lưu thành công!', 'success');
+    }
+  } else {
+    showToast('Chức năng chọn thư mục chỉ hoạt động trên ứng dụng Electron!', 'error');
+  }
+}
+
+/**
  * Tải và tính toán tự động khóa/điền dữ liệu phòng cho tháng/năm được chọn
  */
 async function loadRoomsForMonth(currentMonthYearStr) {
-  // 1. Đọc dữ liệu lịch sử của chính tháng hiện tại (qua IPC)
   const currentMonthData = await readHistoryFile(currentMonthYearStr);
-
-  // 2. Tính ra tháng liền trước và đọc file lịch sử tháng liền trước (qua IPC)
   const prevMonthStr = getPreviousMonthStr(currentMonthYearStr);
   const prevMonthData = await readHistoryFile(prevMonthStr);
 
-  // 3. Xây dựng mảng dữ liệu 12 phòng với logic điền & khóa riêng từng phòng
   roomsData = DEFAULT_ROOM_NAMES.map(phongName => {
     const currRoom = currentMonthData
       ? currentMonthData.find(r => r.phong === phongName)
@@ -363,7 +444,6 @@ function renderInitialTable() {
     `;
     tbody.appendChild(tr);
 
-    // Cập nhật giá trị hiển thị ban đầu cho dòng
     updateRowUI(index);
   });
 
@@ -377,7 +457,6 @@ function handleInputChange(index, field, value) {
   const numVal = value !== '' ? Number(value) : '';
   roomsData[index][field] = numVal;
 
-  // Cập nhật UI riêng dòng đó & Footer
   updateRowUI(index);
   updateFooterTotals();
 }
@@ -518,7 +597,7 @@ async function onMonthYearChange() {
 }
 
 /**
- * Lưu Cài Đặt Giá
+ * Lưu Cài Đặt Giá & Thư mục
  */
 async function saveSettings(event) {
   event.preventDefault();
@@ -529,6 +608,7 @@ async function saveSettings(event) {
   appSettings.tienInternet = Number(document.getElementById('set-internet').value) || 0;
   appSettings.tyLeHaoTai = (Number(document.getElementById('set-tileHaoTai').value) || 0) / 100;
   appSettings.dienThoai = document.getElementById('set-dienThoai').value;
+  appSettings.baseFolder = document.getElementById('set-baseFolder').value || "";
 
   const ok = await saveSettingsFile();
 
@@ -539,39 +619,88 @@ async function saveSettings(event) {
   roomsData.forEach((_, idx) => updateRowUI(idx));
   updateFooterTotals();
   if (ok) {
-    showToast("Đã lưu cài đặt giá vào file thành công!", 'success');
+    showToast("Đã lưu cài đặt giá và thư mục lưu thành công!", 'success');
   } else {
     showToast("Đã cập nhật cài đặt giá!", 'success');
   }
 }
 
 /**
- * Nút Lưu Dữ Liệu
+ * Nút duy nhất "Lưu & Xuất":
+ * 0. Lưu dữ liệu tháng hiện tại -> xong mới tiếp tục
+ * 1. Kiểm tra baseFolder -> chưa chọn thì báo lỗi dừng lại
+ * 2. Gọi IPC exportReceipts -> mở BrowserWindow ẩn, render 12 phòng, xuất 12 JPG + 1 PDF gộp
+ * 3. Tự động mở thư mục xuất
  */
-async function saveData() {
+async function saveAndExport() {
+  const btn = document.getElementById('btn-save-export');
+  const btnText = document.getElementById('btn-save-export-text');
   const currentMonthYear = document.getElementById('month-year-select').value;
-  const saveDataArray = roomsData.map(r => ({
-    phong: r.phong,
-    dienCu: Number(r.dienCu) || 0,
-    dienMoi: Number(r.dienMoi) || 0,
-    nuocCu: Number(r.nuocCu) || 0,
-    nuocMoi: Number(r.nuocMoi) || 0
-  }));
 
-  const success = await writeHistoryFile(currentMonthYear, saveDataArray);
-  if (success) {
-    showToast(`Đã lưu dữ liệu file data/history/${currentMonthYear}.json thành công!`, 'success');
-  } else {
-    showToast(`Có lỗi xảy ra khi lưu file ${currentMonthYear}.json!`, 'error');
+  // Khóa nút tránh bấm trùng lập
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.textContent = "Đang lưu dữ liệu...";
+
+  try {
+    // Bước 0: Lưu dữ liệu tháng hiện tại
+    const saveDataArray = roomsData.map(r => ({
+      phong: r.phong,
+      dienCu: Number(r.dienCu) || 0,
+      dienMoi: Number(r.dienMoi) || 0,
+      nuocCu: Number(r.nuocCu) || 0,
+      nuocMoi: Number(r.nuocMoi) || 0
+    }));
+
+    const saveSuccess = await writeHistoryFile(currentMonthYear, saveDataArray);
+    if (!saveSuccess) {
+      showToast(`Không thể lưu file lịch sử ${currentMonthYear}.json!`, 'error');
+      if (btn) btn.disabled = false;
+      if (btnText) btnText.textContent = "Lưu & Xuất";
+      return;
+    }
+
+    // Bước 1: Kiểm tra thư mục baseFolder
+    if (!appSettings.baseFolder) {
+      showToast('Vui lòng vào Cài đặt chung để chọn "Thư mục lưu ảnh/PDF" trước khi xuất!', 'error');
+      switchTab('settings');
+      if (btn) btn.disabled = false;
+      if (btnText) btnText.textContent = "Lưu & Xuất";
+      return;
+    }
+
+    // Lấy dữ liệu đã qua tính toán calcRoom của 12 phòng
+    const calcResult = typeof calcAllRooms === 'function'
+      ? calcAllRooms(roomsData, appSettings)
+      : { rooms: [] };
+
+    // Bước 2: Gọi IPC xuất ảnh & PDF
+    if (btnText) btnText.textContent = "Đang xuất... 0/12";
+
+    if (window.api && typeof window.api.exportReceipts === 'function') {
+      const res = await window.api.exportReceipts(currentMonthYear, calcResult.rooms);
+
+      if (res && res.canceled) {
+        showToast("Đã hủy xuất theo yêu cầu.", 'info');
+      } else if (res && res.error) {
+        if (res.error === 'CHUA_CHON_THU_MUC') {
+          showToast(res.message, 'error');
+          switchTab('settings');
+        } else {
+          showToast(`Lỗi khi xuất ảnh/PDF: ${res.error}`, 'error');
+        }
+      } else if (res && res.success) {
+        showToast(`Đã lưu và xuất thành công ${res.jpgCount} ảnh JPG + 1 file PDF (${res.pdfFile})!`, 'success');
+      }
+    } else {
+      showToast("Chức năng xuất ảnh JPG & PDF gộp chỉ khả dụng trên Electron app!", 'error');
+    }
+  } catch (err) {
+    console.error('Lỗi trong saveAndExport:', err);
+    showToast(`Có lỗi xảy ra: ${err.message}`, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = "Lưu & Xuất";
   }
-}
-
-/**
- * Nút Lưu & Xuất Hình Ảnh
- */
-async function exportReceipts() {
-  await saveData();
-  showToast("Đang tạo & xuất hình ảnh phiếu thu cho 12 phòng...", 'success');
 }
 
 /**

@@ -1,9 +1,13 @@
 {
+  "baseFolder": "C:\\Users\\pc\\OneDrive\\Desktop\\test lưu thư mục",
   "dienThoai": "0982 141 407",
   "giaPhong": 2200000,
   "giaDien": 2900,
   "giaNuoc": 12000,
+  "tienRac": 40000,
   "rac": 40000,
+  "tienInternet": 24000,
   "internet": 24000,
+  "tyLeHaoTai": 0.07,
   "tileHaoTai": 0.07
 }

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script src="./vendor/pdfjs/pdf.js"></script>
+</head>
+<body>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.js';
+
+  // scale càng cao ảnh càng nét, mặc định 3
+  window.rasterizePdfToJpeg = async function (base64Pdf, scale) {
+    const binary = atob(base64Pdf);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+    const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+    const page = await pdf.getPage(1); // mỗi PDF ở đây luôn chỉ có 1 trang (1 phòng)
+    const viewport = page.getViewport({ scale: scale || 3 });
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    return canvas.toDataURL('image/jpeg', 0.92); // trả về dạng "data:image/jpeg;base64,...."
+  };
+</script>
+</body>
+</html>

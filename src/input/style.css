@@ -192,15 +192,33 @@ body {
   white-space: nowrap;
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
 .btn-primary {
   background: linear-gradient(135deg, #0284c7, #0369a1);
   color: white;
   box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2);
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: linear-gradient(135deg, #0369a1, #075985);
   box-shadow: 0 4px 8px rgba(2, 132, 199, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-save-export {
+  background: linear-gradient(135deg, #059669, #047857);
+  color: white;
+  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+}
+
+.btn-save-export:hover:not(:disabled) {
+  background: linear-gradient(135deg, #047857, #065f46);
+  box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
   transform: translateY(-1px);
 }
 
@@ -210,7 +228,7 @@ body {
   color: var(--text-main);
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
   background: #f8fafc;
   border-color: #94a3b8;
 }
@@ -335,7 +353,6 @@ body {
   max-width: 100%;
 }
 
-/* CỐ ĐỊNH KÍCH THƯỚC CỘT (TABLE-LAYOUT: FIXED) */
 .data-table {
   width: 100%;
   table-layout: fixed;
@@ -385,7 +402,7 @@ body {
   font-size: 13px;
 }
 
-/* KÍCH THƯỚC Ô NHẬP DỮ LIỆU LỚN HƠN */
+/* KÍCH THƯỚC Ô NHẬP DỮ LIỆU */
 .table-input {
   width: 100%;
   height: 38px;
@@ -413,7 +430,7 @@ body {
   border-color: #ffe58f;
 }
 
-/* KHÓA Ô ĐIỆN CŨ / NƯỚC CŨ THEO LỊCH SỬ THÁNG TRƯỚC */
+/* KHÓA Ô ĐIỆN CŨ / NƯỚC CŨ */
 .table-input.locked-input {
   background-color: #e2e8f0 !important;
   color: #64748b !important;
@@ -524,6 +541,16 @@ body {
   font-size: 13px;
   font-weight: 600;
   color: #334155;
+}
+
+.input-with-button {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.input-with-button .form-control {
+  flex: 1;
 }
 
 .input-with-unit {

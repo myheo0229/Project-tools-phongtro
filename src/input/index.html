@@ -50,35 +50,22 @@
         </button>
       </nav>
 
-      <!-- CONTROL ACTIONS -->
+      <!-- CONTROL ACTIONS (GỘP CHUNG 1 NÚT "LƯU & XUẤT") -->
       <div class="header-actions">
         <div class="month-select-wrapper">
           <label for="month-year-select">Tháng / Năm:</label>
           <select id="month-year-select" class="custom-select" onchange="onMonthYearChange()">
-            <option value="2026-07">Tháng 07 / 2026</option>
-            <option value="2026-08">Tháng 08 / 2026</option>
-            <option value="2026-09">Tháng 09 / 2026</option>
-            <option value="2026-10">Tháng 10 / 2026</option>
-            <option value="2026-11">Tháng 11 / 2026</option>
-            <option value="2026-12">Tháng 12 / 2026</option>
+            <!-- Render động bằng Javascript -->
           </select>
         </div>
 
-        <button type="button" class="btn btn-secondary" onclick="saveData()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button type="button" class="btn btn-primary btn-save-export" id="btn-save-export" onclick="saveAndExport()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
             <polyline points="17 21 17 13 7 13 7 21"></polyline>
             <polyline points="7 3 7 8 15 8"></polyline>
           </svg>
-          Lưu Dữ Liệu
-        </button>
-
-        <button type="button" class="btn btn-primary" onclick="exportReceipts()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-            <circle cx="12" cy="13" r="4"></circle>
-          </svg>
-          Lưu & Xuất Hình Ảnh
+          <span id="btn-save-export-text">Lưu & Xuất</span>
         </button>
       </div>
     </header>
@@ -219,10 +206,19 @@
         <div class="settings-card">
           <div class="settings-card-header">
             <h2>THIẾT LẬP GIÁ & THÔNG TIN CHUNG</h2>
-            <p>Cấu hình bảng giá mặc định áp dụng cho tất cả các phòng</p>
+            <p>Cấu hình bảng giá mặc định và thư mục lưu xuất phiếu thu</p>
           </div>
 
           <form id="settings-form" onsubmit="saveSettings(event)" class="settings-form">
+            <!-- BỔ SUNG TRƯỜNG "THƯ MỤC LƯU ÁNH/PDF" VỚI NÚT BROWSE -->
+            <div class="form-group full-width">
+              <label for="set-baseFolder">Thư mục lưu ảnh & PDF phiếu thu:</label>
+              <div class="input-with-button">
+                <input type="text" id="set-baseFolder" class="form-control" readonly placeholder="Chưa chọn thư mục lưu (Vui lòng bấm Browse)">
+                <button type="button" class="btn btn-secondary" onclick="pickBaseFolder()">Browse</button>
+              </div>
+            </div>
+
             <div class="form-grid">
               <div class="form-group">
                 <label for="set-giaPhong">Tiền Phòng mặc định (VNĐ):</label>
@@ -297,8 +293,9 @@
     <div id="toast-container" class="toast-container"></div>
   </div>
 
-  <!-- Shared Calc Script -->
+  <!-- Shared Calc & Format Scripts -->
   <script src="../shared/calc.js"></script>
+  <script src="../shared/format.js"></script>
   <!-- Renderer Script -->
   <script src="renderer.js"></script>
 </body>
