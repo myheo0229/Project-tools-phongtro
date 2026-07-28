@@ -8,73 +8,73 @@
   },
   {
     "phong": "2A",
-    "dienCu": 20406,
-    "dienMoi": 20599,
-    "nuocCu": 609,
-    "nuocMoi": 612
-  },
-  {
-    "phong": "3A",
-    "dienCu": 10897,
-    "dienMoi": 11040,
-    "nuocCu": 581,
-    "nuocMoi": 585
-  },
-  {
-    "phong": "4A",
-    "dienCu": 7987,
-    "dienMoi": 8098,
-    "nuocCu": 644,
-    "nuocMoi": 650
-  },
-  {
-    "phong": "5A",
-    "dienCu": 10773,
-    "dienMoi": 10849,
-    "nuocCu": 720,
-    "nuocMoi": 726
-  },
-  {
-    "phong": "6A",
-    "dienCu": 7885,
-    "dienMoi": 8048,
-    "nuocCu": 563,
-    "nuocMoi": 578
-  },
-  {
-    "phong": "1B",
     "dienCu": 10936,
     "dienMoi": 11024,
     "nuocCu": 806,
     "nuocMoi": 811
   },
   {
-    "phong": "2B",
+    "phong": "3A",
+    "dienCu": 20406,
+    "dienMoi": 20599,
+    "nuocCu": 609,
+    "nuocMoi": 612
+  },
+  {
+    "phong": "4A",
     "dienCu": 2172,
     "dienMoi": 2551,
     "nuocCu": 487,
     "nuocMoi": 495
   },
   {
-    "phong": "3B",
+    "phong": "5A",
+    "dienCu": 10897,
+    "dienMoi": 11040,
+    "nuocCu": 581,
+    "nuocMoi": 585
+  },
+  {
+    "phong": "6A",
     "dienCu": 10054,
     "dienMoi": 10154,
     "nuocCu": 650,
     "nuocMoi": 654
   },
   {
-    "phong": "4B",
+    "phong": "1B",
+    "dienCu": 7987,
+    "dienMoi": 8098,
+    "nuocCu": 644,
+    "nuocMoi": 650
+  },
+  {
+    "phong": "2B",
     "dienCu": 8428,
     "dienMoi": 8571,
     "nuocCu": 681,
     "nuocMoi": 689
   },
   {
-    "phong": "5B",
+    "phong": "3B",
+    "dienCu": 10773,
+    "dienMoi": 10849,
+    "nuocCu": 720,
+    "nuocMoi": 726
+  },
+  {
+    "phong": "4B",
     "dienCu": 9800,
     "dienMoi": 9835,
     "nuocCu": 791,
     "nuocMoi": 797
+  },
+  {
+    "phong": "5B",
+    "dienCu": 7885,
+    "dienMoi": 8048,
+    "nuocCu": 563,
+    "nuocMoi": 578
   },
   {
     "phong": "6B",
