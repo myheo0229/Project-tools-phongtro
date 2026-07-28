@@ -1,5 +1,5 @@
 /* ============================================================
-   RENDERER.JS - LOGIC MÀN HÌNH NHẬP LIỆU (TÍNH TOÁN VỚI CALC.JS)
+   RENDERER.JS - LOGIC MÀN HÌNH NHẬP LIỆU (EXCEL-STYLE KEYBOARD & DIRECT DOM UPDATES)
    ============================================================ */
 
 // Cấu hình mặc định
@@ -28,6 +28,9 @@ function formatNumber(num) {
 document.addEventListener('DOMContentLoaded', () => {
   initSettingsForm();
   loadRoomsForMonth(document.getElementById('month-year-select').value);
+
+  // Lắng nghe sự kiện bàn phím phím Enter & Tab kiểu Excel cho toàn bảng
+  document.getElementById('rooms-table-body').addEventListener('keydown', handleTableKeyDown);
 });
 
 /**
@@ -83,24 +86,119 @@ function loadRoomsForMonth(monthYearStr) {
     tienPhong: r.tienPhong || appSettings.giaPhong
   }));
 
-  renderTableRows();
+  renderInitialTable();
 }
 
 /**
- * Render 12 dòng vào Bảng nhập dữ liệu (gọi calcAllRooms từ calc.js)
+ * Render khởi tạo cấu trúc 12 dòng vào Bảng (Chỉ dựng DOM 1 lần duy nhất)
  */
-function renderTableRows() {
+function renderInitialTable() {
   const tbody = document.getElementById('rooms-table-body');
   tbody.innerHTML = '';
 
-  // Sử dụng calcAllRooms từ calc.js
+  roomsData.forEach((room, index) => {
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-row-index', index);
+
+    tr.innerHTML = `
+      <td class="col-stt">${index + 1}</td>
+      <td class="col-phong"><span class="room-badge">${room.phong}</span></td>
+      
+      <!-- Điện Cũ -->
+      <td class="col-meter">
+        <input type="number" class="table-input" data-row="${index}" data-field="dienCu" value="${room.dienCu}" oninput="handleInputChange(${index}, 'dienCu', this.value)" onfocus="this.select()">
+      </td>
+      <!-- Điện Mới -->
+      <td class="col-meter">
+        <input type="number" class="table-input editable-meter" data-row="${index}" data-field="dienMoi" value="${room.dienMoi}" oninput="handleInputChange(${index}, 'dienMoi', this.value)" onfocus="this.select()">
+      </td>
+      <!-- Số Điện Tiêu Thụ -->
+      <td class="col-kwh val-calc cell-dien-kwh">0 kWh</td>
+
+      <!-- Nước Cũ -->
+      <td class="col-meter">
+        <input type="number" class="table-input" data-row="${index}" data-field="nuocCu" value="${room.nuocCu}" oninput="handleInputChange(${index}, 'nuocCu', this.value)" onfocus="this.select()">
+      </td>
+      <!-- Nước Mới -->
+      <td class="col-meter">
+        <input type="number" class="table-input editable-meter" data-row="${index}" data-field="nuocMoi" value="${room.nuocMoi}" oninput="handleInputChange(${index}, 'nuocMoi', this.value)" onfocus="this.select()">
+      </td>
+      <!-- Số Nước Tiêu Thụ -->
+      <td class="col-kwh val-calc cell-nuoc-khoi">0 m³</td>
+
+      <!-- Kết quả tính từ calc.js -->
+      <td class="col-money val-calc cell-tien-dien">0 đ</td>
+      <td class="col-money val-calc cell-tien-nuoc">0 đ</td>
+      <td class="col-money val-calc cell-tien-phong">0 đ</td>
+      <td class="col-money val-calc cell-rac">0 đ</td>
+      <td class="col-money val-calc cell-internet">0 đ</td>
+      <td class="col-kwh val-calc cell-hao-tai-kwh">0</td>
+      <td class="col-money val-calc cell-tien-hao-tai">0 đ</td>
+
+      <!-- Tổng Cộng -->
+      <td class="col-total val-total cell-tong-cong">0 đ</td>
+    `;
+    tbody.appendChild(tr);
+
+    // Cập nhật giá trị hiển thị ban đầu cho dòng
+    updateRowUI(index);
+  });
+
+  updateFooterTotals();
+}
+
+/**
+ * Xử lý khi người dùng nhập số (Không hủy/dựng lại DOM => Không bao giờ mất focus)
+ */
+function handleInputChange(index, field, value) {
+  const numVal = Number(value) || 0;
+  roomsData[index][field] = numVal;
+
+  // Cập nhật UI riêng dòng đó & Footer
+  updateRowUI(index);
+  updateFooterTotals();
+}
+
+/**
+ * Cập nhật giá trị tính toán trực tiếp trên các node HTML của dòng index
+ */
+function updateRowUI(index) {
+  const tr = document.querySelector(`tr[data-row-index="${index}"]`);
+  if (!tr) return;
+
+  const room = roomsData[index];
+  const roomCalc = typeof calcRoom === 'function' 
+    ? calcRoom(room, appSettings)
+    : {
+        dienKwh: Math.max(0, room.dienMoi - room.dienCu),
+        nuocKhoi: Math.max(0, room.nuocMoi - room.nuocCu),
+        tienDien: 0, tienNuoc: 0, tienPhong: appSettings.giaPhong,
+        rac: appSettings.tienRac, internet: appSettings.tienInternet,
+        haoTaiKwh: 0, tienHaoTai: 0, tongCong: 0
+      };
+
+  tr.querySelector('.cell-dien-kwh').textContent = formatNumber(roomCalc.dienKwh) + ' kWh';
+  tr.querySelector('.cell-nuoc-khoi').textContent = formatNumber(roomCalc.nuocKhoi) + ' m³';
+  tr.querySelector('.cell-tien-dien').textContent = formatNumber(roomCalc.tienDien) + ' đ';
+  tr.querySelector('.cell-tien-nuoc').textContent = formatNumber(roomCalc.tienNuoc) + ' đ';
+  tr.querySelector('.cell-tien-phong').textContent = formatNumber(roomCalc.tienPhong) + ' đ';
+  tr.querySelector('.cell-rac').textContent = formatNumber(roomCalc.rac) + ' đ';
+  tr.querySelector('.cell-internet').textContent = formatNumber(roomCalc.internet) + ' đ';
+  tr.querySelector('.cell-hao-tai-kwh').textContent = formatNumber(roomCalc.haoTaiKwh);
+  tr.querySelector('.cell-tien-hao-tai').textContent = formatNumber(roomCalc.tienHaoTai) + ' đ';
+  tr.querySelector('.cell-tong-cong').textContent = formatNumber(roomCalc.tongCong) + ' đ';
+}
+
+/**
+ * Cập nhật dòng tổng cộng Footer & Stats Overview Cards
+ */
+function updateFooterTotals() {
   const calcResult = typeof calcAllRooms === 'function'
     ? calcAllRooms(roomsData, appSettings)
     : { rooms: [], tongDoanhThu: 0 };
 
   let totalDienKwh = 0;
   let totalNuocKhoi = 0;
-
   let sumTienDien = 0;
   let sumTienNuoc = 0;
   let sumTienPhong = 0;
@@ -109,61 +207,18 @@ function renderTableRows() {
   let sumHaoTaiKwh = 0;
   let sumTienHaoTai = 0;
 
-  calcResult.rooms.forEach((roomCalc, index) => {
-    totalDienKwh += roomCalc.dienKwh;
-    totalNuocKhoi += roomCalc.nuocKhoi;
-
-    sumTienDien += roomCalc.tienDien;
-    sumTienNuoc += roomCalc.tienNuoc;
-    sumTienPhong += roomCalc.tienPhong;
-    sumRac += roomCalc.rac;
-    sumInternet += roomCalc.internet;
-    sumHaoTaiKwh += roomCalc.haoTaiKwh;
-    sumTienHaoTai += roomCalc.tienHaoTai;
-
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="col-stt">${index + 1}</td>
-      <td class="col-phong"><span class="room-badge">${roomCalc.phong}</span></td>
-      
-      <!-- Điện Cũ -->
-      <td class="col-meter">
-        <input type="number" class="table-input" value="${roomCalc.dienCu}" onchange="updateRoomData(${index}, 'dienCu', this.value)">
-      </td>
-      <!-- Điện Mới -->
-      <td class="col-meter">
-        <input type="number" class="table-input editable-meter" value="${roomCalc.dienMoi}" onchange="updateRoomData(${index}, 'dienMoi', this.value)" onkeyup="updateRoomData(${index}, 'dienMoi', this.value)">
-      </td>
-      <!-- Số Điện Tiêu Thụ -->
-      <td class="col-kwh val-calc">${formatNumber(roomCalc.dienKwh)} kWh</td>
-
-      <!-- Nước Cũ -->
-      <td class="col-meter">
-        <input type="number" class="table-input" value="${roomCalc.nuocCu}" onchange="updateRoomData(${index}, 'nuocCu', this.value)">
-      </td>
-      <!-- Nước Mới -->
-      <td class="col-meter">
-        <input type="number" class="table-input editable-meter" value="${roomCalc.nuocMoi}" onchange="updateRoomData(${index}, 'nuocMoi', this.value)" onkeyup="updateRoomData(${index}, 'nuocMoi', this.value)">
-      </td>
-      <!-- Số Nước Tiêu Thụ -->
-      <td class="col-kwh val-calc">${formatNumber(roomCalc.nuocKhoi)} m³</td>
-
-      <!-- Kết quả tính từ calc.js -->
-      <td class="col-money val-calc">${formatNumber(roomCalc.tienDien)} đ</td>
-      <td class="col-money val-calc">${formatNumber(roomCalc.tienNuoc)} đ</td>
-      <td class="col-money val-calc">${formatNumber(roomCalc.tienPhong)} đ</td>
-      <td class="col-money val-calc">${formatNumber(roomCalc.rac)} đ</td>
-      <td class="col-money val-calc">${formatNumber(roomCalc.internet)} đ</td>
-      <td class="col-kwh val-calc">${formatNumber(roomCalc.haoTaiKwh)}</td>
-      <td class="col-money val-calc">${formatNumber(roomCalc.tienHaoTai)} đ</td>
-
-      <!-- Tổng Cộng -->
-      <td class="col-total val-total">${formatNumber(roomCalc.tongCong)} đ</td>
-    `;
-    tbody.appendChild(tr);
+  calcResult.rooms.forEach(r => {
+    totalDienKwh += r.dienKwh;
+    totalNuocKhoi += r.nuocKhoi;
+    sumTienDien += r.tienDien;
+    sumTienNuoc += r.tienNuoc;
+    sumTienPhong += r.tienPhong;
+    sumRac += r.rac;
+    sumInternet += r.internet;
+    sumHaoTaiKwh += r.haoTaiKwh;
+    sumTienHaoTai += r.tienHaoTai;
   });
 
-  // Cập nhật dòng DOANH THU THÁNG (Footer)
   document.getElementById('sum-dien-kwh').textContent = formatNumber(totalDienKwh) + ' kWh';
   document.getElementById('sum-nuoc-khoi').textContent = formatNumber(totalNuocKhoi) + ' m³';
   document.getElementById('sum-tien-dien').textContent = formatNumber(sumTienDien) + ' đ';
@@ -175,19 +230,62 @@ function renderTableRows() {
   document.getElementById('sum-tien-hao-tai').textContent = formatNumber(sumTienHaoTai) + ' đ';
   document.getElementById('grand-total-revenue').textContent = formatNumber(calcResult.tongDoanhThu) + ' đ';
 
-  // Cập nhật các thẻ thông số nhanh (Stats Cards)
+  // Stats cards
   document.getElementById('stat-total-revenue').textContent = formatNumber(calcResult.tongDoanhThu) + ' đ';
   document.getElementById('stat-total-kwh').textContent = formatNumber(totalDienKwh) + ' kWh';
   document.getElementById('stat-total-water').textContent = formatNumber(totalNuocKhoi) + ' m³';
 }
 
 /**
- * Cập nhật biến khi người dùng gõ chỉ số
+ * Xử lý phím điều hướng Excel (Enter: Xuống phòng dưới, Shift+Enter: Lên phòng trên, Tab: Sang ô kế)
  */
-function updateRoomData(index, field, value) {
-  const numVal = Number(value) || 0;
-  roomsData[index][field] = numVal;
-  renderTableRows();
+function handleTableKeyDown(event) {
+  const input = event.target;
+  if (!input.classList.contains('table-input')) return;
+
+  const rowIndex = parseInt(input.getAttribute('data-row'), 10);
+  const field = input.getAttribute('data-field');
+
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    // Di chuyển xuống phòng tiếp theo (Enter) hoặc lên phòng trước (Shift + Enter)
+    const targetRowIndex = event.shiftKey ? rowIndex - 1 : rowIndex + 1;
+    const targetInput = document.querySelector(`.table-input[data-row="${targetRowIndex}"][data-field="${field}"]`);
+
+    if (targetInput) {
+      targetInput.focus();
+      targetInput.select();
+    } else if (!event.shiftKey && targetRowIndex >= roomsData.length) {
+      // Nếu hết phòng cuối, di chuyển sang cột tiếp theo của phòng đầu tiên (1A)
+      const nextField = getNextField(field);
+      if (nextField) {
+        const firstInput = document.querySelector(`.table-input[data-row="0"][data-field="${nextField}"]`);
+        if (firstInput) {
+          firstInput.focus();
+          firstInput.select();
+        }
+      }
+    }
+  } else if (event.key === 'Tab') {
+    // Tự động select nội dung ô tiếp theo khi nhấn Tab
+    setTimeout(() => {
+      if (document.activeElement && document.activeElement.classList.contains('table-input')) {
+        document.activeElement.select();
+      }
+    }, 10);
+  }
+}
+
+/**
+ * Lấy tên cột tiếp theo để chuyển ô khi Enter ở cuối danh sách
+ */
+function getNextField(currentField) {
+  const fields = ['dienCu', 'dienMoi', 'nuocCu', 'nuocMoi'];
+  const idx = fields.indexOf(currentField);
+  if (idx >= 0 && idx < fields.length - 1) {
+    return fields[idx + 1];
+  }
+  return null;
 }
 
 /**
@@ -212,12 +310,13 @@ function saveSettings(event) {
   appSettings.tyLeHaoTai = (Number(document.getElementById('set-tileHaoTai').value) || 0) / 100;
   appSettings.dienThoai = document.getElementById('set-dienThoai').value;
 
-  // Cập nhật lại giá phòng cho tất cả phòng nếu chưa có giá riêng
   roomsData.forEach(r => {
     r.tienPhong = appSettings.giaPhong;
   });
 
-  renderTableRows();
+  // Re-render UI
+  roomsData.forEach((_, idx) => updateRowUI(idx));
+  updateFooterTotals();
   showToast("Đã lưu thiết lập giá thành công!", 'success');
 }
 
