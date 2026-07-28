@@ -16,17 +16,17 @@ let appSettings = {
 
 // Dữ liệu ban đầu mặc định cho Tháng 07/2026
 const INITIAL_JULY_2026_DATA = [
-  { phong: "1A", dienCu: 5302,  dienMoi: 5379,  nuocCu: 577, nuocMoi: 583 },
+  { phong: "1A", dienCu: 5302, dienMoi: 5379, nuocCu: 577, nuocMoi: 583 },
   { phong: "2A", dienCu: 20406, dienMoi: 20599, nuocCu: 609, nuocMoi: 612 },
   { phong: "3A", dienCu: 10897, dienMoi: 11040, nuocCu: 581, nuocMoi: 585 },
-  { phong: "4A", dienCu: 7987,  dienMoi: 8098,  nuocCu: 644, nuocMoi: 650 },
+  { phong: "4A", dienCu: 7987, dienMoi: 8098, nuocCu: 644, nuocMoi: 650 },
   { phong: "5A", dienCu: 10773, dienMoi: 10849, nuocCu: 720, nuocMoi: 726 },
-  { phong: "6A", dienCu: 7885,  dienMoi: 8048,  nuocCu: 563, nuocMoi: 578 },
+  { phong: "6A", dienCu: 7885, dienMoi: 8048, nuocCu: 563, nuocMoi: 578 },
   { phong: "1B", dienCu: 10936, dienMoi: 11024, nuocCu: 806, nuocMoi: 811 },
-  { phong: "2B", dienCu: 2172,  dienMoi: 2551,  nuocCu: 487, nuocMoi: 495 },
+  { phong: "2B", dienCu: 2172, dienMoi: 2551, nuocCu: 487, nuocMoi: 495 },
   { phong: "3B", dienCu: 10054, dienMoi: 10154, nuocCu: 650, nuocMoi: 654 },
-  { phong: "4B", dienCu: 8428,  dienMoi: 8571,  nuocCu: 681, nuocMoi: 689 },
-  { phong: "5B", dienCu: 9800,  dienMoi: 9835,  nuocCu: 791, nuocMoi: 797 },
+  { phong: "4B", dienCu: 8428, dienMoi: 8571, nuocCu: 681, nuocMoi: 689 },
+  { phong: "5B", dienCu: 9800, dienMoi: 9835, nuocCu: 791, nuocMoi: 797 },
   { phong: "6B", dienCu: 13336, dienMoi: 13449, nuocCu: 760, nuocMoi: 768 }
 ];
 
@@ -151,7 +151,7 @@ async function loadSettingsFile() {
       const data = JSON.parse(local);
       appSettings = { ...appSettings, ...data };
     }
-  } catch (e) {}
+  } catch (e) { }
 }
 
 /**
@@ -174,7 +174,7 @@ async function saveSettingsFile() {
 
   try {
     localStorage.setItem('phongtro_settings', JSON.stringify(saveData));
-  } catch (e) {}
+  } catch (e) { }
 
   if (window.api) {
     const saveFn = window.api.saveSettings || window.api.saveSettingsData;
@@ -212,7 +212,7 @@ async function readHistoryFile(monthYearStr) {
     if (local) {
       return JSON.parse(local);
     }
-  } catch (e) {}
+  } catch (e) { }
 
   if (monthYearStr === '2026-07') {
     return INITIAL_JULY_2026_DATA;
@@ -229,7 +229,7 @@ async function writeHistoryFile(monthYearStr, data) {
 
   try {
     localStorage.setItem(`history_${monthYearStr}`, JSON.stringify(data));
-  } catch (e) {}
+  } catch (e) { }
 
   if (window.api && typeof window.api.saveMonthData === 'function') {
     try {
@@ -469,15 +469,15 @@ function updateRowUI(index) {
   if (!tr) return;
 
   const room = roomsData[index];
-  const roomCalc = typeof calcRoom === 'function' 
+  const roomCalc = typeof calcRoom === 'function'
     ? calcRoom(room, appSettings)
     : {
-        dienKwh: Math.max(0, (Number(room.dienMoi) || 0) - (Number(room.dienCu) || 0)),
-        nuocKhoi: Math.max(0, (Number(room.nuocMoi) || 0) - (Number(room.nuocCu) || 0)),
-        tienDien: 0, tienNuoc: 0, tienPhong: appSettings.giaPhong,
-        rac: appSettings.tienRac, internet: appSettings.tienInternet,
-        haoTaiKwh: 0, tienHaoTai: 0, tongCong: 0
-      };
+      dienKwh: Math.max(0, (Number(room.dienMoi) || 0) - (Number(room.dienCu) || 0)),
+      nuocKhoi: Math.max(0, (Number(room.nuocMoi) || 0) - (Number(room.nuocCu) || 0)),
+      tienDien: 0, tienNuoc: 0, tienPhong: appSettings.giaPhong,
+      rac: appSettings.tienRac, internet: appSettings.tienInternet,
+      haoTaiKwh: 0, tienHaoTai: 0, tongCong: 0
+    };
 
   tr.querySelector('.cell-dien-kwh').textContent = formatNumber(roomCalc.dienKwh) + ' kWh';
   tr.querySelector('.cell-nuoc-khoi').textContent = formatNumber(roomCalc.nuocKhoi) + ' m³';
