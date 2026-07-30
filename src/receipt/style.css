@@ -15,16 +15,19 @@
     --page-padding: 2.54cm;
 
     --font-main: "Times New Roman", Times, serif;
-    --font-size-body: 21px;
+    --font-size-body: 23px;
     --font-size-title: 29px;
-    --font-size-room: 24px;
-    --font-size-total: 29px;
+    --font-size-room: 25px;
+    --font-size-total: 30px;
 
     --color-text: #000;
-    --color-line: #000; /* màu đường chấm chấm */
-    --color-mark: #999; /* màu dấu góc trang */
+    --color-line: #000;
+    /* màu đường chấm chấm */
+    --color-mark: #999;
+    /* màu dấu góc trang */
 
-    --row-gap: 30px; /* khoảng cách giữa các dòng chính */
+    --row-gap: 30px;
+    /* khoảng cách giữa các dòng chính */
 }
 
 html,
@@ -36,7 +39,8 @@ body {
 }
 
 body {
-    background: #d9d9d9; /* chỉ để nhìn thấy mép trang trên trình duyệt, không ảnh hưởng lúc in/xuất PDF */
+    background: #d9d9d9;
+    /* chỉ để nhìn thấy mép trang trên trình duyệt, không ảnh hưởng lúc in/xuất PDF */
     display: flex;
     justify-content: center;
     padding: 24px 0;
@@ -52,7 +56,8 @@ body {
     height: var(--page-height);
     box-sizing: border-box;
     background: #fff;
-    box-shadow: 0 0 0 1px #bbb; /* viền nhẹ để thấy mép trang trên màn hình */
+    box-shadow: 0 0 0 1px #bbb;
+    /* viền nhẹ để thấy mép trang trên màn hình */
     padding: var(--page-padding);
     color: var(--color-text);
     font-size: var(--font-size-body);
@@ -131,25 +136,29 @@ body {
     margin: 0 6px;
     min-width: 20px;
 }
- /* đoạn chấm ngắn, dùng quanh số điện/nước */
+
+/* đoạn chấm ngắn, dùng quanh số điện/nước */
 .row-fill.short {
     flex: 0 1 50px;
 }
-.row-fill.long{
+
+.row-fill.long {
     min-width: 130px;
 }
+
 /* điều chỉnh khoảng cách = 999 x 999 */
-.size-gap1{
+.size-gap1 {
     margin-right: 30px;
 }
 
-.size-gap2{
+.size-gap2 {
     margin: 0 40px;
 }
 
 .row-value {
     font-weight: bold;
 }
+
 .row-value sup {
     font-size: 0.7em;
 }
@@ -167,6 +176,7 @@ body {
 .total-row {
     margin-top: 6px;
 }
+
 .total-box {
     border: 1.5px solid #333;
     padding: 6px 16px;
@@ -174,15 +184,16 @@ body {
     font-size: var(--font-size-total);
     margin-left: 6px;
 }
+
 .total-box sup {
     font-size: 23px;
 }
 
-sup{
+sup {
     position: relative;
     top: -6px;
 }
 
-.unit{
+.unit {
     top: -8px;
 }
