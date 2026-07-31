@@ -12,6 +12,18 @@ function formatMoney(number) {
 }
 
 /**
+ * Định dạng số thập phân kiểu Việt Nam: dấu PHẨY ngăn phần thập phân, luôn đúng 1 chữ số
+ * sau dấu phẩy. VD: formatDecimalVN(5.4) -> "5,4", formatDecimalVN(5) -> "5,0"
+ */
+function formatDecimalVN(number) {
+  if (number === null || number === undefined || isNaN(number)) return '0,0';
+  return Number(number).toLocaleString('vi-VN', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+}
+
+/**
  * Từ monthKey dạng "YYYY-MM" (VD "2026-07") suy ra ngày/tháng/năm để hiển thị trên phiếu.
  * Ngày LUÔN cố định là "01".
  * Tháng/Năm lấy đúng theo tháng đang được xử lý (monthKey).
@@ -56,7 +68,7 @@ function toReceiptData(calcResult, monthKey, dienThoai) {
     rac: formatMoney(calcResult.rac),
     internet: formatMoney(calcResult.internet),
 
-    haoTaiKwh: String(calcResult.haoTaiKwh !== undefined ? calcResult.haoTaiKwh : 0),
+    haoTaiKwh: formatDecimalVN(calcResult.haoTaiKwh),
     giaHaoTai: formatMoney(calcResult.giaHaoTai),
     tienHaoTai: formatMoney(calcResult.tienHaoTai),
 
@@ -65,11 +77,12 @@ function toReceiptData(calcResult, monthKey, dienThoai) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { formatMoney, getNgayThangNam, toReceiptData };
+  module.exports = { formatMoney, formatDecimalVN, getNgayThangNam, toReceiptData };
 }
 
 if (typeof window !== 'undefined') {
   window.formatMoney = formatMoney;
+  window.formatDecimalVN = formatDecimalVN;
   window.getNgayThangNam = getNgayThangNam;
   window.toReceiptData = toReceiptData;
 }

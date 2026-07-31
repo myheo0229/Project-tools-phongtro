@@ -40,6 +40,16 @@ const DEFAULT_ROOM_NAMES = [
 let roomsData = [];
 
 /**
+ * Kiểm tra một giá trị xem có khác rỗng, khác null/undefined, khác 0 và là số hợp lệ không
+ */
+function isNotEmpty(val) {
+  if (val === '' || val === null || val === undefined) return false;
+  const num = Number(val);
+  if (isNaN(num) || num === 0) return false;
+  return true;
+}
+
+/**
  * Format số có dấu chấm phân cách hàng nghìn (VD: 14110 -> 14.110)
  */
 function formatNumber(num) {
@@ -250,6 +260,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   initSettingsForm();
   await loadRoomsForMonth(document.getElementById('month-year-select').value);
 
+  // Hiển thị phiên bản app lấy từ package.json qua IPC
+  if (window.api && typeof window.api.getAppVersion === 'function') {
+    try {
+      const ver = await window.api.getAppVersion();
+      const verTag = document.getElementById('app-version-tag');
+      if (verTag && ver) {
+        verTag.textContent = `v${ver}`;
+      }
+    } catch (e) {
+      console.error('Lỗi khi lấy version app:', e);
+    }
+  }
+
   // Đăng ký lắng nghe tiến trình xuất ảnh/PDF
   if (window.api && typeof window.api.onExportProgress === 'function') {
     window.api.onExportProgress((data) => {
@@ -328,24 +351,24 @@ async function loadRoomsForMonth(currentMonthYearStr) {
       ? prevMonthData.find(r => r.phong === phongName)
       : null;
 
-    let dienCu = currRoom && currRoom.dienCu !== undefined ? currRoom.dienCu : '';
+    let dienCu = currRoom && isNotEmpty(currRoom.dienCu) ? Number(currRoom.dienCu) : '';
     let isDienCuLocked = false;
 
-    if (prevRoom && prevRoom.dienMoi !== undefined && prevRoom.dienMoi !== null && prevRoom.dienMoi !== '') {
-      dienCu = prevRoom.dienMoi;
+    if (prevRoom && isNotEmpty(prevRoom.dienMoi)) {
+      dienCu = Number(prevRoom.dienMoi);
       isDienCuLocked = true;
     }
 
-    let nuocCu = currRoom && currRoom.nuocCu !== undefined ? currRoom.nuocCu : '';
+    let nuocCu = currRoom && isNotEmpty(currRoom.nuocCu) ? Number(currRoom.nuocCu) : '';
     let isNuocCuLocked = false;
 
-    if (prevRoom && prevRoom.nuocMoi !== undefined && prevRoom.nuocMoi !== null && prevRoom.nuocMoi !== '') {
-      nuocCu = prevRoom.nuocMoi;
+    if (prevRoom && isNotEmpty(prevRoom.nuocMoi)) {
+      nuocCu = Number(prevRoom.nuocMoi);
       isNuocCuLocked = true;
     }
 
-    const dienMoi = currRoom && currRoom.dienMoi !== undefined ? currRoom.dienMoi : '';
-    const nuocMoi = currRoom && currRoom.nuocMoi !== undefined ? currRoom.nuocMoi : '';
+    const dienMoi = currRoom && isNotEmpty(currRoom.dienMoi) ? Number(currRoom.dienMoi) : '';
+    const nuocMoi = currRoom && isNotEmpty(currRoom.nuocMoi) ? Number(currRoom.nuocMoi) : '';
 
     return {
       phong: phongName,
@@ -375,6 +398,8 @@ function renderInitialTable() {
 
     const dienCuVal = room.dienCu !== undefined && room.dienCu !== null ? room.dienCu : '';
     const nuocCuVal = room.nuocCu !== undefined && room.nuocCu !== null ? room.nuocCu : '';
+    const dienMoiVal = room.dienMoi !== undefined && room.dienMoi !== null ? room.dienMoi : '';
+    const nuocMoiVal = room.nuocMoi !== undefined && room.nuocMoi !== null ? room.nuocMoi : '';
 
     tr.innerHTML = `
       <td class="col-stt">${index + 1}</td>
@@ -392,18 +417,19 @@ function renderInitialTable() {
                onfocus="this.select()">
       </td>
 
-      <!-- Điện Mới (Luôn mở khóa cho người dùng nhập tay) -->
+      <!-- Điện Mới (Luôn mở khóa cho người dùng nhập tay, mặc định rỗng) -->
       <td class="col-meter">
         <input type="number" 
                class="table-input editable-meter" 
                data-row="${index}" 
                data-field="dienMoi" 
-               value="${room.dienMoi !== undefined && room.dienMoi !== null ? room.dienMoi : ''}" 
+               placeholder="Nhập số mới"
+               value="${dienMoiVal}" 
                oninput="handleInputChange(${index}, 'dienMoi', this.value)" 
                onfocus="this.select()">
       </td>
       <!-- Số Điện Tiêu Thụ -->
-      <td class="col-kwh val-calc cell-dien-kwh">0 kWh</td>
+      <td class="col-kwh val-calc cell-dien-kwh">-</td>
 
       <!-- Nước Cũ (Tự động điền & khóa nếu có lịch sử tháng trước) -->
       <td class="col-meter">
@@ -417,30 +443,31 @@ function renderInitialTable() {
                onfocus="this.select()">
       </td>
 
-      <!-- Nước Mới (Luôn mở khóa cho người dùng nhập tay) -->
+      <!-- Nước Mới (Luôn mở khóa cho người dùng nhập tay, mặc định rỗng) -->
       <td class="col-meter">
         <input type="number" 
                class="table-input editable-meter" 
                data-row="${index}" 
                data-field="nuocMoi" 
-               value="${room.nuocMoi !== undefined && room.nuocMoi !== null ? room.nuocMoi : ''}" 
+               placeholder="Nhập số mới"
+               value="${nuocMoiVal}" 
                oninput="handleInputChange(${index}, 'nuocMoi', this.value)" 
                onfocus="this.select()">
       </td>
       <!-- Số Nước Tiêu Thụ -->
-      <td class="col-kwh val-calc cell-nuoc-khoi">0 m³</td>
+      <td class="col-kwh val-calc cell-nuoc-khoi">-</td>
 
       <!-- Kết quả tính từ calc.js -->
-      <td class="col-money val-calc cell-tien-dien">0 đ</td>
-      <td class="col-money val-calc cell-tien-nuoc">0 đ</td>
+      <td class="col-money val-calc cell-tien-dien">-</td>
+      <td class="col-money val-calc cell-tien-nuoc">-</td>
       <td class="col-money val-calc cell-tien-phong">0 đ</td>
       <td class="col-money val-calc cell-rac">0 đ</td>
       <td class="col-money val-calc cell-internet">0 đ</td>
-      <td class="col-kwh val-calc cell-hao-tai-kwh">0</td>
-      <td class="col-money val-calc cell-tien-hao-tai">0 đ</td>
+      <td class="col-kwh val-calc cell-hao-tai-kwh">-</td>
+      <td class="col-money val-calc cell-tien-hao-tai">-</td>
 
       <!-- Tổng Cộng -->
-      <td class="col-total val-total cell-tong-cong">0 đ</td>
+      <td class="col-total val-total cell-tong-cong">-</td>
     `;
     tbody.appendChild(tr);
 
@@ -454,7 +481,7 @@ function renderInitialTable() {
  * Xử lý khi người dùng nhập số
  */
 function handleInputChange(index, field, value) {
-  const numVal = value !== '' ? Number(value) : '';
+  const numVal = isNotEmpty(value) ? Number(value) : '';
   roomsData[index][field] = numVal;
 
   updateRowUI(index);
@@ -469,36 +496,59 @@ function updateRowUI(index) {
   if (!tr) return;
 
   const room = roomsData[index];
+  const hasDienMoi = isNotEmpty(room.dienMoi);
+  const hasNuocMoi = isNotEmpty(room.nuocMoi);
+
+  const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
+  const dienMoiNum = hasDienMoi ? Number(room.dienMoi) : dienCuNum;
+  const nuocCuNum = isNotEmpty(room.nuocCu) ? Number(room.nuocCu) : 0;
+  const nuocMoiNum = hasNuocMoi ? Number(room.nuocMoi) : nuocCuNum;
+
+  const surrogateRoom = {
+    ...room,
+    dienCu: dienCuNum,
+    dienMoi: dienMoiNum,
+    nuocCu: nuocCuNum,
+    nuocMoi: nuocMoiNum
+  };
+
   const roomCalc = typeof calcRoom === 'function'
-    ? calcRoom(room, appSettings)
+    ? calcRoom(surrogateRoom, appSettings)
     : {
-      dienKwh: Math.max(0, (Number(room.dienMoi) || 0) - (Number(room.dienCu) || 0)),
-      nuocKhoi: Math.max(0, (Number(room.nuocMoi) || 0) - (Number(room.nuocCu) || 0)),
+      dienKwh: Math.max(0, dienMoiNum - dienCuNum),
+      nuocKhoi: Math.max(0, nuocMoiNum - nuocCuNum),
       tienDien: 0, tienNuoc: 0, tienPhong: appSettings.giaPhong,
       rac: appSettings.tienRac, internet: appSettings.tienInternet,
       haoTaiKwh: 0, tienHaoTai: 0, tongCong: 0
     };
 
-  tr.querySelector('.cell-dien-kwh').textContent = formatNumber(roomCalc.dienKwh) + ' kWh';
-  tr.querySelector('.cell-nuoc-khoi').textContent = formatNumber(roomCalc.nuocKhoi) + ' m³';
-  tr.querySelector('.cell-tien-dien').textContent = formatNumber(roomCalc.tienDien) + ' đ';
-  tr.querySelector('.cell-tien-nuoc').textContent = formatNumber(roomCalc.tienNuoc) + ' đ';
+  // Cột Điện (chỉ hiển thị khi đã nhập dienMoi)
+  tr.querySelector('.cell-dien-kwh').textContent = hasDienMoi ? (formatNumber(roomCalc.dienKwh) + ' kWh') : '-';
+  tr.querySelector('.cell-tien-dien').textContent = hasDienMoi ? (formatNumber(roomCalc.tienDien) + ' đ') : '-';
+  tr.querySelector('.cell-hao-tai-kwh').textContent = hasDienMoi ? formatNumber(roomCalc.haoTaiKwh) : '-';
+  tr.querySelector('.cell-tien-hao-tai').textContent = hasDienMoi ? (formatNumber(roomCalc.tienHaoTai) + ' đ') : '-';
+
+  // Cột Nước (chỉ hiển thị khi đã nhập nuocMoi)
+  tr.querySelector('.cell-nuoc-khoi').textContent = hasNuocMoi ? (formatNumber(roomCalc.nuocKhoi) + ' m³') : '-';
+  tr.querySelector('.cell-tien-nuoc').textContent = hasNuocMoi ? (formatNumber(roomCalc.tienNuoc) + ' đ') : '-';
+
+  // Chi phí cố định
   tr.querySelector('.cell-tien-phong').textContent = formatNumber(roomCalc.tienPhong) + ' đ';
   tr.querySelector('.cell-rac').textContent = formatNumber(roomCalc.rac) + ' đ';
   tr.querySelector('.cell-internet').textContent = formatNumber(roomCalc.internet) + ' đ';
-  tr.querySelector('.cell-hao-tai-kwh').textContent = formatNumber(roomCalc.haoTaiKwh);
-  tr.querySelector('.cell-tien-hao-tai').textContent = formatNumber(roomCalc.tienHaoTai) + ' đ';
-  tr.querySelector('.cell-tong-cong').textContent = formatNumber(roomCalc.tongCong) + ' đ';
+
+  // TỔNG CỘNG (chỉ hiển thị khi ĐÃ CÓ ĐỦ CẢ 2: dienMoi VÀ nuocMoi)
+  if (hasDienMoi && hasNuocMoi) {
+    tr.querySelector('.cell-tong-cong').textContent = formatNumber(roomCalc.tongCong) + ' đ';
+  } else {
+    tr.querySelector('.cell-tong-cong').textContent = '-';
+  }
 }
 
 /**
  * Cập nhật dòng tổng cộng Footer & Stats Overview Cards
  */
 function updateFooterTotals() {
-  const calcResult = typeof calcAllRooms === 'function'
-    ? calcAllRooms(roomsData, appSettings)
-    : { rooms: [], tongDoanhThu: 0 };
-
   let totalDienKwh = 0;
   let totalNuocKhoi = 0;
   let sumTienDien = 0;
@@ -508,17 +558,49 @@ function updateFooterTotals() {
   let sumInternet = 0;
   let sumHaoTaiKwh = 0;
   let sumTienHaoTai = 0;
+  let totalRevenue = 0;
+  let fullRoomsCount = 0;
 
-  calcResult.rooms.forEach(r => {
-    totalDienKwh += r.dienKwh;
-    totalNuocKhoi += r.nuocKhoi;
-    sumTienDien += r.tienDien;
-    sumTienNuoc += r.tienNuoc;
-    sumTienPhong += r.tienPhong;
-    sumRac += r.rac;
-    sumInternet += r.internet;
-    sumHaoTaiKwh += r.haoTaiKwh;
-    sumTienHaoTai += r.tienHaoTai;
+  roomsData.forEach(room => {
+    const hasDienMoi = isNotEmpty(room.dienMoi);
+    const hasNuocMoi = isNotEmpty(room.nuocMoi);
+
+    const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
+    const dienMoiNum = hasDienMoi ? Number(room.dienMoi) : dienCuNum;
+    const nuocCuNum = isNotEmpty(room.nuocCu) ? Number(room.nuocCu) : 0;
+    const nuocMoiNum = hasNuocMoi ? Number(room.nuocMoi) : nuocCuNum;
+
+    const surrogateRoom = {
+      ...room,
+      dienCu: dienCuNum,
+      dienMoi: dienMoiNum,
+      nuocCu: nuocCuNum,
+      nuocMoi: nuocMoiNum
+    };
+
+    const r = typeof calcRoom === 'function'
+      ? calcRoom(surrogateRoom, appSettings)
+      : { dienKwh: 0, nuocKhoi: 0, tienDien: 0, tienNuoc: 0, tienPhong: 0, rac: 0, internet: 0, haoTaiKwh: 0, tienHaoTai: 0, tongCong: 0 };
+
+    if (hasDienMoi) {
+      totalDienKwh += r.dienKwh;
+      sumTienDien += r.tienDien;
+      sumHaoTaiKwh += r.haoTaiKwh;
+      sumTienHaoTai += r.tienHaoTai;
+    }
+
+    if (hasNuocMoi) {
+      totalNuocKhoi += r.nuocKhoi;
+      sumTienNuoc += r.tienNuoc;
+    }
+
+    if (hasDienMoi && hasNuocMoi) {
+      fullRoomsCount++;
+      sumTienPhong += r.tienPhong;
+      sumRac += r.rac;
+      sumInternet += r.internet;
+      totalRevenue += r.tongCong;
+    }
   });
 
   document.getElementById('sum-dien-kwh').textContent = formatNumber(totalDienKwh) + ' kWh';
@@ -530,12 +612,13 @@ function updateFooterTotals() {
   document.getElementById('sum-internet').textContent = formatNumber(sumInternet) + ' đ';
   document.getElementById('sum-hao-tai-kwh').textContent = formatNumber(sumHaoTaiKwh.toFixed(1)) + ' kWh';
   document.getElementById('sum-tien-hao-tai').textContent = formatNumber(sumTienHaoTai) + ' đ';
-  document.getElementById('grand-total-revenue').textContent = formatNumber(calcResult.tongDoanhThu) + ' đ';
+  document.getElementById('grand-total-revenue').textContent = formatNumber(totalRevenue) + ' đ';
 
   // Stats cards
-  document.getElementById('stat-total-revenue').textContent = formatNumber(calcResult.tongDoanhThu) + ' đ';
+  document.getElementById('stat-total-revenue').textContent = formatNumber(totalRevenue) + ' đ';
   document.getElementById('stat-total-kwh').textContent = formatNumber(totalDienKwh) + ' kWh';
   document.getElementById('stat-total-water').textContent = formatNumber(totalNuocKhoi) + ' m³';
+  document.getElementById('stat-total-rooms').textContent = `${fullRoomsCount} / ${roomsData.length}`;
 }
 
 /**
@@ -645,10 +728,10 @@ async function saveAndExport() {
     // Bước 0: Lưu dữ liệu tháng hiện tại
     const saveDataArray = roomsData.map(r => ({
       phong: r.phong,
-      dienCu: Number(r.dienCu) || 0,
-      dienMoi: Number(r.dienMoi) || 0,
-      nuocCu: Number(r.nuocCu) || 0,
-      nuocMoi: Number(r.nuocMoi) || 0
+      dienCu: isNotEmpty(r.dienCu) ? Number(r.dienCu) : '',
+      dienMoi: isNotEmpty(r.dienMoi) ? Number(r.dienMoi) : '',
+      nuocCu: isNotEmpty(r.nuocCu) ? Number(r.nuocCu) : '',
+      nuocMoi: isNotEmpty(r.nuocMoi) ? Number(r.nuocMoi) : ''
     }));
 
     const saveSuccess = await writeHistoryFile(currentMonthYear, saveDataArray);
@@ -669,8 +752,25 @@ async function saveAndExport() {
     }
 
     // Lấy dữ liệu đã qua tính toán calcRoom của 12 phòng
+    const surrogateRoomsData = roomsData.map(r => {
+      const hasDienMoi = isNotEmpty(r.dienMoi);
+      const hasNuocMoi = isNotEmpty(r.nuocMoi);
+      const dienCuNum = isNotEmpty(r.dienCu) ? Number(r.dienCu) : 0;
+      const dienMoiNum = hasDienMoi ? Number(r.dienMoi) : dienCuNum;
+      const nuocCuNum = isNotEmpty(r.nuocCu) ? Number(r.nuocCu) : 0;
+      const nuocMoiNum = hasNuocMoi ? Number(r.nuocMoi) : nuocCuNum;
+
+      return {
+        ...r,
+        dienCu: dienCuNum,
+        dienMoi: dienMoiNum,
+        nuocCu: nuocCuNum,
+        nuocMoi: nuocMoiNum
+      };
+    });
+
     const calcResult = typeof calcAllRooms === 'function'
-      ? calcAllRooms(roomsData, appSettings)
+      ? calcAllRooms(surrogateRoomsData, appSettings)
       : { rooms: [] };
 
     // Bước 2: Gọi IPC xuất ảnh & PDF

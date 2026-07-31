@@ -1,6 +1,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
+  // Lấy phiên bản ứng dụng
+  getAppVersion: () => ipcRenderer.invoke('app:get-version'),
+
   // Quản lý lưu/đọc dữ liệu chỉ số tháng
   saveMonthData: (monthKey, data) => ipcRenderer.invoke('month-data:save', monthKey, data),
   loadMonthData: (monthKey) => ipcRenderer.invoke('month-data:load', monthKey),

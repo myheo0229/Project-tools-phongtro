@@ -36,6 +36,9 @@ function createWindow() {
   mainWindow.loadFile(path.join(PROJECT_ROOT, 'src', 'input', 'index.html'));
 }
 
+// IPC: Lấy phiên bản ứng dụng
+ipcMain.handle('app:get-version', () => app.getVersion());
+
 // IPC: Chọn thư mục lưu xuất ảnh/PDF (dialog native Windows)
 ipcMain.handle('dialog:pick-folder', async () => {
   try {
