@@ -25,7 +25,8 @@ function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    title: "Quản Lý Phòng Trọ",
+    title: `Màn Hình Nhập Liệu - Quản Lý Phòng Trọ v${app.getVersion()}`,
+    icon: path.join(PROJECT_ROOT, 'assets', 'icon', 'icon32x32.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

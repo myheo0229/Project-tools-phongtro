@@ -1,6 +1,6 @@
 {
   "name": "project-tools-phongtro",
-  "version": "1.4.0",
+  "version": "1.4.2",
   "description": "Phần mềm quản lý và xuất phiếu thu tiền nhà trọ",
   "main": "electron/main.js",
   "scripts": {
@@ -22,10 +22,10 @@
     "appId": "com.lecongba.quanlyphongtro",
     "productName": "Quản Lý Phòng Trọ",
     "directories": {
-      "output": "dist"
+      "output": "release"
     },
     "win": {
-      "icon": "logo.ico",
+      "icon": "assets/icon/icon256x256.ico",
       "target": [
         "portable"
       ]
@@ -34,6 +34,7 @@
       "artifactName": "${productName}_Portable_v${version}.${ext}"
     },
     "files": [
+      "assets/**/*",
       "data/**/*",
       "electron/**/*",
       "src/**/*",

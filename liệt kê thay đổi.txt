@@ -1,0 +1,4 @@
+v1.4.2
+- Cập nhật phiên bản lên v1.4.2
+- Cấu hình Icon chuẩn nhiều kích thước (32x32, 48x48, 64x64, 128x128, 256x256, 512x512)
+- Dời hiển thị version từ toolbar bên phải sang ngay sau tiêu đề "Màn Hình Nhập Liệu - Quản Lý Phòng Trọ v1.4.2"

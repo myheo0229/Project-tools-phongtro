@@ -268,6 +268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (verTag && ver) {
         verTag.textContent = `v${ver}`;
       }
+      document.title = `Màn Hình Nhập Liệu - Quản Lý Phòng Trọ v${ver}`;
     } catch (e) {
       console.error('Lỗi khi lấy version app:', e);
     }
