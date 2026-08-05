@@ -137,7 +137,7 @@ async function loadSettingsFile() {
         const data = await loadFn();
         if (data && !data.error) {
           appSettings = {
-            baseFolder: data.baseFolder || appSettings.baseFolder || "",
+            baseFolder: data.baseFolder || "",
             dienThoai: data.dienThoai || appSettings.dienThoai,
             giaPhong: data.giaPhong || appSettings.giaPhong,
             giaDien: data.giaDien || appSettings.giaDien,
@@ -152,9 +152,10 @@ async function loadSettingsFile() {
         console.error('Lỗi khi đọc settings qua IPC:', e);
       }
     }
+    return;
   }
 
-  // Backup từ localStorage
+  // Backup từ localStorage (chỉ dùng khi không có window.api)
   try {
     const local = localStorage.getItem('phongtro_settings');
     if (local) {
@@ -182,21 +183,30 @@ async function saveSettingsFile() {
     tileHaoTai: appSettings.tyLeHaoTai
   };
 
-  try {
-    localStorage.setItem('phongtro_settings', JSON.stringify(saveData));
-  } catch (e) { }
-
   if (window.api) {
     const saveFn = window.api.saveSettings || window.api.saveSettingsData;
     if (typeof saveFn === 'function') {
       try {
         const res = await saveFn(saveData);
+        if (res && res.error) {
+          showToast(`Lỗi: ${res.error}`, 'error');
+          return false;
+        }
+        if (res && res.baseFolder) {
+          appSettings.baseFolder = res.baseFolder;
+        }
         return res && !res.error;
       } catch (e) {
         console.error('Lỗi khi ghi settings qua IPC:', e);
+        return false;
       }
     }
   }
+
+  try {
+    localStorage.setItem('phongtro_settings', JSON.stringify(saveData));
+  } catch (e) { }
+
   return true;
 }
 
@@ -327,8 +337,7 @@ async function pickBaseFolder() {
     if (selectedFolder) {
       appSettings.baseFolder = selectedFolder;
       document.getElementById('set-baseFolder').value = selectedFolder;
-      await saveSettingsFile();
-      showToast('Đã chọn thư mục lưu thành công!', 'success');
+      showToast('Đã chọn thư mục! Bấm "Lưu Cài Đặt" để áp dụng.', 'info');
     }
   } else {
     showToast('Chức năng chọn thư mục chỉ hoạt động trên ứng dụng Electron!', 'error');

@@ -5,19 +5,82 @@ const { PDFDocument } = require('pdf-lib');
 
 const PROJECT_ROOT = path.join(__dirname, '..');
 
-// Xác định thư mục lưu trữ dữ liệu
-const getDataRoot = () => {
-  // Khi chạy bản Portable, biến môi trường này sẽ chứa đường dẫn tới thư mục đặt file .exe
-  if (process.env.PORTABLE_EXECUTABLE_DIR) {
-    return process.env.PORTABLE_EXECUTABLE_DIR;
-  }
-  // Mặc định (lúc dev) thì lưu trong thư mục project
-  return PROJECT_ROOT;
-};
+// Đường dẫn file con trỏ pointer.json trong userData hệ thống
+const POINTER_FILE = path.join(app.getPath('userData'), 'pointer.json');
 
-const DATA_ROOT = getDataRoot();
-const DATA_DIR = path.join(DATA_ROOT, 'data', 'history');
-const SETTINGS_FILE = path.join(DATA_ROOT, 'data', 'settings.json');
+// Đọc thông tin từ pointer.json nếu có
+function getPointer() {
+  try {
+    if (fs.existsSync(POINTER_FILE)) {
+      const content = fs.readFileSync(POINTER_FILE, 'utf8');
+      const data = JSON.parse(content);
+      if (data && data.baseFolder) {
+        return {
+          baseFolder: data.baseFolder,
+          dataFolderName: data.dataFolderName || 'data',
+          phieuThuFolderName: data.phieuThuFolderName || 'PhieuThu'
+        };
+      }
+    }
+  } catch (err) {
+    console.error('Lỗi khi đọc pointer.json:', err);
+  }
+  return null;
+}
+
+// Ghi thông tin vào pointer.json
+function savePointer(pointerObj) {
+  try {
+    const dir = path.dirname(POINTER_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(POINTER_FILE, JSON.stringify(pointerObj, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Lỗi khi ghi pointer.json:', err);
+  }
+}
+
+// BƯỚC B — Kiểm tra 1 thư mục có phải "data" hợp lệ của app này không
+function isValidDataFolder(dir) {
+  try {
+    const settingsPath = path.join(dir, 'settings.json');
+    if (!fs.existsSync(settingsPath)) return false;
+    const content = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+    return content.appId === 'phong-tro-app';
+  } catch {
+    return false;
+  }
+}
+
+// BƯỚC B — Tìm tên thư mục con KHÔNG bị trùng bên trong parentDir, bắt đầu từ baseName
+function findAvailableFolderName(parentDir, baseName) {
+  let candidate = baseName;
+  let i = 1;
+  while (fs.existsSync(path.join(parentDir, candidate))) {
+    candidate = `${baseName} (${i})`;
+    i++;
+  }
+  return candidate;
+}
+
+// Hàm sao chép thư mục đệ quy
+function copyDirSync(src, dest) {
+  if (!fs.existsSync(src)) return;
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(dest, { recursive: true });
+  }
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
 
 const { toReceiptData } = require(path.join(PROJECT_ROOT, 'src', 'shared', 'format.js'));
 
@@ -57,12 +120,20 @@ ipcMain.handle('dialog:pick-folder', async () => {
   }
 });
 
-// IPC: Đọc Cài đặt (data/settings.json)
+// IPC: Đọc Cài đặt (baseFolder/<dataFolderName>/settings.json)
 ipcMain.handle('settings:load', async () => {
   try {
-    if (fs.existsSync(SETTINGS_FILE)) {
-      const content = fs.readFileSync(SETTINGS_FILE, 'utf8');
-      return JSON.parse(content);
+    const pointer = getPointer();
+    if (pointer && pointer.baseFolder) {
+      const settingsFile = path.join(pointer.baseFolder, pointer.dataFolderName || 'data', 'settings.json');
+      if (fs.existsSync(settingsFile)) {
+        const content = fs.readFileSync(settingsFile, 'utf8');
+        const parsed = JSON.parse(content);
+        return {
+          ...parsed,
+          baseFolder: pointer.baseFolder
+        };
+      }
     }
     return null;
   } catch (err) {
@@ -71,31 +142,101 @@ ipcMain.handle('settings:load', async () => {
   }
 });
 
-// IPC: Lưu Cài đặt (data/settings.json)
+// IPC: Lưu Cài đặt (Tự động sao chép toàn bộ dữ liệu cũ sang folder mới ngay khi bấm Lưu Cài Đặt)
 ipcMain.handle('settings:save', async (event, data) => {
   try {
-    const dirPath = path.dirname(SETTINGS_FILE);
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
+    const newBaseFolder = data ? data.baseFolder : null;
+    if (!newBaseFolder || typeof newBaseFolder !== 'string' || newBaseFolder.trim() === '') {
+      return { error: 'Vui lòng chọn thư mục lưu!' };
     }
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2), 'utf8');
-    return { success: true };
+
+    const cleanNewBaseFolder = path.normalize(newBaseFolder.trim());
+
+    // Đọc pointer.json cũ (nếu có) để tìm đường dẫn dữ liệu hiện tại
+    const oldPointer = getPointer();
+    const oldBaseFolder = oldPointer ? oldPointer.baseFolder : null;
+    const oldDataFolderName = oldPointer ? (oldPointer.dataFolderName || 'data') : 'data';
+    const oldPhieuThuFolderName = oldPointer ? (oldPointer.phieuThuFolderName || 'PhieuThu') : 'PhieuThu';
+
+    // Đã có folder cũ hay chưa?
+    let oldDataDir = null;
+    let oldPhieuThuDir = null;
+
+    if (oldBaseFolder) {
+      oldDataDir = path.join(oldBaseFolder, oldDataFolderName);
+      oldPhieuThuDir = path.join(oldBaseFolder, oldPhieuThuFolderName);
+    } else {
+      // Nếu chưa có pointer.json (lần đầu chọn folder), kiểm tra dữ liệu mặc định cũ (nếu có)
+      const legacyPortable = process.env.PORTABLE_EXECUTABLE_DIR ? path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'data') : null;
+      const legacyProject = path.join(PROJECT_ROOT, 'data');
+      if (legacyPortable && fs.existsSync(legacyPortable)) {
+        oldDataDir = legacyPortable;
+      } else if (fs.existsSync(legacyProject)) {
+        oldDataDir = legacyProject;
+      }
+    }
+
+    // Thư mục đích chuẩn
+    const targetDataDir = path.join(cleanNewBaseFolder, 'data');
+    const targetPTDir = path.join(cleanNewBaseFolder, 'PhieuThu');
+
+    // Tạo các thư mục đích nếu chưa có
+    if (!fs.existsSync(targetDataDir)) {
+      fs.mkdirSync(targetDataDir, { recursive: true });
+    }
+    if (!fs.existsSync(targetPTDir)) {
+      fs.mkdirSync(targetPTDir, { recursive: true });
+    }
+
+    // Sao chép LẬP TỨC toàn bộ dữ liệu data (history, settings...) từ vị trí cũ sang folder mới
+    if (oldDataDir && fs.existsSync(oldDataDir) && path.normalize(oldDataDir) !== path.normalize(targetDataDir)) {
+      copyDirSync(oldDataDir, targetDataDir);
+    }
+
+    // Sao chép LẬP TỨC toàn bộ ảnh/PDF phiếu thu đã xuất từ vị trí cũ sang folder mới
+    if (oldPhieuThuDir && fs.existsSync(oldPhieuThuDir) && path.normalize(oldPhieuThuDir) !== path.normalize(targetPTDir)) {
+      copyDirSync(oldPhieuThuDir, targetPTDir);
+    }
+
+    // Ghi pointer.json mới trỏ tới baseFolder vừa chọn
+    const pointerObj = {
+      baseFolder: cleanNewBaseFolder,
+      dataFolderName: 'data',
+      phieuThuFolderName: 'PhieuThu'
+    };
+    savePointer(pointerObj);
+
+    // Ghi file settings.json mới (kèm appId) vào <newBaseFolder>/data/settings.json
+    const settingsFile = path.join(targetDataDir, 'settings.json');
+    const settingsToSave = {
+      appId: 'phong-tro-app',
+      ...data,
+      baseFolder: cleanNewBaseFolder
+    };
+    fs.writeFileSync(settingsFile, JSON.stringify(settingsToSave, null, 2), 'utf8');
+
+    return { success: true, baseFolder: cleanNewBaseFolder };
   } catch (err) {
     console.error('Lỗi khi ghi settings:', err);
     return { error: err.message };
   }
 });
 
-// IPC: Lưu Dữ liệu tháng (data/history/YYYY-MM.json)
+// IPC: Lưu Dữ liệu tháng (baseFolder/<dataFolderName>/history/YYYY-MM.json)
 ipcMain.handle('month-data:save', async (event, monthKey, data) => {
   try {
     if (!monthKey || typeof monthKey !== 'string') {
       return { error: 'MonthKey không hợp lệ' };
     }
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    const pointer = getPointer();
+    if (!pointer || !pointer.baseFolder) {
+      return { error: 'Chưa chọn thư mục lưu dữ liệu!' };
     }
-    const filePath = path.join(DATA_DIR, `${monthKey}.json`);
+    const historyDir = path.join(pointer.baseFolder, pointer.dataFolderName || 'data', 'history');
+    if (!fs.existsSync(historyDir)) {
+      fs.mkdirSync(historyDir, { recursive: true });
+    }
+    const filePath = path.join(historyDir, `${monthKey}.json`);
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
     return { success: true, filePath };
   } catch (err) {
@@ -104,13 +245,18 @@ ipcMain.handle('month-data:save', async (event, monthKey, data) => {
   }
 });
 
-// IPC: Đọc Dữ liệu tháng (data/history/YYYY-MM.json)
+// IPC: Đọc Dữ liệu tháng (baseFolder/<dataFolderName>/history/YYYY-MM.json)
 ipcMain.handle('month-data:load', async (event, monthKey) => {
   try {
     if (!monthKey || typeof monthKey !== 'string') {
       return null;
     }
-    const filePath = path.join(DATA_DIR, `${monthKey}.json`);
+    const pointer = getPointer();
+    if (!pointer || !pointer.baseFolder) {
+      return null;
+    }
+    const historyDir = path.join(pointer.baseFolder, pointer.dataFolderName || 'data', 'history');
+    const filePath = path.join(historyDir, `${monthKey}.json`);
     if (fs.existsSync(filePath)) {
       const content = fs.readFileSync(filePath, 'utf8');
       return JSON.parse(content);
@@ -128,22 +274,26 @@ ipcMain.handle('export:receipts', async (event, monthKey, roomDataList) => {
   let rasterWin = null;
 
   try {
-    // 1. Kiểm tra settings.baseFolder
-    let settings = null;
-    if (fs.existsSync(SETTINGS_FILE)) {
-      settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
-    }
-    const baseFolder = settings ? settings.baseFolder : null;
-    if (!baseFolder) {
+    // 1. Kiểm tra pointer & settings.baseFolder
+    const pointer = getPointer();
+    if (!pointer || !pointer.baseFolder) {
       return { error: 'CHUA_CHON_THU_MUC', message: 'Vui lòng vào Cài đặt chung để chọn "Thư mục lưu ảnh/PDF" trước khi xuất!' };
     }
+    const baseFolder = pointer.baseFolder;
+    const dataFolderName = pointer.dataFolderName || 'data';
+    const phieuThuFolderName = pointer.phieuThuFolderName || 'PhieuThu';
 
+    const settingsFile = path.join(baseFolder, dataFolderName, 'settings.json');
+    let settings = null;
+    if (fs.existsSync(settingsFile)) {
+      settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+    }
     const dienThoai = settings ? settings.dienThoai : "0982 141 407";
 
-    // 2. Tính toán đường dẫn thư mục xuất: <baseFolder>/PhieuThu/Thang_<MM>_<YYYY>/
+    // 2. Tính toán đường dẫn thư mục xuất: <baseFolder>/<phieuThuFolderName>/Thang_<MM>_<YYYY>/
     const [yyyy, mm] = monthKey.split('-');
     const monthFolderName = `Thang_${mm}_${yyyy}`;
-    const targetDir = path.join(baseFolder, 'PhieuThu', monthFolderName);
+    const targetDir = path.join(baseFolder, phieuThuFolderName, monthFolderName);
 
     // 3. Kiểm tra file trùng và hỏi xác nhận 1 lần duy nhất nếu đã có file xuất cũ
     if (fs.existsSync(targetDir)) {
