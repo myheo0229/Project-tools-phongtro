@@ -57,42 +57,65 @@ function formatNumber(num) {
   return Number(num).toLocaleString('vi-VN');
 }
 
+const MIN_MONTH = '2026-07'; // Mốc cố định 2026-07
+
+/**
+ * Kiểm tra xem 1 tháng đã nhập đủ dữ liệu 12 phòng hay chưa
+ */
+function isMonthFullyComplete(monthData) {
+  if (!monthData) return false;
+  const rooms = Array.isArray(monthData) ? monthData : (monthData && monthData.rooms ? monthData.rooms : null);
+  if (!rooms || !Array.isArray(rooms) || rooms.length !== 12) {
+    return false;
+  }
+  return rooms.every(r => r.dienMoi != null && r.nuocMoi != null && r.dienMoi !== '' && r.nuocMoi !== '');
+}
+
+/**
+ * Tính tháng liền sau dạng YYYY-MM
+ */
+function nextMonthKey(monthKey) {
+  const [y, m] = monthKey.split('-').map(Number);
+  const d = new Date(y, m, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Tính tháng mới nhất có thể chọn trong dropdown dựa trên tiến độ nhập liệu thực tế
+ */
+async function computeMaxSelectableMonth() {
+  let month = MIN_MONTH;
+  while (isMonthFullyComplete(await readHistoryFile(month))) {
+    month = nextMonthKey(month);
+  }
+  return month;
+}
+
 /**
  * Tạo danh sách Tháng/Năm động trong dropdown:
  * min = cố định 2026-07
- * max = tháng hiện tại của hệ thống tính động bằng new Date()
+ * max = tháng kế tiếp ngay sau tháng gần nhất đã nhập đủ dữ liệu cả 12 phòng
  */
-function populateMonthSelect() {
+async function populateMonthSelect() {
   const select = document.getElementById('month-year-select');
   if (!select) return;
-  select.innerHTML = '';
 
-  const minYear = 2026;
-  const minMonth = 7; // Mốc cố định 2026-07
-
-  // Mở rộng danh sách 30 năm tới tương lai (từ năm 2026 đến năm 2056)
-  const maxYear = minYear + 30;
-  const maxMonth = 12;
+  const currentSelectedValue = select.value;
+  const maxMonthKey = await computeMaxSelectableMonth();
 
   const list = [];
-  let currentY = minYear;
-  let currentM = minMonth;
-
-  while (currentY < maxYear || (currentY === maxYear && currentM <= maxMonth)) {
-    const monthKey = `${currentY}-${String(currentM).padStart(2, '0')}`;
+  let curr = MIN_MONTH;
+  while (curr <= maxMonthKey || curr === maxMonthKey) {
+    const [y, m] = curr.split('-');
     list.push({
-      key: monthKey,
-      label: `Tháng ${String(currentM).padStart(2, '0')}/${currentY}`
+      key: curr,
+      label: `Tháng ${m}/${y}`
     });
-
-    currentM++;
-    if (currentM > 12) {
-      currentM = 1;
-      currentY++;
-    }
+    if (curr === maxMonthKey) break;
+    curr = nextMonthKey(curr);
   }
 
-  // Hiển thị danh sách từ Tháng 07/2026 đến Tháng 12/2056
+  select.innerHTML = '';
   list.forEach(item => {
     const option = document.createElement('option');
     option.value = item.key;
@@ -100,13 +123,10 @@ function populateMonthSelect() {
     select.appendChild(option);
   });
 
-  // Mặc định chọn tháng hiện tại của hệ thống (VD: 2026-07)
-  const now = new Date();
-  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  if (select.querySelector(`option[value="${currentMonthKey}"]`)) {
-    select.value = currentMonthKey;
-  } else if (select.options.length > 0) {
-    select.value = select.options[0].value;
+  if (currentSelectedValue && select.querySelector(`option[value="${currentSelectedValue}"]`)) {
+    select.value = currentSelectedValue;
+  } else {
+    select.value = maxMonthKey;
   }
 }
 
@@ -225,8 +245,15 @@ async function readHistoryFile(monthYearStr) {
     } catch (e) {
       console.error('Lỗi khi đọc dữ liệu qua IPC:', e);
     }
+    // Khi chạy trên Electron mà chưa chọn folder hoặc chưa có file,
+    // nếu là tháng 2026-07 thì trả về dữ liệu mẫu 2026-07, không dùng localStorage
+    if (monthYearStr === '2026-07') {
+      return INITIAL_JULY_2026_DATA;
+    }
+    return null;
   }
 
+  // Backup từ localStorage (chỉ dùng khi không có window.api, tức chạy thuần Web browser)
   try {
     const local = localStorage.getItem(`history_${monthYearStr}`);
     if (local) {
@@ -247,10 +274,6 @@ async function readHistoryFile(monthYearStr) {
 async function writeHistoryFile(monthYearStr, data) {
   if (!monthYearStr) return false;
 
-  try {
-    localStorage.setItem(`history_${monthYearStr}`, JSON.stringify(data));
-  } catch (e) { }
-
   if (window.api && typeof window.api.saveMonthData === 'function') {
     try {
       const res = await window.api.saveMonthData(monthYearStr, data);
@@ -260,14 +283,31 @@ async function writeHistoryFile(monthYearStr, data) {
       return false;
     }
   }
+
+  try {
+    localStorage.setItem(`history_${monthYearStr}`, JSON.stringify(data));
+  } catch (e) { }
+
   return true;
 }
 
 // Khởi tạo ứng dụng
 document.addEventListener('DOMContentLoaded', async () => {
-  populateMonthSelect();
   await loadSettingsFile();
   initSettingsForm();
+
+  const baseFolderInput = document.getElementById('set-baseFolder');
+
+  // Kiểm tra nếu chưa thiết lập thư mục ngay từ lần mở đầu tiên
+  if (!appSettings.baseFolder || appSettings.baseFolder.trim() === '') {
+    if (baseFolderInput) baseFolderInput.classList.add('input-error');
+    switchTab('settings');
+    showToast('Chào mừng! Vui lòng chọn "Thư mục lưu ảnh & PDF phiếu thu" để bắt đầu.', 'warning');
+  } else {
+    if (baseFolderInput) baseFolderInput.classList.remove('input-error');
+  }
+
+  await populateMonthSelect();
   await loadRoomsForMonth(document.getElementById('month-year-select').value);
 
   // Hiển thị phiên bản app lấy từ package.json qua IPC
@@ -318,7 +358,15 @@ function switchTab(tabName) {
  * Load form Cài đặt
  */
 function initSettingsForm() {
-  document.getElementById('set-baseFolder').value = appSettings.baseFolder || "";
+  const baseFolderInput = document.getElementById('set-baseFolder');
+  if (baseFolderInput) {
+    baseFolderInput.value = appSettings.baseFolder || "";
+    if (!appSettings.baseFolder || appSettings.baseFolder.trim() === '') {
+      baseFolderInput.classList.add('input-error');
+    } else {
+      baseFolderInput.classList.remove('input-error');
+    }
+  }
   document.getElementById('set-giaPhong').value = appSettings.giaPhong;
   document.getElementById('set-giaDien').value = appSettings.giaDien;
   document.getElementById('set-giaNuoc').value = appSettings.giaNuoc;
@@ -332,12 +380,16 @@ function initSettingsForm() {
  * Chọn thư mục lưu xuất phiếu thu qua Windows dialog native
  */
 async function pickBaseFolder() {
+  const baseFolderInput = document.getElementById('set-baseFolder');
   if (window.api && typeof window.api.pickFolder === 'function') {
     const selectedFolder = await window.api.pickFolder();
     if (selectedFolder) {
       appSettings.baseFolder = selectedFolder;
-      document.getElementById('set-baseFolder').value = selectedFolder;
-      showToast('Đã chọn thư mục! Bấm "Lưu Cài Đặt" để áp dụng.', 'info');
+      if (baseFolderInput) {
+        baseFolderInput.value = selectedFolder;
+        baseFolderInput.classList.remove('input-error');
+      }
+      showToast('Đã chọn thư mục! Bấm "Lưu Cài Đặt Giá" để áp dụng.', 'info');
     }
   } else {
     showToast('Chức năng chọn thư mục chỉ hoạt động trên ứng dụng Electron!', 'error');
@@ -694,6 +746,20 @@ async function onMonthYearChange() {
  */
 async function saveSettings(event) {
   event.preventDefault();
+  const baseFolderInput = document.getElementById('set-baseFolder');
+  const selectedPath = baseFolderInput ? baseFolderInput.value.trim() : "";
+
+  // Kiểm tra thư mục trước tiên: Nếu chưa nhập/chọn thư mục
+  if (!selectedPath) {
+    if (baseFolderInput) {
+      baseFolderInput.classList.add('input-error');
+      baseFolderInput.focus();
+    }
+    showToast('Vui lòng chọn "Thư mục lưu ảnh & PDF phiếu thu" trước khi lưu cài đặt!', 'error');
+    return;
+  }
+
+  appSettings.baseFolder = selectedPath;
   appSettings.giaPhong = Number(document.getElementById('set-giaPhong').value) || 0;
   appSettings.giaDien = Number(document.getElementById('set-giaDien').value) || 0;
   appSettings.giaNuoc = Number(document.getElementById('set-giaNuoc').value) || 0;
@@ -701,9 +767,16 @@ async function saveSettings(event) {
   appSettings.tienInternet = Number(document.getElementById('set-internet').value) || 0;
   appSettings.tyLeHaoTai = (Number(document.getElementById('set-tileHaoTai').value) || 0) / 100;
   appSettings.dienThoai = document.getElementById('set-dienThoai').value;
-  appSettings.baseFolder = document.getElementById('set-baseFolder').value || "";
 
   const ok = await saveSettingsFile();
+
+  if (!ok) {
+    if (baseFolderInput) baseFolderInput.classList.add('input-error');
+    return; // Đã báo lỗi trong saveSettingsFile, dừng tại đây
+  }
+
+  // Đã lưu thành công
+  if (baseFolderInput) baseFolderInput.classList.remove('input-error');
 
   roomsData.forEach(r => {
     r.tienPhong = appSettings.giaPhong;
@@ -711,11 +784,7 @@ async function saveSettings(event) {
 
   roomsData.forEach((_, idx) => updateRowUI(idx));
   updateFooterTotals();
-  if (ok) {
-    showToast("Đã lưu cài đặt giá và thư mục lưu thành công!", 'success');
-  } else {
-    showToast("Đã cập nhật cài đặt giá!", 'success');
-  }
+  showToast("Đã lưu cài đặt giá và thư mục lưu thành công!", 'success');
 }
 
 /**
@@ -753,7 +822,12 @@ async function saveAndExport() {
     }
 
     // Bước 1: Kiểm tra thư mục baseFolder
-    if (!appSettings.baseFolder) {
+    if (!appSettings.baseFolder || appSettings.baseFolder.trim() === '') {
+      const baseFolderInput = document.getElementById('set-baseFolder');
+      if (baseFolderInput) {
+        baseFolderInput.classList.add('input-error');
+        baseFolderInput.focus();
+      }
       showToast('Vui lòng vào Cài đặt chung để chọn "Thư mục lưu ảnh/PDF" trước khi xuất!', 'error');
       switchTab('settings');
       if (btn) btn.disabled = false;
@@ -800,6 +874,7 @@ async function saveAndExport() {
         }
       } else if (res && res.success) {
         showToast(`Đã lưu và xuất thành công ${res.jpgCount} ảnh JPG + 1 file PDF (${res.pdfFile})!`, 'success');
+        await populateMonthSelect();
       }
     } else {
       showToast("Chức năng xuất ảnh JPG & PDF gộp chỉ khả dụng trên Electron app!", 'error');
@@ -814,20 +889,50 @@ async function saveAndExport() {
 }
 
 /**
- * Hiển thị thông báo Toast
+ * Hiển thị thông báo Toast ở góc dưới phải mượt mà
  */
 function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  // Xóa toast cũ có cùng nội dung để tránh trùng lặp
+  const existingToasts = Array.from(container.querySelectorAll('.toast'));
+  for (const t of existingToasts) {
+    if (t.textContent.trim() === message.trim()) {
+      t.remove();
+    }
+  }
+
+  // Giới hạn tối đa 2 toast cùng hiển thị
+  while (container.children.length >= 2) {
+    container.firstElementChild.remove();
+  }
+
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
+
+  let iconSvg = '';
+  if (type === 'success') {
+    iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+  } else if (type === 'error') {
+    iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
+  } else if (type === 'warning' || type === 'info') {
+    iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+  }
+
   toast.innerHTML = `
-    <span>${message}</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      ${iconSvg}
+      <span>${message}</span>
+    </div>
   `;
+
   container.appendChild(toast);
 
   setTimeout(() => {
     toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s ease';
+    toast.style.transform = 'translateY(10px)';
+    toast.style.transition = 'all 0.3s ease';
     setTimeout(() => toast.remove(), 300);
-  }, 3000);
+  }, 3500);
 }

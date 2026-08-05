@@ -2,3 +2,13 @@ v1.4.2
 - Cập nhật phiên bản lên v1.4.2
 - Cấu hình Icon chuẩn nhiều kích thước (32x32, 48x48, 64x64, 128x128, 256x256, 512x512)
 - Dời hiển thị version từ toolbar bên phải sang ngay sau tiêu đề "Màn Hình Nhập Liệu - Quản Lý Phòng Trọ v1.4.2"
+
+v2.0.0
+- Cập nhật phiên bản ứng dụng lên v2.0.0
+- Gộp thư mục dữ liệu `data/` vào chung cấp với `PhieuThu/` bên trong `baseFolder` do người dùng tự chọn
+- Sử dụng file con trỏ `pointer.json` lưu trong `userData` hệ thống để quản lý đường dẫn linh hoạt
+- Tự động sao chép lập tức toàn bộ dữ liệu lịch sử và phiếu thu từ vị trí cũ sang vị trí mới ngay khi người dùng chọn lại thư mục và bấm Lưu Cài Đặt
+- Bắt buộc thiết lập thư mục ngay từ lần mở đầu tiên: Tự động chuyển tab Cài Đặt Chung và tô viền đỏ ô thư mục nếu chưa thiết lập
+- Tối ưu khởi động app: Preload ngầm thư viện `pdf-lib` sau 1.5s và dùng `show: false` + `ready-to-show` giúp hiện cửa sổ mượt mà, không giật màn hình
+- Sửa logic dropdown Tháng/Năm: Tự động mở rộng theo tiến độ nhập liệu thực tế (đủ 12 phòng tháng cũ mới mở tháng mới), không phụ thuộc ngày giờ máy tính
+- Cải tiến thông báo Toast góc dưới phải kèm icon trực quan, lọc thông báo trùng lặp và loại bỏ các thông báo mâu thuẫn khi chưa chọn thư mục

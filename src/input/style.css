@@ -738,6 +738,21 @@ body {
   border-left: 4px solid var(--accent-danger);
 }
 
+.toast.warning {
+  border-left: 4px solid var(--accent-warning);
+}
+
+.toast.info {
+  border-left: 4px solid var(--primary);
+}
+
+/* Red error border style for input validation */
+.input-error {
+  border-color: #dc2626 !important;
+  background-color: #fef2f2 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25) !important;
+}
+
 @keyframes slideIn {
   from {
     transform: translateY(20px);

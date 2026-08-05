@@ -1,7 +1,27 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { PDFDocument } = require('pdf-lib');
+
+let pdfLibModule = null; // Cache module pdf-lib sau khi nạp xong
+
+// Nạp NGẦM pdf-lib, không chặn luồng chính
+function preloadPdfLibInBackground() {
+  setTimeout(() => {
+    try {
+      pdfLibModule = require('pdf-lib');
+    } catch (err) {
+      console.error('Preload pdf-lib thất bại (không sao, sẽ thử lại lúc xuất):', err);
+    }
+  }, 1500); // Trễ 1.5s sau khi cửa sổ hiện
+}
+
+// Hàm AN TOÀN lấy pdf-lib trước khi xuất
+function getPdfLib() {
+  if (!pdfLibModule) {
+    pdfLibModule = require('pdf-lib');
+  }
+  return pdfLibModule;
+}
 
 const PROJECT_ROOT = path.join(__dirname, '..');
 
@@ -88,6 +108,7 @@ function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    show: false, // Ẩn cửa sổ ban đầu để tránh giật/trắng màn hình
     title: `Màn Hình Nhập Liệu - Quản Lý Phòng Trọ v${app.getVersion()}`,
     icon: path.join(PROJECT_ROOT, 'assets', 'icon', 'icon32x32.ico'),
     webPreferences: {
@@ -95,6 +116,12 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false
     }
+  });
+
+  // Hiện cửa sổ khi đã render xong DOM và bắt đầu preload ngầm pdf-lib
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    preloadPdfLibInBackground();
   });
 
   mainWindow.loadFile(path.join(PROJECT_ROOT, 'src', 'input', 'index.html'));
@@ -338,6 +365,9 @@ ipcMain.handle('export:receipts', async (event, monthKey, roomDataList) => {
     });
     const rasterizerHtmlPath = path.join(__dirname, 'rasterizer.html');
     await rasterWin.loadFile(rasterizerHtmlPath);
+
+    // Lấy pdf-lib module an toàn
+    const { PDFDocument } = getPdfLib();
 
     // Chuẩn bị PDF document gộp
     const mergedPdf = await PDFDocument.create();
