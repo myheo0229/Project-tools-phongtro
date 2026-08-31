@@ -12,3 +12,7 @@ v2.0.0
 - Tối ưu khởi động app: Preload ngầm thư viện `pdf-lib` sau 1.5s và dùng `show: false` + `ready-to-show` giúp hiện cửa sổ mượt mà, không giật màn hình
 - Sửa logic dropdown Tháng/Năm: Tự động mở rộng theo tiến độ nhập liệu thực tế (đủ 12 phòng tháng cũ mới mở tháng mới), không phụ thuộc ngày giờ máy tính
 - Cải tiến thông báo Toast góc dưới phải kèm icon trực quan, lọc thông báo trùng lặp và loại bỏ các thông báo mâu thuẫn khi chưa chọn thư mục
+
+v2.2.0
+- Hiển thị popup để người nhập xác nhận áp dụng phương pháp tính tiền khi Điện mới < Điện cũ
+- Hiện thị popup kiểm tra điện tiêu thụ bé/lớn 40% so với tháng trước

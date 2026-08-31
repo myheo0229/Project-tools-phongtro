@@ -429,6 +429,22 @@ async function loadRoomsForMonth(currentMonthYearStr) {
       isNuocCuLocked = true;
     }
 
+    let prevDienKwh = 0;
+    if (prevRoom) {
+      if (isNotEmpty(prevRoom.dienKwh)) {
+        prevDienKwh = Number(prevRoom.dienKwh);
+      } else if (isNotEmpty(prevRoom.dienMoi) && isNotEmpty(prevRoom.dienCu)) {
+        const dienCuP = Number(prevRoom.dienCu);
+        const dienMoiP = Number(prevRoom.dienMoi);
+        if (typeof calcRoom === 'function') {
+          const res = calcRoom({ dienCu: dienCuP, dienMoi: dienMoiP }, appSettings);
+          prevDienKwh = res ? res.dienKwh : Math.max(0, dienMoiP - dienCuP);
+        } else {
+          prevDienKwh = Math.max(0, dienMoiP - dienCuP);
+        }
+      }
+    }
+
     const dienMoi = currRoom && isNotEmpty(currRoom.dienMoi) ? Number(currRoom.dienMoi) : '';
     const nuocMoi = currRoom && isNotEmpty(currRoom.nuocMoi) ? Number(currRoom.nuocMoi) : '';
 
@@ -438,6 +454,7 @@ async function loadRoomsForMonth(currentMonthYearStr) {
       dienMoi: dienMoi,
       nuocCu: nuocCu,
       nuocMoi: nuocMoi,
+      prevDienKwh: prevDienKwh,
       tienPhong: appSettings.giaPhong,
       isDienCuLocked,
       isNuocCuLocked
@@ -488,6 +505,7 @@ function renderInitialTable() {
                placeholder="Nhập số mới"
                value="${dienMoiVal}" 
                oninput="handleInputChange(${index}, 'dienMoi', this.value)" 
+               onblur="handleDienMoiBlur(${index})"
                onfocus="this.select()">
       </td>
       <!-- Số Điện Tiêu Thụ -->
@@ -544,7 +562,20 @@ function renderInitialTable() {
  */
 function handleInputChange(index, field, value) {
   const numVal = isNotEmpty(value) ? Number(value) : '';
+  const oldVal = roomsData[index][field];
   roomsData[index][field] = numVal;
+
+  if (field === 'dienMoi') {
+    const dienCuNum = isNotEmpty(roomsData[index].dienCu) ? Number(roomsData[index].dienCu) : 0;
+    if (numVal === '' || (typeof numVal === 'number' && numVal >= dienCuNum)) {
+      roomsData[index].confirmedRollover = false;
+    } else if (oldVal !== numVal) {
+      roomsData[index].confirmedRollover = false;
+    }
+    if (oldVal !== numVal) {
+      roomsData[index].confirmedAnomaly = false;
+    }
+  }
 
   updateRowUI(index);
   updateFooterTotals();
@@ -558,13 +589,32 @@ function updateRowUI(index) {
   if (!tr) return;
 
   const room = roomsData[index];
-  const hasDienMoi = isNotEmpty(room.dienMoi);
+  const hasDienMoiInput = isNotEmpty(room.dienMoi);
   const hasNuocMoi = isNotEmpty(room.nuocMoi);
 
   const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
-  const dienMoiNum = hasDienMoi ? Number(room.dienMoi) : dienCuNum;
+  const dienMoiNum = hasDienMoiInput ? Number(room.dienMoi) : dienCuNum;
   const nuocCuNum = isNotEmpty(room.nuocCu) ? Number(room.nuocCu) : 0;
   const nuocMoiNum = hasNuocMoi ? Number(room.nuocMoi) : nuocCuNum;
+
+  // Nếu điện mới nhỏ hơn điện cũ và chưa xác nhận quay vòng -> tạm thời chưa tính
+  const isRolloverUnconfirmed = hasDienMoiInput && (dienMoiNum < dienCuNum) && !room.confirmedRollover;
+
+  // Kiểm tra bất thường >= 40% so với tháng trước (nếu đã qua bước quay vòng)
+  const prevKwh = Number(room.prevDienKwh) || 0;
+  let isAnomalyUnconfirmed = false;
+  if (hasDienMoiInput && prevKwh > 0 && !isRolloverUnconfirmed) {
+    const surrogateR = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
+    const rCalc = typeof calcRoom === 'function' ? calcRoom(surrogateR, appSettings) : null;
+    const currKwh = rCalc ? rCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
+    const diff = currKwh - prevKwh;
+    const percentChange = (diff / prevKwh) * 100;
+    if (Math.abs(percentChange) >= 40 && !room.confirmedAnomaly) {
+      isAnomalyUnconfirmed = true;
+    }
+  }
+
+  const hasDienMoi = hasDienMoiInput && !isRolloverUnconfirmed && !isAnomalyUnconfirmed;
 
   const surrogateRoom = {
     ...room,
@@ -584,7 +634,7 @@ function updateRowUI(index) {
       haoTaiKwh: 0, tienHaoTai: 0, tongCong: 0
     };
 
-  // Cột Điện (chỉ hiển thị khi đã nhập dienMoi)
+  // Cột Điện (chỉ hiển thị khi đã nhập dienMoi hợp lệ)
   tr.querySelector('.cell-dien-kwh').textContent = hasDienMoi ? (formatNumber(roomCalc.dienKwh) + ' kWh') : '-';
   tr.querySelector('.cell-tien-dien').textContent = hasDienMoi ? (formatNumber(roomCalc.tienDien) + ' đ') : '-';
   tr.querySelector('.cell-hao-tai-kwh').textContent = hasDienMoi ? formatNumber(roomCalc.haoTaiKwh) : '-';
@@ -599,7 +649,7 @@ function updateRowUI(index) {
   tr.querySelector('.cell-rac').textContent = formatNumber(roomCalc.rac) + ' đ';
   tr.querySelector('.cell-internet').textContent = formatNumber(roomCalc.internet) + ' đ';
 
-  // TỔNG CỘNG (chỉ hiển thị khi ĐÃ CÓ ĐỦ CẢ 2: dienMoi VÀ nuocMoi)
+  // TỔNG CỘNG (chỉ hiển thị khi ĐÃ CÓ ĐỦ CẢ 2: dienMoi VÀ nuocMoi hợp lệ)
   if (hasDienMoi && hasNuocMoi) {
     tr.querySelector('.cell-tong-cong').textContent = formatNumber(roomCalc.tongCong) + ' đ';
   } else {
@@ -624,13 +674,30 @@ function updateFooterTotals() {
   let fullRoomsCount = 0;
 
   roomsData.forEach(room => {
-    const hasDienMoi = isNotEmpty(room.dienMoi);
+    const hasDienMoiInput = isNotEmpty(room.dienMoi);
     const hasNuocMoi = isNotEmpty(room.nuocMoi);
 
     const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
-    const dienMoiNum = hasDienMoi ? Number(room.dienMoi) : dienCuNum;
+    const dienMoiNum = hasDienMoiInput ? Number(room.dienMoi) : dienCuNum;
     const nuocCuNum = isNotEmpty(room.nuocCu) ? Number(room.nuocCu) : 0;
     const nuocMoiNum = hasNuocMoi ? Number(room.nuocMoi) : nuocCuNum;
+
+    const isRolloverUnconfirmed = hasDienMoiInput && (dienMoiNum < dienCuNum) && !room.confirmedRollover;
+
+    const prevKwh = Number(room.prevDienKwh) || 0;
+    let isAnomalyUnconfirmed = false;
+    if (hasDienMoiInput && prevKwh > 0 && !isRolloverUnconfirmed) {
+      const surrogateR = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
+      const rCalc = typeof calcRoom === 'function' ? calcRoom(surrogateR, appSettings) : null;
+      const currKwh = rCalc ? rCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
+      const diff = currKwh - prevKwh;
+      const percentChange = (diff / prevKwh) * 100;
+      if (Math.abs(percentChange) >= 40 && !room.confirmedAnomaly) {
+        isAnomalyUnconfirmed = true;
+      }
+    }
+
+    const hasDienMoi = hasDienMoiInput && !isRolloverUnconfirmed && !isAnomalyUnconfirmed;
 
     const surrogateRoom = {
       ...room,
@@ -936,3 +1003,240 @@ function showToast(message, type = 'success') {
     setTimeout(() => toast.remove(), 300);
   }, 3500);
 }
+
+/* ============================================================
+   XỬ LÝ MODAL XÁC NHẬN ĐỒNG HỒ ĐIỆN QUAY VÒNG (ĐIỆN MỚI < ĐIỆN CŨ)
+   ============================================================ */
+let currentRolloverIndex = null;
+
+/**
+ * Kiểm tra khi người dùng rời khỏi ô nhập Điện Mới (blur)
+ */
+function handleDienMoiBlur(index) {
+  const room = roomsData[index];
+  if (!room) return;
+
+  const hasDienMoi = isNotEmpty(room.dienMoi);
+  if (!hasDienMoi) return;
+
+  const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
+  const dienMoiNum = Number(room.dienMoi);
+
+  // 1. Kiểm tra đồng hồ quay vòng (Điện Mới < Điện Cũ)
+  if (dienMoiNum < dienCuNum && !room.confirmedRollover) {
+    showRolloverModal(index);
+    return;
+  }
+
+  // 2. Kiểm tra bất thường >= 40% so với tháng trước
+  const prevKwh = Number(room.prevDienKwh) || 0;
+  if (prevKwh > 0 && (dienMoiNum >= dienCuNum || room.confirmedRollover)) {
+    const surrogate = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
+    const roomCalc = typeof calcRoom === 'function' ? calcRoom(surrogate, appSettings) : null;
+    const currKwh = roomCalc ? roomCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
+
+    const diff = currKwh - prevKwh;
+    const percentChange = (diff / prevKwh) * 100;
+
+    if (Math.abs(percentChange) >= 40 && !room.confirmedAnomaly) {
+      showAnomalyModal(index);
+    }
+  }
+}
+
+/**
+ * Hiển thị Modal xác nhận quay vòng
+ */
+function showRolloverModal(index) {
+  const room = roomsData[index];
+  if (!room) return;
+
+  const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
+  const dienMoiNum = isNotEmpty(room.dienMoi) ? Number(room.dienMoi) : 0;
+  const maxDongHo = typeof MAX_DONG_HO_DIEN !== 'undefined' ? MAX_DONG_HO_DIEN : 10000;
+  const dienTieuThu = (maxDongHo + dienMoiNum) - dienCuNum;
+
+  currentRolloverIndex = index;
+
+  const roomNameEl = document.getElementById('modal-room-name');
+  const dienCuEl = document.getElementById('modal-dien-cu');
+  const dienMoiEl = document.getElementById('modal-dien-moi');
+  const dienTieuThuEl = document.getElementById('modal-dien-tieu-thu');
+  const modalEl = document.getElementById('rollover-modal');
+
+  if (roomNameEl) roomNameEl.textContent = room.phong;
+  if (dienCuEl) dienCuEl.textContent = formatNumber(dienCuNum);
+  if (dienMoiEl) dienMoiEl.textContent = formatNumber(dienMoiNum);
+  if (dienTieuThuEl) dienTieuThuEl.textContent = formatNumber(dienTieuThu) + ' kWh';
+
+  if (modalEl) {
+    modalEl.style.display = 'flex';
+  }
+}
+
+/**
+ * Nút Xác nhận trên Modal: Chấp nhận tính theo đồng hồ quay vòng
+ */
+function confirmRolloverModal() {
+  if (currentRolloverIndex !== null && roomsData[currentRolloverIndex]) {
+    const idx = currentRolloverIndex;
+    roomsData[idx].confirmedRollover = true;
+    updateRowUI(idx);
+    updateFooterTotals();
+    showToast(`Đã áp dụng phương pháp đồng hồ quay vòng cho phòng ${roomsData[idx].phong}`, 'success');
+
+    // Sau khi xác nhận quay vòng, kiểm tra tiếp xem có bị bất thường >= 40% không
+    closeRolloverModal();
+
+    const room = roomsData[idx];
+    const prevKwh = Number(room.prevDienKwh) || 0;
+    if (prevKwh > 0) {
+      const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
+      const dienMoiNum = isNotEmpty(room.dienMoi) ? Number(room.dienMoi) : 0;
+      const surrogate = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
+      const roomCalc = typeof calcRoom === 'function' ? calcRoom(surrogate, appSettings) : null;
+      const currKwh = roomCalc ? roomCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
+      const diff = currKwh - prevKwh;
+      const percentChange = (diff / prevKwh) * 100;
+
+      if (Math.abs(percentChange) >= 40 && !room.confirmedAnomaly) {
+        setTimeout(() => showAnomalyModal(idx), 100);
+      }
+    }
+  } else {
+    closeRolloverModal();
+  }
+}
+
+/**
+ * Nút Hủy trên Modal: Xóa dữ liệu ô vừa nhập sai và focus lại
+ */
+function cancelRolloverModal() {
+  if (currentRolloverIndex !== null && roomsData[currentRolloverIndex]) {
+    const idx = currentRolloverIndex;
+    roomsData[idx].dienMoi = '';
+    roomsData[idx].confirmedRollover = false;
+
+    const inputEl = document.querySelector(`input[data-row="${idx}"][data-field="dienMoi"]`);
+    if (inputEl) {
+      inputEl.value = '';
+      setTimeout(() => inputEl.focus(), 50);
+    }
+
+    updateRowUI(idx);
+    updateFooterTotals();
+    showToast(`Đã xóa số điện mới nhập sai của phòng ${roomsData[idx].phong}`, 'warning');
+  }
+  closeRolloverModal();
+}
+
+/**
+ * Đóng Modal quay vòng
+ */
+function closeRolloverModal() {
+  currentRolloverIndex = null;
+  const modalEl = document.getElementById('rollover-modal');
+  if (modalEl) {
+    modalEl.style.display = 'none';
+  }
+}
+
+/* ============================================================
+   XỬ LÝ MODAL CẢNH BÁO SỐ ĐIỆN TIÊU THỤ BẤT THƯỜNG (CHÊNH LỆCH ≥ 40%)
+   ============================================================ */
+let currentAnomalyIndex = null;
+
+/**
+ * Hiển thị Modal Cảnh báo số điện bất thường
+ */
+function showAnomalyModal(index) {
+  const room = roomsData[index];
+  if (!room) return;
+
+  const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
+  const dienMoiNum = isNotEmpty(room.dienMoi) ? Number(room.dienMoi) : 0;
+  const surrogate = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
+  const roomCalc = typeof calcRoom === 'function' ? calcRoom(surrogate, appSettings) : null;
+  const currKwh = roomCalc ? roomCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
+  const prevKwh = Number(room.prevDienKwh) || 0;
+
+  const diff = currKwh - prevKwh;
+  const percentChange = prevKwh > 0 ? (diff / prevKwh) * 100 : 0;
+  const signStr = percentChange > 0 ? '+' : '';
+  const percentStr = `${signStr}${percentChange.toFixed(1)}%`;
+
+  currentAnomalyIndex = index;
+
+  const roomNameEl = document.getElementById('anomaly-room-name');
+  const prevKwhEl = document.getElementById('anomaly-prev-kwh');
+  const currKwhEl = document.getElementById('anomaly-curr-kwh');
+  const percentDiffEl = document.getElementById('anomaly-percent-diff');
+  const modalEl = document.getElementById('anomaly-modal');
+
+  if (roomNameEl) roomNameEl.textContent = room.phong;
+  if (prevKwhEl) prevKwhEl.textContent = `${formatNumber(prevKwh)} kWh`;
+  if (currKwhEl) currKwhEl.textContent = `${formatNumber(currKwh)} kWh`;
+  if (percentDiffEl) {
+    percentDiffEl.textContent = percentStr;
+    if (percentChange > 0) {
+      percentDiffEl.className = 'text-danger';
+    } else {
+      percentDiffEl.className = 'text-warning';
+    }
+  }
+
+  if (modalEl) {
+    modalEl.style.display = 'flex';
+  }
+}
+
+/**
+ * Nút Xác nhận trên Modal Bất thường: Giữ nguyên số liệu vừa nhập
+ */
+function confirmAnomalyModal() {
+  if (currentAnomalyIndex !== null && roomsData[currentAnomalyIndex]) {
+    roomsData[currentAnomalyIndex].confirmedAnomaly = true;
+    updateRowUI(currentAnomalyIndex);
+    updateFooterTotals();
+    showToast(`Đã xác nhận số điện phòng ${roomsData[currentAnomalyIndex].phong} bình thường`, 'success');
+  }
+  closeAnomalyModal();
+}
+
+/**
+ * Nút Hủy trên Modal Bất thường: Xóa ô nhập và focus lại
+ */
+function cancelAnomalyModal() {
+  if (currentAnomalyIndex !== null && roomsData[currentAnomalyIndex]) {
+    const idx = currentAnomalyIndex;
+    roomsData[idx].dienMoi = '';
+    roomsData[idx].confirmedAnomaly = false;
+
+    const inputEl = document.querySelector(`input[data-row="${idx}"][data-field="dienMoi"]`);
+    if (inputEl) {
+      inputEl.value = '';
+      setTimeout(() => {
+        inputEl.focus();
+        if (typeof inputEl.select === 'function') inputEl.select();
+      }, 50);
+    }
+
+    updateRowUI(idx);
+    updateFooterTotals();
+    showToast(`Đã xóa số điện mới nhập của phòng ${roomsData[idx].phong}`, 'warning');
+  }
+  closeAnomalyModal();
+}
+
+/**
+ * Đóng Modal Bất thường
+ */
+function closeAnomalyModal() {
+  currentAnomalyIndex = null;
+  const modalEl = document.getElementById('anomaly-modal');
+  if (modalEl) {
+    modalEl.style.display = 'none';
+  }
+}
+
+

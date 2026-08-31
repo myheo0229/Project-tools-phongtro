@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Màn Hình Nhập Liệu - Quản Lý Phòng Trọ v2.0.0</title>
+  <title>Màn Hình Nhập Liệu - Quản Lý Phòng Trọ v2.2.0</title>
 
   <!-- Font & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,7 +26,7 @@
           </svg>
         </div>
         <div class="brand-text">
-          <h1>MÀN HÌNH NHẬP LIỆU - QUẢN LÝ PHÒNG TRỌ <span id="app-version-tag" class="title-version-tag">v2.0.0</span>
+          <h1>MÀN HÌNH NHẬP LIỆU - QUẢN LÝ PHÒNG TRỌ <span id="app-version-tag" class="title-version-tag">v2.2.0</span>
           </h1>
           <p>Hệ thống tính tiền & xuất phiếu thu tự động</p>
         </div>
@@ -302,6 +302,88 @@
 
     <!-- TOAST NOTIFICATION CONTAINER -->
     <div id="toast-container" class="toast-container"></div>
+  </div>
+
+  <!-- MODAL XÁC NHẬN ĐỒNG HỒ ĐIỆN QUAY VÒNG -->
+  <div id="rollover-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-icon warning">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div class="modal-title-group">
+          <h3>Xác nhận số kí điện (Đồng hồ quay vòng)</h3>
+          <p class="modal-subtitle">Chỉ số Điện Mới nhỏ hơn Điện Cũ</p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p>Phòng <strong id="modal-room-name" class="highlight-text">-</strong> vừa nhập số Điện Mới (<strong
+            id="modal-dien-moi">-</strong> kWh) <span class="text-danger">nhỏ hơn</span> Điện Cũ (<strong
+            id="modal-dien-cu">-</strong> kWh).</p>
+        <div class="modal-info-box">
+          <div class="info-row">
+            <span>Phương pháp tính:</span>
+            <strong>(10.000 + Điện Mới) - Điện Cũ</strong>
+          </div>
+          <div class="info-row">
+            <span>Số điện tiêu thụ dự kiến:</span>
+            <strong id="modal-dien-tieu-thu" class="text-success">0 kWh</strong>
+          </div>
+        </div>
+        <p class="modal-question">Bạn có chắc chắn muốn áp dụng phương pháp tính đồng hồ quay vòng cho phòng này không?
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="cancelRolloverModal()">Hủy (Nhập lại)</button>
+        <button type="button" class="btn btn-primary" onclick="confirmRolloverModal()">Xác nhận (Áp dụng)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CẢNH BÁO SỐ ĐIỆN TIÊU THỤ BẤT THƯỜNG (CHÊNH LỆCH ≥ 40%) -->
+  <div id="anomaly-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-icon warning">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div class="modal-title-group">
+          <h3>Cảnh báo số điện tiêu thụ bất thường</h3>
+          <p class="modal-subtitle">Chênh lệch ≥ 40% so với tháng trước</p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p>Phòng <strong id="anomaly-room-name" class="highlight-text">-</strong> có mức tiêu thụ điện biến động bất
+          thường so với tháng trước.</p>
+        <div class="modal-info-box">
+          <div class="info-row">
+            <span>Điện tiêu thụ tháng trước:</span>
+            <strong id="anomaly-prev-kwh">- kWh</strong>
+          </div>
+          <div class="info-row">
+            <span>Điện tiêu thụ tháng này:</span>
+            <strong id="anomaly-curr-kwh" class="highlight-text">- kWh</strong>
+          </div>
+          <div class="info-row">
+            <span>Tỷ lệ chênh lệch:</span>
+            <strong id="anomaly-percent-diff" class="text-danger">+0.0%</strong>
+          </div>
+        </div>
+        <p class="modal-question">Bạn có xác nhận không có vấn đề gì và tiếp tục giữ nguyên số liệu vừa nhập không?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="cancelAnomalyModal()">Hủy (Nhập lại)</button>
+        <button type="button" class="btn btn-primary" onclick="confirmAnomalyModal()">Xác nhận (Bình thường)</button>
+      </div>
+    </div>
   </div>
 
   <!-- Shared Calc & Format Scripts -->

@@ -764,3 +764,159 @@ body {
     opacity: 1;
   }
 }
+
+/* ============================================================
+   MODAL DIALOG (XÁC NHẬN ĐỒNG HỒ QUAY VÒNG & BẤT THƯỜNG)
+   Hiển thị kích thước phóng to ~1.5x giúp đọc số và chữ rõ ràng
+   ============================================================ */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal-card {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 35px -5px rgba(0, 0, 0, 0.25), 0 10px 15px -5px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 680px;
+  overflow: hidden;
+  animation: modalZoomIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid var(--border-light);
+}
+
+.modal-header {
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.modal-icon.warning {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--accent-warning-light);
+  color: var(--accent-warning);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.modal-icon.warning svg {
+  width: 32px;
+  height: 32px;
+}
+
+.modal-title-group h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0 0 4px 0;
+  line-height: 1.3;
+}
+
+.modal-subtitle {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.modal-body {
+  padding: 26px 32px;
+  font-size: 18px;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.highlight-text {
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+.text-danger {
+  color: var(--accent-danger);
+  font-weight: 700;
+}
+
+.text-warning {
+  color: var(--accent-warning);
+  font-weight: 700;
+}
+
+.text-success {
+  color: var(--accent-success);
+  font-weight: 700;
+}
+
+.modal-info-box {
+  margin: 22px 0;
+  padding: 20px 24px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 17px;
+}
+
+.info-row span {
+  color: var(--text-muted);
+}
+
+.info-row strong {
+  font-size: 20px;
+}
+
+.modal-question {
+  margin-top: 18px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.5;
+}
+
+.modal-footer {
+  padding: 20px 32px;
+  background: #f8fafc;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.modal-footer .btn {
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+@keyframes modalZoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
