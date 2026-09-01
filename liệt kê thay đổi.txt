@@ -32,3 +32,6 @@ v2.3.2
 
 v2.3.3
 - Thử nghiệm tính năng nâng cấp ngầm im lặng (Silent Auto Update Test)
+
+v2.3.4
+- Hỗ trợ chọn lại ổ đĩa/thư mục khi cài đặt lại ứng dụng (Destination Folder Selection Fix)
