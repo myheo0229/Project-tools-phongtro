@@ -20,5 +20,29 @@ contextBridge.exposeInMainWorld('api', {
   onExportProgress: (callback) => {
     ipcRenderer.removeAllListeners('export:progress');
     ipcRenderer.on('export:progress', (event, data) => callback(data));
+  },
+
+  // Auto Updater APIs
+  checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+  startDownloadUpdate: () => ipcRenderer.invoke('updater:start-download'),
+  onUpdateAvailable: (callback) => {
+    ipcRenderer.removeAllListeners('updater:update-available');
+    ipcRenderer.on('updater:update-available', (event, data) => callback(data));
+  },
+  onUpdateNotAvailable: (callback) => {
+    ipcRenderer.removeAllListeners('updater:update-not-available');
+    ipcRenderer.on('updater:update-not-available', (event, data) => callback(data));
+  },
+  onDownloadProgress: (callback) => {
+    ipcRenderer.removeAllListeners('updater:download-progress');
+    ipcRenderer.on('updater:download-progress', (event, data) => callback(data));
+  },
+  onUpdateDownloaded: (callback) => {
+    ipcRenderer.removeAllListeners('updater:update-downloaded');
+    ipcRenderer.on('updater:update-downloaded', (event, data) => callback(data));
+  },
+  onUpdateError: (callback) => {
+    ipcRenderer.removeAllListeners('updater:error');
+    ipcRenderer.on('updater:error', (event, data) => callback(data));
   }
 });

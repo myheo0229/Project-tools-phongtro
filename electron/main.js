@@ -1,6 +1,11 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { autoUpdater } = require('electron-updater');
+
+// Tắt tự động tải ngầm, chỉ tải khi người dùng đồng ý
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = true;
 
 let pdfLibModule = null; // Cache module pdf-lib sau khi nạp xong
 
@@ -125,7 +130,84 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(PROJECT_ROOT, 'src', 'input', 'index.html'));
+
+  setupAutoUpdater(mainWindow);
 }
+
+function setupAutoUpdater(mainWindow) {
+  autoUpdater.removeAllListeners();
+
+  autoUpdater.on('update-available', (info) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater:update-available', {
+        version: info ? info.version : '',
+        releaseDate: info ? info.releaseDate : '',
+        releaseNotes: info ? info.releaseNotes : ''
+      });
+    }
+  });
+
+  autoUpdater.on('update-not-available', (info) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater:update-not-available', {
+        version: info ? info.version : app.getVersion()
+      });
+    }
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater:download-progress', {
+        percent: Math.round(progressObj.percent || 0),
+        bytesPerSecond: progressObj.bytesPerSecond || 0,
+        transferred: progressObj.transferred || 0,
+        total: progressObj.total || 0
+      });
+    }
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater:update-downloaded', {
+        version: info ? info.version : ''
+      });
+    }
+    // Tự động đóng app và cài đè ngầm im lặng (không hiện bảng hỏi Only for me)
+    setTimeout(() => {
+      autoUpdater.quitAndInstall(true, true);
+    }, 1200);
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('Lỗi autoUpdater:', err);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater:error', {
+        message: err ? (err.message || String(err)) : 'Không thể kết nối máy chủ cập nhật'
+      });
+    }
+  });
+}
+
+// IPC: Auto Updater Handlers
+ipcMain.handle('updater:check', async () => {
+  try {
+    const res = await autoUpdater.checkForUpdates();
+    return { success: true, updateInfo: res ? res.updateInfo : null };
+  } catch (err) {
+    console.error('Lỗi khi check update:', err);
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle('updater:start-download', async () => {
+  try {
+    await autoUpdater.downloadUpdate();
+    return { success: true };
+  } catch (err) {
+    console.error('Lỗi khi start download update:', err);
+    return { error: err.message };
+  }
+});
 
 // IPC: Lấy phiên bản ứng dụng
 ipcMain.handle('app:get-version', () => app.getVersion());

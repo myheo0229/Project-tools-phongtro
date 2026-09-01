@@ -20,3 +20,15 @@ v2.2.0
 v2.2.2
 - Cảnh báo khi người dùng đổi tab Cài Đặt Chung khi chưa lưu thay đổi
 - Thêm phần tùy chỉnh hiển thị popup
+
+v2.3.1
+- Tích hợp tính năng Tự Động Cập Nhật (Electron Updater + NSIS Installer + GitHub Releases)
+- Pop-up thông báo phiên bản mới với 2 tùy chọn: "Cập nhật ngay" hoặc "Để sau / Hủy"
+- Giao diện thanh phần trăm tiến trình tải (%) và tốc độ MB/s trực quan khi cập nhật
+- Bổ sung ô hiển thị phiên bản và nút "Kiểm Tra Cập Nhật" thủ công trong tab Cài Đặt Chung
+
+v2.3.2
+- Tối ưu luồng nâng cấp ngầm im lặng (Silent Install): Tải 100% tự động đóng và nâng cấp ngầm, không hiện lại cửa sổ hỏi tùy chọn
+
+v2.3.3
+- Thử nghiệm tính năng nâng cấp ngầm im lặng (Silent Auto Update Test)

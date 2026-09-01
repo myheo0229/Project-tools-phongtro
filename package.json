@@ -1,6 +1,6 @@
 {
   "name": "project-tools-phongtro",
-  "version": "2.2.2",
+  "version": "2.3.3",
   "description": "Phần mềm quản lý và xuất phiếu thu tiền nhà trọ",
   "main": "electron/main.js",
   "scripts": {
@@ -11,6 +11,7 @@
   "author": "Lê Công Bá Nhân",
   "license": "ISC",
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^3.11.174"
   },
@@ -24,14 +25,27 @@
     "directories": {
       "output": "release"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "myheo0229",
+        "repo": "Project-tools-phongtro",
+        "releaseType": "release"
+      }
+    ],
     "win": {
       "icon": "assets/icon/icon256x256.ico",
       "target": [
-        "portable"
+        "nsis"
       ]
     },
-    "portable": {
-      "artifactName": "${productName}_Portable_v${version}.${ext}"
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Quản Lý Phòng Trọ",
+      "artifactName": "${productName}_Setup_v${version}.${ext}"
     },
     "files": [
       "assets/**/*",

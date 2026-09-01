@@ -324,11 +324,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (verTag && ver) {
         verTag.textContent = `v${ver}`;
       }
+      const settingsVerTag = document.getElementById('settings-app-version');
+      if (settingsVerTag && ver) {
+        settingsVerTag.textContent = `v${ver}`;
+      }
       document.title = `Màn Hình Nhập Liệu - Quản Lý Phòng Trọ v${ver}`;
     } catch (e) {
       console.error('Lỗi khi lấy version app:', e);
     }
   }
+
+  // Khởi tạo các sự kiện Tự động cập nhật
+  initAutoUpdaterListeners();
 
   // Đăng ký lắng nghe tiến trình xuất ảnh/PDF
   if (window.api && typeof window.api.onExportProgress === 'function') {
@@ -1337,6 +1344,184 @@ function cancelUnsavedSettingsModal() {
 function closeUnsavedSettingsModal() {
   const modalEl = document.getElementById('unsaved-settings-modal');
   if (modalEl) modalEl.style.display = 'none';
+}
+
+/* ============================================================
+   XỬ LÝ TỰ ĐỘNG CẬP NHẬT (ELECTRON UPDATER)
+   ============================================================ */
+let isManualUpdateCheck = false;
+
+function initAutoUpdaterListeners() {
+  if (!window.api) return;
+
+  if (typeof window.api.onUpdateAvailable === 'function') {
+    window.api.onUpdateAvailable((info) => {
+      resetCheckUpdateBtnUI();
+      showUpdateModal(info);
+    });
+  }
+
+  if (typeof window.api.onUpdateNotAvailable === 'function') {
+    window.api.onUpdateNotAvailable((info) => {
+      resetCheckUpdateBtnUI();
+      if (isManualUpdateCheck) {
+        const ver = info ? info.version : '';
+        showToast(ver ? `Bạn đang sử dụng phiên bản mới nhất (v${ver})!` : 'Bạn đang sử dụng phiên bản mới nhất!', 'success');
+        isManualUpdateCheck = false;
+      }
+    });
+  }
+
+  if (typeof window.api.onDownloadProgress === 'function') {
+    window.api.onDownloadProgress((progressObj) => {
+      updateDownloadProgressUI(progressObj);
+    });
+  }
+
+  if (typeof window.api.onUpdateDownloaded === 'function') {
+    window.api.onUpdateDownloaded((info) => {
+      const fillEl = document.getElementById('update-progress-fill');
+      const percentEl = document.getElementById('update-progress-percent');
+      if (fillEl) fillEl.style.width = '100%';
+      if (percentEl) percentEl.textContent = '100%';
+      showToast('Đã tải xong bản mới! Đang tự động đóng ứng dụng để nâng cấp...', 'success');
+    });
+  }
+
+  if (typeof window.api.onUpdateError === 'function') {
+    window.api.onUpdateError((err) => {
+      resetCheckUpdateBtnUI();
+      if (isManualUpdateCheck) {
+        showToast(`Lỗi kiểm tra cập nhật: ${err.message || 'Không kết nối được máy chủ'}`, 'error');
+        isManualUpdateCheck = false;
+      }
+    });
+  }
+
+  // Tự động kiểm tra bản mới ngầm sau khi mở app 3.5 giây
+  setTimeout(() => {
+    if (window.api && typeof window.api.checkForUpdates === 'function') {
+      window.api.checkForUpdates().catch(() => {});
+    }
+  }, 3500);
+}
+
+/**
+ * Nút Kiểm Tra Cập Nhật thủ công trong tab Cài Đặt Chung
+ */
+async function checkUpdateManual() {
+  if (!window.api || typeof window.api.checkForUpdates !== 'function') {
+    showToast('Chức năng kiểm tra cập nhật chỉ khả dụng trên bản cài đặt Electron!', 'error');
+    return;
+  }
+
+  const btnText = document.getElementById('btn-check-update-text');
+  const btn = document.getElementById('btn-check-update');
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.textContent = 'Đang kiểm tra...';
+
+  isManualUpdateCheck = true;
+
+  try {
+    const res = await window.api.checkForUpdates();
+    if (res && res.error) {
+      resetCheckUpdateBtnUI();
+      showToast(`Lỗi kiểm tra cập nhật: ${res.error}`, 'error');
+      isManualUpdateCheck = false;
+    }
+  } catch (err) {
+    resetCheckUpdateBtnUI();
+    showToast(`Không thể kết nối máy chủ cập nhật: ${err.message}`, 'error');
+    isManualUpdateCheck = false;
+  }
+}
+
+function resetCheckUpdateBtnUI() {
+  const btnText = document.getElementById('btn-check-update-text');
+  const btn = document.getElementById('btn-check-update');
+  if (btn) btn.disabled = false;
+  if (btnText) btnText.textContent = 'Kiểm Tra Cập Nhật';
+}
+
+/**
+ * Hiển thị Pop-up Cảnh báo phát hiện phiên bản mới
+ */
+function showUpdateModal(info) {
+  const modalEl = document.getElementById('update-modal');
+  if (!modalEl) return;
+
+  const currentVerTag = document.getElementById('app-version-tag');
+  const currentVerStr = currentVerTag ? currentVerTag.textContent.replace('v', '') : '2.2.2';
+
+  const targetVer = info && info.version ? info.version : 'mới';
+
+  document.getElementById('update-curr-version').textContent = `v${currentVerStr}`;
+  document.getElementById('update-new-version').textContent = `v${targetVer}`;
+  document.getElementById('update-target-version').textContent = `v${targetVer}`;
+  document.getElementById('update-download-version').textContent = `v${targetVer}`;
+
+  document.getElementById('update-state-prompt').style.display = 'block';
+  document.getElementById('update-state-downloading').style.display = 'none';
+  document.getElementById('update-modal-footer').style.display = 'flex';
+
+  modalEl.style.display = 'flex';
+}
+
+/**
+ * Nút "Cập nhật ngay" trên Pop-up
+ */
+async function startDownloadUpdateNow() {
+  document.getElementById('update-state-prompt').style.display = 'none';
+  document.getElementById('update-state-downloading').style.display = 'block';
+  document.getElementById('update-modal-footer').style.display = 'none';
+
+  const fillEl = document.getElementById('update-progress-fill');
+  const percentEl = document.getElementById('update-progress-percent');
+  const speedEl = document.getElementById('update-progress-speed');
+  if (fillEl) fillEl.style.width = '0%';
+  if (percentEl) percentEl.textContent = '0%';
+  if (speedEl) speedEl.textContent = '0 MB/s';
+
+  if (window.api && typeof window.api.startDownloadUpdate === 'function') {
+    const res = await window.api.startDownloadUpdate();
+    if (res && res.error) {
+      showToast(`Không thể tải bản cập nhật: ${res.error}`, 'error');
+      cancelUpdateModal();
+    }
+  }
+}
+
+/**
+ * Cập nhật giao diện thanh phần trăm % và tốc độ MB/s
+ */
+function updateDownloadProgressUI(progressObj) {
+  const percent = progressObj.percent || 0;
+  const bytesPerSec = progressObj.bytesPerSecond || 0;
+
+  const fillEl = document.getElementById('update-progress-fill');
+  const percentEl = document.getElementById('update-progress-percent');
+  const speedEl = document.getElementById('update-progress-speed');
+
+  if (fillEl) fillEl.style.width = `${percent}%`;
+  if (percentEl) percentEl.textContent = `${percent}%`;
+
+  let speedText = '0 KB/s';
+  if (bytesPerSec >= 1024 * 1024) {
+    speedText = `${(bytesPerSec / (1024 * 1024)).toFixed(2)} MB/s`;
+  } else if (bytesPerSec > 0) {
+    speedText = `${(bytesPerSec / 1024).toFixed(0)} KB/s`;
+  }
+
+  if (speedEl) speedEl.textContent = speedText;
+}
+
+/**
+ * Nút "Để sau (Hủy)" đóng Pop-up Cập Nhật
+ */
+function cancelUpdateModal() {
+  const modalEl = document.getElementById('update-modal');
+  if (modalEl) modalEl.style.display = 'none';
+  isManualUpdateCheck = false;
 }
 
 

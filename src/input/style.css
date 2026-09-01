@@ -1025,3 +1025,73 @@ body {
   background-color: var(--primary);
   transition-duration: .2s;
 }
+
+/* ============================================================
+   CẬP NHẬT PHIÊN BẢN (AUTO UPDATER & PROGRESS BAR)
+   ============================================================ */
+.update-check-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #f8fafc;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+}
+
+.update-info-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.update-version-label {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.update-version-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.update-progress-container {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.update-progress-bar {
+  width: 100%;
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.update-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), #38bdf8);
+  border-radius: 6px;
+  transition: width 0.2s ease;
+}
+
+.update-progress-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.progress-percent {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.progress-speed {
+  color: var(--text-muted);
+}
