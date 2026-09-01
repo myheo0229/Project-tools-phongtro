@@ -16,3 +16,7 @@ v2.0.0
 v2.2.0
 - Hiển thị popup để người nhập xác nhận áp dụng phương pháp tính tiền khi Điện mới < Điện cũ
 - Hiện thị popup kiểm tra điện tiêu thụ bé/lớn 40% so với tháng trước
+
+v2.2.2
+- Cảnh báo khi người dùng đổi tab Cài Đặt Chung khi chưa lưu thay đổi
+- Thêm phần tùy chỉnh hiển thị popup

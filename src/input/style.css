@@ -920,3 +920,108 @@ body {
     transform: scale(1);
   }
 }
+
+/* ============================================================
+   TOGGLE SWITCH CẤU HÌNH POPUP (BẬT / TẮT POPUP THÔNG BÁO)
+   ============================================================ */
+.settings-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 24px 0;
+}
+
+.settings-subsection-title {
+  margin-bottom: 16px;
+}
+
+.settings-subsection-title h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: 0.5px;
+}
+
+.settings-subsection-title p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.toggle-switch-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.toggle-switch-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #f8fafc;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  gap: 20px;
+}
+
+.toggle-switch-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.toggle-switch-label .toggle-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-main);
+}
+
+.toggle-switch-label .toggle-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* From Uiverse.io by vinodjangid07 (Tinh chỉnh rộng 60px, cao 34px) */
+.toggle-checkbox {
+  display: none;
+}
+
+.toggleSwitch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 60px;
+  height: 34px;
+  background-color: rgb(82, 82, 82);
+  border-radius: 22px;
+  cursor: pointer;
+  transition-duration: .2s;
+  flex-shrink: 0;
+}
+
+.toggleSwitch::after {
+  content: "";
+  position: absolute;
+  height: 12px;
+  width: 12px;
+  left: 5px;
+  background-color: transparent;
+  border-radius: 50%;
+  transition-duration: .2s;
+  box-shadow: 5px 2px 7px rgba(8, 8, 8, 0.26);
+  border: 6px solid white;
+}
+
+.toggle-checkbox:checked + .toggleSwitch::after {
+  transform: translateX(26px);
+  transition-duration: .2s;
+  background-color: white;
+}
+
+/* Switch background change */
+.toggle-checkbox:checked + .toggleSwitch {
+  background-color: var(--primary);
+  transition-duration: .2s;
+}

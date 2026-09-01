@@ -3,7 +3,7 @@
 > Phần mềm quản lý và xuất phiếu thu tiền nhà trọ — Xây dựng trên nền tảng Electron.
 
 **Tác giả:** Lê Công Bá Nhân  
-**Phiên bản:** 2.2.0  
+**Phiên bản:** 2.2.2  
 **Nền tảng:** Windows (Portable — không cần cài đặt)
 
 ---
@@ -66,9 +66,9 @@ Project-tools-phongtro/
 │
 ├── src/
 │   ├── input/                   # Màn hình nhập liệu chính
-│   │   ├── index.html           # Giao diện bảng nhập + cài đặt + 2 Pop-up Modal
+│   │   ├── index.html           # Giao diện bảng nhập + cài đặt + 3 Pop-up Modal
 │   │   ├── renderer.js          # Logic UI, lưu/đọc dữ liệu, modal xác nhận & xuất phiếu
-│   │   └── style.css            # CSS giao diện nhập liệu & Pop-up phóng to 1.5x
+│   │   └── style.css            # CSS giao diện nhập liệu & Pop-up 1.5x / Toggle Switch
 │   │
 │   ├── receipt/                 # Template phiếu thu (ẩn, dùng để xuất)
 │   │   ├── index.html           # HTML mẫu phiếu thu tiền nhà
@@ -82,7 +82,7 @@ Project-tools-phongtro/
 │
 ├── assets/                      # Icon ứng dụng (.ico, .png)
 ├── release/                     # Thư mục chứa file Portable .exe sau khi build
-├── package.json                 # Cấu hình npm + electron-builder (v2.2.0)
+├── package.json                 # Cấu hình npm + electron-builder (v2.2.2)
 └── README.md                    # File hướng dẫn này
 ```
 
@@ -167,7 +167,7 @@ Tổng cộng = Tiền điện + Tiền nước + Tiền điện hao tải + Ti�
 
 ### 1. Mở ứng dụng
 
-- Chạy file `Quản Lý Phòng Trọ_Portable_v2.2.0.exe` (không cần cài đặt).
+- Chạy file `Quản Lý Phòng Trọ_Portable_v2.2.2.exe` (không cần cài đặt).
 - Giao diện chính hiện ra với **2 tab**: `Nhập Dữ Liệu` và `Cài Đặt Chung`.
 
 ### 2. Cài đặt ban đầu (Tab "Cài Đặt Chung")
@@ -178,6 +178,7 @@ Trước khi sử dụng lần đầu, bạn bắt buộc vào tab **Cài Đặt
   - `<baseFolder>/data/` — Chứa cài đặt và lịch sử các tháng.
   - `<baseFolder>/PhieuThu/` — Chứa các file ảnh JPG và PDF phiếu thu xuất ra.
 - Đường dẫn trỏ tới `baseFolder` được lưu trong file `pointer.json` thuộc `userData` hệ thống.
+- **Tùy chỉnh Pop-up**: Có thể gạt tắt công tắc Toggle Switch nếu không muốn hiển thị Pop-up quay vòng hoặc bất thường.
 
 ### 3. Nhập chỉ số điện/nước (Tab "Nhập Dữ Liệu")
 
@@ -244,7 +245,7 @@ npm run build
 
 > Lệnh này chạy `electron-builder --win` — tạo file `.exe` Portable trong thư mục `release/`.
 
-File output: `release/Quản Lý Phòng Trọ_Portable_v2.2.0.exe`
+File output: `release/Quản Lý Phòng Trọ_Portable_v2.2.2.exe`
 
 ---
 

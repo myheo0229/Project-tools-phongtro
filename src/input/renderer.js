@@ -11,7 +11,9 @@ let appSettings = {
   giaNuoc: 12000,
   tienRac: 40000,
   tienInternet: 24000,
-  tyLeHaoTai: 0.07
+  tyLeHaoTai: 0.07,
+  enableRolloverPopup: true,
+  enableAnomalyPopup: true
 };
 
 // Dữ liệu ban đầu mặc định cho Tháng 07/2026
@@ -164,7 +166,9 @@ async function loadSettingsFile() {
             giaNuoc: data.giaNuoc || appSettings.giaNuoc,
             tienRac: data.tienRac || data.rac || appSettings.tienRac,
             tienInternet: data.tienInternet || data.internet || appSettings.tienInternet,
-            tyLeHaoTai: data.tyLeHaoTai || data.tileHaoTai || appSettings.tyLeHaoTai
+            tyLeHaoTai: data.tyLeHaoTai || data.tileHaoTai || appSettings.tyLeHaoTai,
+            enableRolloverPopup: data.enableRolloverPopup !== undefined ? data.enableRolloverPopup : true,
+            enableAnomalyPopup: data.enableAnomalyPopup !== undefined ? data.enableAnomalyPopup : true
           };
           return;
         }
@@ -200,7 +204,9 @@ async function saveSettingsFile() {
     tienInternet: appSettings.tienInternet,
     internet: appSettings.tienInternet,
     tyLeHaoTai: appSettings.tyLeHaoTai,
-    tileHaoTai: appSettings.tyLeHaoTai
+    tileHaoTai: appSettings.tyLeHaoTai,
+    enableRolloverPopup: appSettings.enableRolloverPopup !== false,
+    enableAnomalyPopup: appSettings.enableAnomalyPopup !== false
   };
 
   if (window.api) {
@@ -342,6 +348,19 @@ document.addEventListener('DOMContentLoaded', async () => {
  * Đổi tab giữa Nhập Dữ Liệu và Cài Đặt Chung
  */
 function switchTab(tabName) {
+  const sectionSettings = document.getElementById('section-settings');
+  const isCurrentSettings = sectionSettings && sectionSettings.classList.contains('active');
+
+  if (isCurrentSettings && tabName !== 'settings' && isSettingsDirty) {
+    pendingActionAfterUnsavedModal = () => forceSwitchTab(tabName);
+    showUnsavedSettingsModal();
+    return;
+  }
+
+  forceSwitchTab(tabName);
+}
+
+function forceSwitchTab(tabName) {
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
@@ -358,6 +377,13 @@ function switchTab(tabName) {
  * Load form Cài đặt
  */
 function initSettingsForm() {
+  const settingsForm = document.getElementById('settings-form');
+  if (settingsForm && !settingsForm.dataset.dirtyBound) {
+    settingsForm.dataset.dirtyBound = 'true';
+    settingsForm.addEventListener('input', markSettingsDirty);
+    settingsForm.addEventListener('change', markSettingsDirty);
+  }
+
   const baseFolderInput = document.getElementById('set-baseFolder');
   if (baseFolderInput) {
     baseFolderInput.value = appSettings.baseFolder || "";
@@ -374,6 +400,17 @@ function initSettingsForm() {
   document.getElementById('set-internet').value = appSettings.tienInternet;
   document.getElementById('set-tileHaoTai').value = (appSettings.tyLeHaoTai * 100).toFixed(1);
   document.getElementById('set-dienThoai').value = appSettings.dienThoai;
+
+  const rolloverCheck = document.getElementById('set-enableRolloverPopup');
+  if (rolloverCheck) {
+    rolloverCheck.checked = appSettings.enableRolloverPopup !== false;
+  }
+  const anomalyCheck = document.getElementById('set-enableAnomalyPopup');
+  if (anomalyCheck) {
+    anomalyCheck.checked = appSettings.enableAnomalyPopup !== false;
+  }
+
+  isSettingsDirty = false;
 }
 
 /**
@@ -389,6 +426,7 @@ async function pickBaseFolder() {
         baseFolderInput.value = selectedFolder;
         baseFolderInput.classList.remove('input-error');
       }
+      markSettingsDirty();
       showToast('Đã chọn thư mục! Bấm "Lưu Cài Đặt Giá" để áp dụng.', 'info');
     }
   } else {
@@ -598,12 +636,12 @@ function updateRowUI(index) {
   const nuocMoiNum = hasNuocMoi ? Number(room.nuocMoi) : nuocCuNum;
 
   // Nếu điện mới nhỏ hơn điện cũ và chưa xác nhận quay vòng -> tạm thời chưa tính
-  const isRolloverUnconfirmed = hasDienMoiInput && (dienMoiNum < dienCuNum) && !room.confirmedRollover;
+  const isRolloverUnconfirmed = (appSettings.enableRolloverPopup !== false) && hasDienMoiInput && (dienMoiNum < dienCuNum) && !room.confirmedRollover;
 
   // Kiểm tra bất thường >= 40% so với tháng trước (nếu đã qua bước quay vòng)
   const prevKwh = Number(room.prevDienKwh) || 0;
   let isAnomalyUnconfirmed = false;
-  if (hasDienMoiInput && prevKwh > 0 && !isRolloverUnconfirmed) {
+  if ((appSettings.enableAnomalyPopup !== false) && hasDienMoiInput && prevKwh > 0 && !isRolloverUnconfirmed) {
     const surrogateR = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
     const rCalc = typeof calcRoom === 'function' ? calcRoom(surrogateR, appSettings) : null;
     const currKwh = rCalc ? rCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
@@ -682,11 +720,11 @@ function updateFooterTotals() {
     const nuocCuNum = isNotEmpty(room.nuocCu) ? Number(room.nuocCu) : 0;
     const nuocMoiNum = hasNuocMoi ? Number(room.nuocMoi) : nuocCuNum;
 
-    const isRolloverUnconfirmed = hasDienMoiInput && (dienMoiNum < dienCuNum) && !room.confirmedRollover;
+    const isRolloverUnconfirmed = (appSettings.enableRolloverPopup !== false) && hasDienMoiInput && (dienMoiNum < dienCuNum) && !room.confirmedRollover;
 
     const prevKwh = Number(room.prevDienKwh) || 0;
     let isAnomalyUnconfirmed = false;
-    if (hasDienMoiInput && prevKwh > 0 && !isRolloverUnconfirmed) {
+    if ((appSettings.enableAnomalyPopup !== false) && hasDienMoiInput && prevKwh > 0 && !isRolloverUnconfirmed) {
       const surrogateR = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
       const rCalc = typeof calcRoom === 'function' ? calcRoom(surrogateR, appSettings) : null;
       const currKwh = rCalc ? rCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
@@ -835,12 +873,20 @@ async function saveSettings(event) {
   appSettings.tyLeHaoTai = (Number(document.getElementById('set-tileHaoTai').value) || 0) / 100;
   appSettings.dienThoai = document.getElementById('set-dienThoai').value;
 
+  const rolloverCheck = document.getElementById('set-enableRolloverPopup');
+  if (rolloverCheck) appSettings.enableRolloverPopup = rolloverCheck.checked;
+
+  const anomalyCheck = document.getElementById('set-enableAnomalyPopup');
+  if (anomalyCheck) appSettings.enableAnomalyPopup = anomalyCheck.checked;
+
   const ok = await saveSettingsFile();
 
   if (!ok) {
     if (baseFolderInput) baseFolderInput.classList.add('input-error');
-    return; // Đã báo lỗi trong saveSettingsFile, dừng tại đây
+    return false; // Đã báo lỗi trong saveSettingsFile, dừng tại đây
   }
+
+  isSettingsDirty = false;
 
   // Đã lưu thành công
   if (baseFolderInput) baseFolderInput.classList.remove('input-error');
@@ -852,6 +898,7 @@ async function saveSettings(event) {
   roomsData.forEach((_, idx) => updateRowUI(idx));
   updateFooterTotals();
   showToast("Đã lưu cài đặt giá và thư mục lưu thành công!", 'success');
+  return true;
 }
 
 /**
@@ -862,6 +909,12 @@ async function saveSettings(event) {
  * 3. Tự động mở thư mục xuất
  */
 async function saveAndExport() {
+  if (isSettingsDirty) {
+    pendingActionAfterUnsavedModal = () => saveAndExport();
+    showUnsavedSettingsModal();
+    return;
+  }
+
   const btn = document.getElementById('btn-save-export');
   const btnText = document.getElementById('btn-save-export-text');
   const currentMonthYear = document.getElementById('month-year-select').value;
@@ -1022,15 +1075,15 @@ function handleDienMoiBlur(index) {
   const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
   const dienMoiNum = Number(room.dienMoi);
 
-  // 1. Kiểm tra đồng hồ quay vòng (Điện Mới < Điện Cũ)
-  if (dienMoiNum < dienCuNum && !room.confirmedRollover) {
+  // 1. Kiểm tra đồng hồ quay vòng (Điện Mới < Điện Cũ) - Chỉ chạy khi BẬT toggle
+  if (appSettings.enableRolloverPopup !== false && dienMoiNum < dienCuNum && !room.confirmedRollover) {
     showRolloverModal(index);
     return;
   }
 
-  // 2. Kiểm tra bất thường >= 40% so với tháng trước
+  // 2. Kiểm tra bất thường >= 40% so với tháng trước - Chỉ chạy khi BẬT toggle
   const prevKwh = Number(room.prevDienKwh) || 0;
-  if (prevKwh > 0 && (dienMoiNum >= dienCuNum || room.confirmedRollover)) {
+  if (appSettings.enableAnomalyPopup !== false && prevKwh > 0 && (dienMoiNum >= dienCuNum || room.confirmedRollover)) {
     const surrogate = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
     const roomCalc = typeof calcRoom === 'function' ? calcRoom(surrogate, appSettings) : null;
     const currKwh = roomCalc ? roomCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
@@ -1237,6 +1290,53 @@ function closeAnomalyModal() {
   if (modalEl) {
     modalEl.style.display = 'none';
   }
+}
+
+/* ============================================================
+   XỬ LÝ MODAL CẢNH BÁO THAY ĐỔI CÀI ĐẶT CHƯA LƯU
+   ============================================================ */
+let isSettingsDirty = false;
+let pendingActionAfterUnsavedModal = null;
+
+function markSettingsDirty() {
+  isSettingsDirty = true;
+}
+
+function showUnsavedSettingsModal() {
+  const modalEl = document.getElementById('unsaved-settings-modal');
+  if (modalEl) modalEl.style.display = 'flex';
+}
+
+async function confirmSaveUnsavedSettingsModal() {
+  closeUnsavedSettingsModal();
+  const fakeEvent = { preventDefault: () => {} };
+  const saved = await saveSettings(fakeEvent);
+  if (saved !== false && typeof pendingActionAfterUnsavedModal === 'function') {
+    const action = pendingActionAfterUnsavedModal;
+    pendingActionAfterUnsavedModal = null;
+    action();
+  }
+}
+
+function discardUnsavedSettingsModal() {
+  closeUnsavedSettingsModal();
+  initSettingsForm();
+  isSettingsDirty = false;
+  if (typeof pendingActionAfterUnsavedModal === 'function') {
+    const action = pendingActionAfterUnsavedModal;
+    pendingActionAfterUnsavedModal = null;
+    action();
+  }
+}
+
+function cancelUnsavedSettingsModal() {
+  pendingActionAfterUnsavedModal = null;
+  closeUnsavedSettingsModal();
+}
+
+function closeUnsavedSettingsModal() {
+  const modalEl = document.getElementById('unsaved-settings-modal');
+  if (modalEl) modalEl.style.display = 'none';
 }
 
 

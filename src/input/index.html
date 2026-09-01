@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Màn Hình Nhập Liệu - Quản Lý Phòng Trọ v2.2.0</title>
+  <title>Màn Hình Nhập Liệu - Quản Lý Phòng Trọ v2.2.2</title>
 
   <!-- Font & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,7 +26,7 @@
           </svg>
         </div>
         <div class="brand-text">
-          <h1>MÀN HÌNH NHẬP LIỆU - QUẢN LÝ PHÒNG TRỌ <span id="app-version-tag" class="title-version-tag">v2.2.0</span>
+          <h1>MÀN HÌNH NHẬP LIỆU - QUẢN LÝ PHÒNG TRỌ <span id="app-version-tag" class="title-version-tag">v2.2.2</span>
           </h1>
           <p>Hệ thống tính tiền & xuất phiếu thu tự động</p>
         </div>
@@ -285,6 +285,39 @@
               </div>
             </div>
 
+            <!-- CẤU HÌNH POPUP THÔNG BÁO -->
+            <div class="settings-divider"></div>
+            <div class="settings-subsection-title">
+              <h3>CẤU HÌNH POPUP THÔNG BÁO</h3>
+              <p>Bật hoặc tắt các pop-up xác nhận và cảnh báo khi nhập số điện</p>
+            </div>
+
+            <div class="toggle-switch-container">
+              <!-- Toggle 1: Điện Mới < Điện Cũ -->
+              <div class="toggle-switch-group">
+                <div class="toggle-switch-label">
+                  <span class="toggle-title">Pop-up Xác nhận Đồng hồ quay vòng</span>
+                  <span class="toggle-desc">Hiển thị pop-up xác nhận khi Điện Mới nhỏ hơn Điện Cũ</span>
+                </div>
+                <div class="toggle-switch-wrapper">
+                  <input type="checkbox" id="set-enableRolloverPopup" class="toggle-checkbox" checked>
+                  <label for="set-enableRolloverPopup" class="toggleSwitch"></label>
+                </div>
+              </div>
+
+              <!-- Toggle 2: Điện tiêu thụ chênh lệch >= 40% -->
+              <div class="toggle-switch-group">
+                <div class="toggle-switch-label">
+                  <span class="toggle-title">Pop-up Cảnh báo Số điện bất thường</span>
+                  <span class="toggle-desc">Hiển thị pop-up cảnh báo khi điện tiêu thụ chênh lệch ≥ 40% so với tháng trước</span>
+                </div>
+                <div class="toggle-switch-wrapper">
+                  <input type="checkbox" id="set-enableAnomalyPopup" class="toggle-checkbox" checked>
+                  <label for="set-enableAnomalyPopup" class="toggleSwitch"></label>
+                </div>
+              </div>
+            </div>
+
             <div class="form-actions">
               <button type="submit" class="btn btn-primary btn-lg">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -382,6 +415,34 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="cancelAnomalyModal()">Hủy (Nhập lại)</button>
         <button type="button" class="btn btn-primary" onclick="confirmAnomalyModal()">Xác nhận (Bình thường)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CẢNH BÁO THAY ĐỔI CÀI ĐẶT CHƯA LƯU -->
+  <div id="unsaved-settings-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-icon warning">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div class="modal-title-group">
+          <h3>Cảnh báo thay đổi chưa được lưu</h3>
+          <p class="modal-subtitle">Bạn chưa lưu các thông số trong Cài Đặt Chung</p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p>Bạn vừa điều chỉnh một số thông tin trong <strong>Cài Đặt Chung</strong> nhưng chưa bấm nút <strong>Lưu Cài Đặt</strong>.</p>
+        <p class="modal-question">Bạn có muốn lưu lại các thay đổi này trước khi tiếp tục không?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="cancelUnsavedSettingsModal()">Hủy (Ở lại)</button>
+        <button type="button" class="btn btn-secondary" style="color: var(--accent-danger);" onclick="discardUnsavedSettingsModal()">Bỏ qua thay đổi</button>
+        <button type="button" class="btn btn-primary" onclick="confirmSaveUnsavedSettingsModal()">Lưu cài đặt</button>
       </div>
     </div>
   </div>
