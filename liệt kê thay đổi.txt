@@ -38,3 +38,6 @@ v2.3.4
 
 v2.3.5
 - Khắc phục triệt để lỗi mất shortcut và hoàn thiện cơ chế nâng cấp tự động chuẩn NSIS
+
+v2.3.6
+- Áp dụng cơ chế nâng cấp tự động ngầm 100% im lặng (Silent Background Update)
