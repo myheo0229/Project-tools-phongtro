@@ -44,3 +44,6 @@ v2.3.6
 
 v2.3.7
 - Bổ sung màn hình đếm ngược 3s dặn dò trước khi đóng app và phát thông báo hệ thống Windows Native Notification khi nâng cấp ngầm
+
+v2.3.8
+- Kiểm tra thử nghiệm toàn diện luồng nâng cấp tự động hoàn tất (Final Auto Update Test Release)
