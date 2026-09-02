@@ -1,6 +1,6 @@
 {
   "name": "project-tools-phongtro",
-  "version": "2.3.4",
+  "version": "2.3.5",
   "description": "Phần mềm quản lý và xuất phiếu thu tiền nhà trọ",
   "main": "electron/main.js",
   "scripts": {
@@ -42,7 +42,6 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "include": "build/installer.nsh",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Quản Lý Phòng Trọ",

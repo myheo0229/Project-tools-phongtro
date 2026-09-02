@@ -35,3 +35,6 @@ v2.3.3
 
 v2.3.4
 - Hỗ trợ chọn lại ổ đĩa/thư mục khi cài đặt lại ứng dụng (Destination Folder Selection Fix)
+
+v2.3.5
+- Khắc phục triệt để lỗi mất shortcut và hoàn thiện cơ chế nâng cấp tự động chuẩn NSIS
