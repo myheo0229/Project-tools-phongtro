@@ -1095,3 +1095,57 @@ body {
 .progress-speed {
   color: var(--text-muted);
 }
+
+/* GIAO DIỆN ĐẾM NGƯỢC NÂNG CẤP (STATE 3) */
+.installing-notice-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 12px 0;
+  gap: 14px;
+}
+
+.badge-success {
+  display: inline-block;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+}
+
+.installing-countdown {
+  font-size: 15px;
+  color: var(--text-main);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.text-highlight {
+  color: var(--primary);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.installing-tips {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #0369a1;
+  line-height: 1.45;
+}
+
+.installing-tips svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--primary);
+}

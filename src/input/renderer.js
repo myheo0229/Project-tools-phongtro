@@ -1380,11 +1380,40 @@ function initAutoUpdaterListeners() {
 
   if (typeof window.api.onUpdateDownloaded === 'function') {
     window.api.onUpdateDownloaded((info) => {
-      const fillEl = document.getElementById('update-progress-fill');
-      const percentEl = document.getElementById('update-progress-percent');
-      if (fillEl) fillEl.style.width = '100%';
-      if (percentEl) percentEl.textContent = '100%';
-      showToast('Đã tải xong bản mới! Đang tự động đóng ứng dụng để nâng cấp...', 'success');
+      // Ẩn state tải, hiện state 3 Đã tải xong & đếm ngược
+      const promptState = document.getElementById('update-state-prompt');
+      const downloadState = document.getElementById('update-state-downloading');
+      const installingState = document.getElementById('update-state-installing');
+      const footerEl = document.getElementById('update-modal-footer');
+
+      if (promptState) promptState.style.display = 'none';
+      if (downloadState) downloadState.style.display = 'none';
+      if (footerEl) footerEl.style.display = 'none';
+      if (installingState) installingState.style.display = 'block';
+
+      const modalTitle = document.getElementById('update-modal-title');
+      const modalSubtitle = document.getElementById('update-modal-subtitle');
+      if (modalTitle) modalTitle.textContent = 'Đang chuẩn bị nâng cấp...';
+      if (modalSubtitle) modalSubtitle.textContent = 'Hệ thống sẽ tự động khởi động lại';
+
+      // Chạy hiệu ứng đếm ngược 3 giây
+      let count = 3;
+      const countEl = document.getElementById('update-countdown-text');
+      if (countEl) countEl.textContent = '3 giây';
+
+      const interval = setInterval(() => {
+        count--;
+        if (countEl) {
+          if (count > 0) {
+            countEl.textContent = `${count} giây`;
+          } else {
+            countEl.textContent = `giây lát...`;
+            clearInterval(interval);
+          }
+        }
+      }, 1000);
+
+      showToast('Đã tải xong bản mới 100%! Ứng dụng sẽ tự động mở lại sau giây lát...', 'success');
     });
   }
 
@@ -1451,9 +1480,14 @@ function showUpdateModal(info) {
   if (!modalEl) return;
 
   const currentVerTag = document.getElementById('app-version-tag');
-  const currentVerStr = currentVerTag ? currentVerTag.textContent.replace('v', '') : '2.2.2';
+  const currentVerStr = currentVerTag ? currentVerTag.textContent.replace('v', '') : '2.3.7';
 
   const targetVer = info && info.version ? info.version : 'mới';
+
+  const modalTitle = document.getElementById('update-modal-title');
+  const modalSubtitle = document.getElementById('update-modal-subtitle');
+  if (modalTitle) modalTitle.textContent = 'Phát hiện phiên bản mới';
+  if (modalSubtitle) modalSubtitle.textContent = 'Đã có bản cập nhật mới trên hệ thống';
 
   document.getElementById('update-curr-version').textContent = `v${currentVerStr}`;
   document.getElementById('update-new-version').textContent = `v${targetVer}`;
@@ -1462,6 +1496,9 @@ function showUpdateModal(info) {
 
   document.getElementById('update-state-prompt').style.display = 'block';
   document.getElementById('update-state-downloading').style.display = 'none';
+  const installingState = document.getElementById('update-state-installing');
+  if (installingState) installingState.style.display = 'none';
+
   document.getElementById('update-modal-footer').style.display = 'flex';
 
   modalEl.style.display = 'flex';

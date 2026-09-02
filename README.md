@@ -3,7 +3,7 @@
 > Phần mềm quản lý và xuất phiếu thu tiền nhà trọ — Xây dựng trên nền tảng Electron.
 
 **Tác giả:** Lê Công Bá Nhân  
-**Phiên bản:** 2.3.6  
+**Phiên bản:** 2.3.7  
 **Nền tảng:** Windows (NSIS Installer — Tự động cập nhật qua GitHub Releases)
 
 ---

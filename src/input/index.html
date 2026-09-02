@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Màn Hình Nhập Liệu - Quản Lý Phòng Trọ v2.3.6</title>
+  <title>Màn Hình Nhập Liệu - Quản Lý Phòng Trọ v2.3.7</title>
 
   <!-- Font & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,7 +26,7 @@
           </svg>
         </div>
         <div class="brand-text">
-          <h1>MÀN HÌNH NHẬP LIỆU - QUẢN LÝ PHÒNG TRỌ <span id="app-version-tag" class="title-version-tag">v2.3.6</span>
+          <h1>MÀN HÌNH NHẬP LIỆU - QUẢN LÝ PHÒNG TRỌ <span id="app-version-tag" class="title-version-tag">v2.3.7</span>
           </h1>
           <p>Hệ thống tính tiền & xuất phiếu thu tự động</p>
         </div>
@@ -339,7 +339,7 @@
             <div class="update-check-card">
               <div class="update-info-left">
                 <span class="update-version-label">Phiên bản hiện tại:</span>
-                <strong id="settings-app-version" class="update-version-val">v2.3.6</strong>
+                <strong id="settings-app-version" class="update-version-val">v2.3.7</strong>
               </div>
               <button type="button" id="btn-check-update" class="btn btn-secondary" onclick="checkUpdateManual()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -491,7 +491,7 @@
         <div class="modal-info-box">
           <div class="info-row">
             <span>Phiên bản đang dùng:</span>
-            <strong id="update-curr-version">v2.3.6</strong>
+            <strong id="update-curr-version">v2.3.7</strong>
           </div>
           <div class="info-row">
             <span>Phiên bản mới:</span>
@@ -515,7 +515,27 @@
           </div>
         </div>
 
-        <p class="modal-subtitle" style="margin-top: 14px;">Ứng dụng sẽ tự động đóng và khởi động lại sau khi tải xong.</p>
+        <p class="modal-subtitle" style="margin-top: 14px;">Ứng dụng sẽ tự động tải dữ liệu ngầm...</p>
+      </div>
+
+      <!-- TRẠNG THÁI 3: ĐÃ TẢI XONG - ĐẾM NGƯỢC NÂNG CẤP VÀ DẶN DÒ -->
+      <div id="update-state-installing" class="modal-body" style="display: none;">
+        <div class="installing-notice-card">
+          <div class="installing-header">
+            <span class="badge-success">ĐÃ TẢI XONG 100%</span>
+          </div>
+          <p class="installing-countdown">
+            Ứng dụng sẽ tạm đóng sau <strong id="update-countdown-text" class="text-highlight">3 giây</strong> để tự động nâng cấp.
+          </p>
+          <div class="installing-tips">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>Phần mềm sẽ <strong>tự động khởi động lại</strong> sau khi nâng cấp xong. Vui lòng không mở lại ứng dụng thủ công trong lúc này!</span>
+          </div>
+        </div>
       </div>
 
       <div class="modal-footer" id="update-modal-footer">

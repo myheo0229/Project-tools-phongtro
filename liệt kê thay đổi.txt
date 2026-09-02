@@ -41,3 +41,6 @@ v2.3.5
 
 v2.3.6
 - Áp dụng cơ chế nâng cấp tự động ngầm 100% im lặng (Silent Background Update)
+
+v2.3.7
+- Bổ sung màn hình đếm ngược 3s dặn dò trước khi đóng app và phát thông báo hệ thống Windows Native Notification khi nâng cấp ngầm

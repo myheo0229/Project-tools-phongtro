@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Notification } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
@@ -172,10 +172,25 @@ function setupAutoUpdater(mainWindow) {
         version: info ? info.version : ''
       });
     }
-    // Tự động đóng app và cài đè ngầm im lặng (không hiện bảng hỏi Only for me)
+
+    // Gửi thông báo hệ thống Windows (Native Notification) ở góc màn hình
+    try {
+      if (Notification.isSupported()) {
+        const iconPath = path.join(__dirname, '../assets/icon/icon256x256.png');
+        new Notification({
+          title: 'Quản Lý Phòng Trọ',
+          body: 'Đã tải xong bản mới! Đang tiến hành nâng cấp ngầm, ứng dụng sẽ tự động mở lại sau giây lát...',
+          icon: fs.existsSync(iconPath) ? iconPath : undefined
+        }).show();
+      }
+    } catch (e) {
+      console.error('Không thể hiển thị Windows Notification:', e);
+    }
+
+    // Đợi 3.5 giây cho người dùng xem đếm ngược trên giao diện trước khi tự động đóng và nâng cấp
     setTimeout(() => {
       autoUpdater.quitAndInstall(true, true);
-    }, 1200);
+    }, 3500);
   });
 
   autoUpdater.on('error', (err) => {
