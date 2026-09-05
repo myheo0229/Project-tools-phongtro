@@ -26,13 +26,12 @@
           </svg>
         </div>
         <div class="brand-text">
-          <h1>MÀN HÌNH NHẬP LIỆU - QUẢN LÝ PHÒNG TRỌ <span id="app-version-tag" class="title-version-tag">v2.3.8</span>
-          </h1>
-          <p>Hệ thống tính tiền & xuất phiếu thu tự động</p>
+          <h1>MÀN HÌNH NHẬP LIỆU - QUẢN LÝ PHÒNG TRỌ <span id="app-version-tag" class="title-version-tag">v2.3.8</span></h1>
+          <p class="brand-subtitle">Hệ thống tính tiền & xuất phiếu thu tự động</p>
         </div>
       </div>
 
-      <!-- TAB NAVIGATION -->
+      <!-- TAB NAVIGATION (4 TABS) - KHU VỰC Ở GIỮA -->
       <nav class="nav-tabs">
         <button type="button" class="tab-btn active" id="tab-btn-data" onclick="switchTab('data')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -42,6 +41,22 @@
           </svg>
           Phần 1: Nhập Dữ Liệu
         </button>
+        <button type="button" class="tab-btn" id="tab-btn-rooms" onclick="switchTab('rooms')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          Phần 2: Quản Lý Phòng
+        </button>
+        <button type="button" class="tab-btn" id="tab-btn-persons" onclick="switchTab('persons')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          Phần 3: Thông Tin Người Ở
+        </button>
         <button type="button" class="tab-btn" id="tab-btn-settings" onclick="switchTab('settings')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path
@@ -49,11 +64,11 @@
             </path>
             <circle cx="12" cy="12" r="3"></circle>
           </svg>
-          Phần 2: Cài Đặt Chung
+          Phần 4: Cài Đặt Chung
         </button>
       </nav>
 
-      <!-- CONTROL ACTIONS (GỘP CHUNG 1 NÚT "LƯU & XUẤT") -->
+      <!-- CONTROL ACTIONS (GỘP CHUNG 1 NÚT "LƯU & XUẤT") - KHU VỰC BÊN PHẢI -->
       <div class="header-actions">
         <div class="month-select-wrapper">
           <label for="month-year-select">Tháng / Năm:</label>
@@ -205,7 +220,162 @@
         </div>
       </section>
 
-      <!-- SECTION 2: CÀI ĐẶT CHUNG -->
+      <!-- SECTION 2: QUẢN LÝ PHÒNG -->
+      <section id="section-rooms" class="tab-content">
+        <!-- STATS OVERVIEW CARDS CHO PHẦN PHÒNG -->
+        <div class="stats-grid">
+          <div class="stat-card primary">
+            <div class="stat-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Tổng Số Phòng</span>
+              <span class="stat-value" id="stat-rooms-total">12 Phòng</span>
+            </div>
+          </div>
+
+          <div class="stat-card green">
+            <div class="stat-icon green">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Tổng Số Người Thuê</span>
+              <span class="stat-value" id="stat-rooms-tenants">0 Người</span>
+            </div>
+          </div>
+
+          <div class="stat-card blue">
+            <div class="stat-icon blue">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="18" height="18" x="3" y="3" rx="2"></rect>
+                <path d="m9 12 2 2 4-4"></path>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Phòng Đang Thuê</span>
+              <span class="stat-value" id="stat-rooms-occupied">0 / 12</span>
+            </div>
+          </div>
+
+          <div class="stat-card yellow">
+            <div class="stat-icon yellow">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Phòng Trống</span>
+              <span class="stat-value" id="stat-rooms-empty">12 Phòng</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GRID DANH SÁCH 12 PHÒNG DẠNG CARD -->
+        <div class="rooms-overview-card">
+          <div class="rooms-header-bar">
+            <div>
+              <h2>DANH SÁCH PHÒNG TRỌ (12 PHÒNG)</h2>
+              <p class="section-subtitle">Bấm vào từng phòng để xem chi tiết, chọn Chủ phòng và quản lý Thành viên</p>
+            </div>
+          </div>
+
+          <div class="rooms-grid" id="rooms-grid-container">
+            <!-- Render động 12 room cards bằng Javascript -->
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 3: QUẢN LÝ THÔNG TIN NGƯỜI Ở -->
+      <section id="section-persons" class="tab-content">
+        <div class="persons-container-card">
+          <!-- PERSONS HEADER & ACTIONS -->
+          <div class="persons-header-bar">
+            <div>
+              <h2>DANH SÁCH THÔNG TIN NGƯỜI Ở</h2>
+              <p class="section-subtitle">Quản lý hồ sơ cư dân, số CCCD, hình ảnh giấy tờ và phòng ở hiện tại</p>
+            </div>
+          </div>
+
+          <!-- TOOLBAR TÌM KIẾM (BÊN TRÁI), BỘ LỌC, XÓA & THÊM (BÊN PHẢI) NẰM TRÊN CÙNG 1 LINE -->
+          <div class="persons-toolbar">
+            <div class="search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="person-search-input" class="form-control search-input"
+                placeholder="Tìm kiếm theo họ tên, SĐT gọi/Zalo, số CCCD..." oninput="onPersonSearchInput()">
+              <button type="button" class="search-clear-btn" id="person-search-clear" onclick="clearPersonSearch()" style="display: none;">✕</button>
+            </div>
+
+            <div class="persons-toolbar-right">
+              <div class="filter-box">
+                <label for="person-filter-room">Lọc theo phòng:</label>
+                <select id="person-filter-room" class="custom-select" onchange="onPersonFilterChange()">
+                  <option value="">Tất cả phòng</option>
+                  <option value="_unassigned">Chưa xếp phòng</option>
+                  <!-- Render động 1A -> 6B -->
+                </select>
+              </div>
+
+              <button type="button" class="btn btn-danger-outline" id="btn-delete-selected-persons"
+                onclick="deleteSelectedPersons()" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Xóa các mục đã chọn (<span id="selected-person-count">0</span>)
+              </button>
+
+              <button type="button" class="btn btn-primary" onclick="openAddPersonModal()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Thêm Người Thuê Mới
+              </button>
+            </div>
+          </div>
+
+          <!-- BẢNG DANH SÁCH NGƯỜI Ở -->
+          <div class="table-wrapper">
+            <table class="data-table persons-table" id="persons-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px; text-align: center;">
+                    <input type="checkbox" id="person-select-all" onchange="toggleSelectAllPersons(this.checked)">
+                  </th>
+                  <th style="width: 50px; text-align: center;">STT</th>
+                  <th style="width: 180px;">Họ và Tên</th>
+                  <th style="width: 110px; text-align: center;">Phòng</th>
+                  <th style="width: 130px;">SĐT Gọi</th>
+                  <th style="width: 130px;">SĐT Zalo</th>
+                  <th style="width: 140px;">Số CCCD</th>
+                  <th style="width: 140px; text-align: center;">Ngày Sinh</th>
+                  <th style="width: 110px; text-align: center;">Ngày Vào Ở</th>
+                  <th style="width: 130px; text-align: center;">Ảnh CCCD</th>
+                  <th style="width: 110px; text-align: center;">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody id="persons-table-body">
+                <!-- Javascript render động danh sách người ở -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 4: CÀI ĐẶT CHUNG -->
       <section id="section-settings" class="tab-content">
         <div class="settings-card">
           <div class="settings-card-header">
@@ -541,6 +711,387 @@
       <div class="modal-footer" id="update-modal-footer">
         <button type="button" class="btn btn-secondary" onclick="cancelUpdateModal()">Để sau (Hủy)</button>
         <button type="button" class="btn btn-primary" onclick="startDownloadUpdateNow()">Cập nhật ngay</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 1: CHI TIẾT PHÒNG & QUẢN LÝ THÀNH VIÊN -->
+  <div id="room-detail-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <div class="modal-icon primary">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+        </div>
+        <div class="modal-title-group">
+          <div class="modal-title-with-badge">
+            <h3 id="room-modal-title">Chi Tiết Phòng 1A</h3>
+            <span id="room-modal-status-badge" class="badge-status">Đang thuê (2 người)</span>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeRoomDetailModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- KHU VỰC CHỦ PHÒNG -->
+        <div class="room-owner-section">
+          <label for="room-owner-select" class="form-label-bold">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary">
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            Chủ phòng đại diện (Người chịu trách nhiệm & nhận hóa đơn):
+          </label>
+          <div class="owner-select-group">
+            <select id="room-owner-select" class="custom-select form-control" onchange="onRoomOwnerSelectChange()">
+              <!-- Render động danh sách người hợp lệ -->
+            </select>
+            <button type="button" class="btn btn-secondary" onclick="clearRoomOwner()">Bỏ chọn chủ phòng</button>
+          </div>
+        </div>
+
+        <!-- KHU VỰC THÀNH VIÊN TRONG PHÒNG -->
+        <div class="room-members-section">
+          <div class="room-members-toolbar">
+            <div class="members-toolbar-left">
+              <h4>Danh sách thành viên (<span id="room-members-count">0</span>)</h4>
+            </div>
+            <div class="members-toolbar-actions">
+              <button type="button" class="btn btn-sm btn-danger-outline" id="btn-room-remove-selected"
+                onclick="removeSelectedMembersFromRoom()" disabled>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                Gỡ khỏi phòng (<span id="room-selected-remove-count">0</span>)
+              </button>
+              <button type="button" class="btn btn-sm btn-danger-outline" id="btn-room-delete-selected"
+                onclick="deleteSelectedMembersFromSystem()" disabled>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Xóa vĩnh viễn
+              </button>
+              <button type="button" class="btn btn-sm btn-primary" onclick="openAddMemberToRoomModal()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Thêm thành viên
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrapper room-members-table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 36px; text-align: center;">
+                    <input type="checkbox" id="room-member-select-all" onchange="toggleSelectAllRoomMembers(this.checked)">
+                  </th>
+                  <th style="width: 200px;">Họ và Tên</th>
+                  <th style="width: 120px;">Vai Trò</th>
+                  <th style="width: 130px;">SĐT Gọi</th>
+                  <th style="width: 150px;">Số CCCD</th>
+                  <th style="width: 150px; text-align: center;">Ngày Sinh</th>
+                  <th style="width: 130px; text-align: center;">Ngày Vào Ở</th>
+                  <th style="width: 100px; text-align: center;">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody id="room-members-table-body">
+                <!-- Javascript render danh sách thành viên của phòng -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeRoomDetailModal()">Đóng</button>
+        <button type="button" class="btn btn-primary" onclick="saveRoomAssignmentModal()">Lưu Thay Đổi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: THÊM / CHỈNH SỬA THÔNG TIN NGƯỜI Ở (2 TABS THEO GIAO DIỆN MẪU) -->
+  <div id="person-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card modal-person">
+      <!-- SEGMENTED TAB CONTROL TRÊN CÙNG THEO MẪU -->
+      <div class="segmented-control-container">
+        <div class="segmented-control-pill-wrap">
+          <button type="button" class="segment-pill-btn active" id="person-tab-btn-info" onclick="switchPersonFormTab('info')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>Thông tin</span>
+          </button>
+          <button type="button" class="segment-pill-btn" id="person-tab-btn-cccd" onclick="switchPersonFormTab('cccd')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect width="20" height="14" x="2" y="5" rx="2"></rect>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
+            </svg>
+            <span>Ảnh CCCD</span>
+          </button>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closePersonModal()" title="Đóng">✕</button>
+      </div>
+
+      <form id="person-form" onsubmit="submitPersonForm(event)" novalidate>
+        <input type="hidden" id="person-form-id" value="">
+
+        <!-- TAB 1: THÔNG TIN (THEO SCREENSHOT 1 CỦA USER) -->
+        <div id="person-form-tab-info" class="person-tab-content active">
+          <div class="person-form-grid">
+            <!-- HÀNG 1: Họ tên | Số điện thoại -->
+            <div class="form-group">
+              <label for="person-hoTen" class="custom-form-label">Họ tên</label>
+              <input type="text" id="person-hoTen" class="form-control rounded-input" placeholder="" required>
+              <span class="field-error" id="err-person-hoTen"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="person-sdtGoi" class="custom-form-label">Số điện thoại</label>
+              <input type="tel" id="person-sdtGoi" class="form-control rounded-input" placeholder="" required maxlength="11">
+              <span class="field-error" id="err-person-sdtGoi"></span>
+            </div>
+
+            <!-- HÀNG 2: Email | CCCD -->
+            <div class="form-group">
+              <label for="person-email" class="custom-form-label">Email</label>
+              <input type="email" id="person-email" class="form-control rounded-input" placeholder="">
+              <span class="field-error" id="err-person-email"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="person-soCCCD" class="custom-form-label">CCCD</label>
+              <input type="text" id="person-soCCCD" class="form-control rounded-input" placeholder="" required maxlength="12">
+              <span class="field-error" id="err-person-soCCCD"></span>
+            </div>
+
+            <!-- HÀNG 3: Ngày sinh (dd/mm/yyyy 📅) | Giới tính (Nam ⌵) -->
+            <div class="form-group">
+              <label for="person-ngaySinh" class="custom-form-label">Ngày sinh</label>
+              <div class="date-input-container">
+                <input type="text" id="person-ngaySinh" class="form-control rounded-input date-input" placeholder="dd/mm/yyyy" required maxlength="10" autocomplete="off">
+                <input type="date" id="person-ngaySinh-picker" class="hidden-date-picker" tabindex="-1" onchange="onDatePickerChange('person-ngaySinh', this.value)">
+                <svg class="calendar-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" onclick="openNativeDatePicker('person-ngaySinh')" title="Chọn ngày từ lịch">
+                  <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+              </div>
+              <span class="field-error" id="err-person-ngaySinh"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="person-gioiTinh" class="custom-form-label">Giới tính</label>
+              <div class="select-wrapper">
+                <select id="person-gioiTinh" class="custom-select form-control rounded-input">
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- HÀNG 4: SĐT Zalo | Phòng hiện tại -->
+            <div class="form-group">
+              <label for="person-sdtZalo" class="custom-form-label">Số điện thoại Zalo</label>
+              <input type="tel" id="person-sdtZalo" class="form-control rounded-input" placeholder="" maxlength="11">
+              <span class="field-error" id="err-person-sdtZalo"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="person-phongId" class="custom-form-label">Phòng hiện tại</label>
+              <div class="select-wrapper">
+                <select id="person-phongId" class="custom-select form-control rounded-input">
+                  <option value="">Chưa xếp phòng</option>
+                  <!-- Render động 1A -> 6B -->
+                </select>
+              </div>
+            </div>
+
+            <!-- HÀNG 5: Quê quán | Ngày vào ở -->
+            <div class="form-group">
+              <label for="person-queQuan" class="custom-form-label">Quê quán</label>
+              <input type="text" id="person-queQuan" class="form-control rounded-input" placeholder="Xã/Phường, Quận/Huyện, Tỉnh/Thành">
+            </div>
+
+            <div class="form-group">
+              <label for="person-ngayVaoO" class="custom-form-label">Ngày vào ở</label>
+              <div class="date-input-container">
+                <input type="text" id="person-ngayVaoO" class="form-control rounded-input date-input" placeholder="dd/mm/yyyy" maxlength="10" autocomplete="off">
+                <input type="date" id="person-ngayVaoO-picker" class="hidden-date-picker" tabindex="-1" onchange="onDatePickerChange('person-ngayVaoO', this.value)">
+                <svg class="calendar-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" onclick="openNativeDatePicker('person-ngayVaoO')" title="Chọn ngày từ lịch">
+                  <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+              </div>
+              <span class="field-error" id="err-person-ngayVaoO"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: ẢNH CCCD (THEO SCREENSHOT 2 CỦA USER) -->
+        <div id="person-form-tab-cccd" class="person-tab-content" style="display: none;">
+          <div class="cccd-header-heading">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2">
+              <rect width="20" height="14" x="2" y="5" rx="2"></rect>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
+            </svg>
+            <h3>Ảnh CCCD</h3>
+          </div>
+
+          <div class="cccd-upload-two-cols">
+            <!-- KHUNG MẶT TRƯỚC -->
+            <div class="cccd-col-card">
+              <div class="cccd-col-title-bar">
+                <span class="cccd-title-text">Mặt trước CCCD</span>
+                <button type="button" class="btn-cccd-upload" onclick="pickCCCDFile('front')">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                  </svg>
+                  Upload
+                </button>
+              </div>
+
+              <div class="cccd-dashed-dropzone" id="cccd-front-dropzone">
+                <div class="cccd-placeholder-content" id="cccd-front-empty">
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5">
+                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
+                    <circle cx="9" cy="9" r="2"></circle>
+                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+                  </svg>
+                  <span class="cccd-placeholder-text">Chưa có ảnh CCCD mặt trước</span>
+                </div>
+                <div class="cccd-preview-box" id="cccd-front-preview" style="display: none;">
+                  <img id="cccd-front-img" src="" alt="Mặt trước CCCD">
+                  <div class="cccd-preview-overlay">
+                    <button type="button" class="btn-preview-action view" onclick="previewImageZoom('front')" title="Xem phóng to">👁</button>
+                    <button type="button" class="btn-preview-action remove" onclick="removeCCCDImage('front')" title="Xóa ảnh">✕</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- KHUNG MẶT SAU -->
+            <div class="cccd-col-card">
+              <div class="cccd-col-title-bar">
+                <span class="cccd-title-text">Mặt sau CCCD</span>
+                <button type="button" class="btn-cccd-upload" onclick="pickCCCDFile('back')">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                  </svg>
+                  Upload
+                </button>
+              </div>
+
+              <div class="cccd-dashed-dropzone" id="cccd-back-dropzone">
+                <div class="cccd-placeholder-content" id="cccd-back-empty">
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5">
+                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
+                    <circle cx="9" cy="9" r="2"></circle>
+                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+                  </svg>
+                  <span class="cccd-placeholder-text">Chưa có ảnh CCCD mặt sau</span>
+                </div>
+                <div class="cccd-preview-box" id="cccd-back-preview" style="display: none;">
+                  <img id="cccd-back-img" src="" alt="Mặt sau CCCD">
+                  <div class="cccd-preview-overlay">
+                    <button type="button" class="btn-preview-action view" onclick="previewImageZoom('back')" title="Xem phóng to">👁</button>
+                    <button type="button" class="btn-preview-action remove" onclick="removeCCCDImage('back')" title="Xóa ảnh">✕</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STATUS BADGE Ở DƯỚI CÙNG THEO SCREENSHOT -->
+          <div class="cccd-bottom-status-wrap">
+            <span id="cccd-status-badge" class="badge-status-pill">Còn thiếu 2 ảnh CCCD</span>
+          </div>
+        </div>
+
+        <div class="modal-footer modal-footer-clean">
+          <button type="button" class="btn btn-secondary btn-rounded" onclick="closePersonModal()">Hủy</button>
+          <button type="submit" class="btn btn-primary btn-rounded" id="btn-save-person">Lưu Thông Tin</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 3: CHỌN NHANH NGƯỜI ĐỂ THÊM VÀO PHÒNG -->
+  <div id="add-member-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-icon primary">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <line x1="19" y1="8" x2="19" y2="14"></line>
+            <line x1="22" y1="11" x2="16" y2="11"></line>
+          </svg>
+        </div>
+        <div class="modal-title-group">
+          <h3 id="add-member-modal-title">Thêm Thành Viên Vào Phòng</h3>
+          <p class="modal-subtitle">Chọn người từ danh sách chưa xếp phòng hoặc tạo mới</p>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeAddMemberToRoomModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="add-member-options">
+          <label class="form-label-bold">Chọn người chưa xếp phòng:</label>
+          <div id="unassigned-persons-list" class="unassigned-list-box">
+            <!-- Render danh sách checkbox người chưa có phòng -->
+          </div>
+
+          <div class="or-divider"><span>HOẶC</span></div>
+
+          <button type="button" class="btn btn-secondary btn-block" onclick="createAndAssignNewPerson()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Tạo mới người thuê và gán luôn vào phòng này
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeAddMemberToRoomModal()">Hủy</button>
+        <button type="button" class="btn btn-primary" onclick="confirmAddSelectedPersonsToRoom()">Gán Vào Phòng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: LIGHTBOX XEM ẢNH CCCD PHÓNG TO -->
+  <div id="lightbox-modal" class="modal-overlay" style="display: none;" onclick="closeLightboxModal(event)">
+    <div class="lightbox-card" onclick="event.stopPropagation()">
+      <div class="lightbox-header">
+        <h3 id="lightbox-title">Ảnh CCCD</h3>
+        <button type="button" class="lightbox-close" onclick="closeLightboxModal()">✕</button>
+      </div>
+      <div class="lightbox-body">
+        <div class="lightbox-tabs">
+          <button type="button" class="lightbox-tab-btn active" id="lb-tab-front" onclick="switchLightboxTab('front')">Mặt trước</button>
+          <button type="button" class="lightbox-tab-btn" id="lb-tab-back" onclick="switchLightboxTab('back')">Mặt sau</button>
+        </div>
+        <div class="lightbox-img-wrapper">
+          <img id="lightbox-img" src="" alt="Ảnh CCCD phóng to">
+          <div id="lightbox-empty-notice" class="lightbox-empty" style="display: none;">Chưa có ảnh này</div>
+        </div>
       </div>
     </div>
   </div>

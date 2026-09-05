@@ -392,6 +392,531 @@ ipcMain.handle('month-data:load', async (event, monthKey) => {
   }
 });
 
+// ==========================================
+// QUẢN LÝ PHÒNG & NGƯỜI Ở (DATA & CCCD PHOTOS)
+// ==========================================
+
+function getDataDir() {
+  const pointer = getPointer();
+  if (pointer && pointer.baseFolder) {
+    return path.join(pointer.baseFolder, pointer.dataFolderName || 'data');
+  }
+  const legacyPortable = process.env.PORTABLE_EXECUTABLE_DIR ? path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'data') : null;
+  if (legacyPortable && fs.existsSync(legacyPortable)) {
+    return legacyPortable;
+  }
+  return path.join(PROJECT_ROOT, 'data');
+}
+
+const DEFAULT_ROOM_IDS = ['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B', '6A', '6B'];
+
+function readRoomsData() {
+  const dataDir = getDataDir();
+  const roomsFile = path.join(dataDir, 'rooms.json');
+  let rooms = [];
+  if (fs.existsSync(roomsFile)) {
+    try {
+      const content = fs.readFileSync(roomsFile, 'utf8');
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) {
+        rooms = parsed.map(r => ({
+          id: r.id || r.phong,
+          phong: r.phong || r.id,
+          chuPhongId: r.chuPhongId || null,
+          thanhVienIds: Array.isArray(r.thanhVienIds) ? r.thanhVienIds : []
+        }));
+      }
+    } catch (e) {
+      console.error('Lỗi đọc rooms.json:', e);
+    }
+  }
+  // Đảm bảo đủ 12 phòng mặc định
+  for (const rid of DEFAULT_ROOM_IDS) {
+    if (!rooms.some(r => r.phong === rid || r.id === rid)) {
+      rooms.push({ id: rid, phong: rid, chuPhongId: null, thanhVienIds: [] });
+    }
+  }
+  return rooms;
+}
+
+function writeRoomsData(rooms) {
+  const dataDir = getDataDir();
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  const roomsFile = path.join(dataDir, 'rooms.json');
+  fs.writeFileSync(roomsFile, JSON.stringify(rooms, null, 2), 'utf8');
+}
+
+function readPersonsData() {
+  const dataDir = getDataDir();
+  const personsFile = path.join(dataDir, 'persons.json');
+  if (fs.existsSync(personsFile)) {
+    try {
+      const content = fs.readFileSync(personsFile, 'utf8');
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      console.error('Lỗi đọc persons.json:', e);
+    }
+  }
+  return [];
+}
+
+function writePersonsData(persons) {
+  const dataDir = getDataDir();
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  const personsFile = path.join(dataDir, 'persons.json');
+  fs.writeFileSync(personsFile, JSON.stringify(persons, null, 2), 'utf8');
+}
+
+function getPersonFolderRelPath(person, allPersons = []) {
+  const safeName = (person.hoTen || 'NguoiO').replace(/[/\\?%*:|"<>]/g, '').trim() || 'NguoiO';
+  const cccd4 = person.soCCCD && person.soCCCD.length >= 4 ? person.soCCCD.slice(-4) : (person.id ? person.id.slice(-4) : '0000');
+  
+  if (person.phongId && person.phongId.trim() !== '') {
+    const pId = person.phongId.trim();
+    const sameRoomPersons = allPersons.filter(p => p.phongId === pId && p.id !== person.id);
+    const hasSameName = sameRoomPersons.some(p => (p.hoTen || '').trim().toLowerCase() === (person.hoTen || '').trim().toLowerCase());
+    const folderName = hasSameName ? `${safeName} (CCCD ${cccd4})` : safeName;
+    return path.join('Thông tin người ở', pId, folderName);
+  } else {
+    const folderName = `${safeName}_${cccd4}`;
+    return path.join('Thông tin người ở', '_ChuaXepPhong', folderName);
+  }
+}
+
+function saveBase64Image(targetFilePath, base64Data) {
+  const dir = path.dirname(targetFilePath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+  fs.writeFileSync(targetFilePath, Buffer.from(cleanBase64, 'base64'));
+}
+
+function movePersonPhotoFolder(oldAbsPath, newAbsPath) {
+  if (!oldAbsPath || !fs.existsSync(oldAbsPath) || path.normalize(oldAbsPath) === path.normalize(newAbsPath)) return;
+  const newParent = path.dirname(newAbsPath);
+  if (!fs.existsSync(newParent)) {
+    fs.mkdirSync(newParent, { recursive: true });
+  }
+  try {
+    if (!fs.existsSync(newAbsPath)) {
+      fs.renameSync(oldAbsPath, newAbsPath);
+    } else {
+      copyDirSync(oldAbsPath, newAbsPath);
+      fs.rmSync(oldAbsPath, { recursive: true, force: true });
+    }
+    // Dọn dẹp thư mục cha cũ nếu rỗng
+    const oldParent = path.dirname(oldAbsPath);
+    if (fs.existsSync(oldParent) && fs.readdirSync(oldParent).length === 0) {
+      fs.rmdirSync(oldParent);
+    }
+  } catch (err) {
+    console.error('Lỗi khi di chuyển thư mục ảnh CCCD:', err);
+  }
+}
+
+// IPC: Đọc danh sách người ở
+ipcMain.handle('persons:load', async () => {
+  try {
+    return readPersonsData();
+  } catch (err) {
+    console.error('Lỗi persons:load:', err);
+    return [];
+  }
+});
+
+// IPC: Lưu hoặc Cập nhật thông tin Người ở
+ipcMain.handle('persons:save', async (event, personData) => {
+  try {
+    if (!personData || !personData.hoTen || !personData.soCCCD) {
+      return { error: 'Thiếu thông tin bắt buộc (Họ tên, CCCD)!' };
+    }
+
+    const dataDir = getDataDir();
+    let persons = readPersonsData();
+    let rooms = readRoomsData();
+
+    const isNew = !personData.id;
+    const personId = personData.id || `per_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    
+    let existingPerson = persons.find(p => p.id === personId);
+    let oldRelFolder = existingPerson ? getPersonFolderRelPath(existingPerson, persons) : null;
+    let oldAbsFolder = oldRelFolder ? path.join(dataDir, oldRelFolder) : null;
+
+    // Chuẩn bị object người ở mới
+    const updatedPerson = {
+      id: personId,
+      hoTen: (personData.hoTen || '').trim(),
+      sdtGoi: (personData.sdtGoi || '').trim(),
+      sdtZalo: (personData.sdtZalo || '').trim(),
+      email: (personData.email || '').trim(),
+      soCCCD: (personData.soCCCD || '').trim(),
+      ngaySinh: (personData.ngaySinh || '').trim(),
+      gioiTinh: personData.gioiTinh || 'Nam',
+      queQuan: (personData.queQuan || '').trim(),
+      queQuanOcr: personData.queQuanOcr || {
+        tinhThanh: '',
+        quanHuyen: '',
+        phuongXa: '',
+        diaChiChiTiet: '',
+        raw: (personData.queQuan || '').trim()
+      },
+      ngayVaoO: (personData.ngayVaoO || '').trim(),
+      phongId: (personData.phongId || '').trim() || null,
+      anhCCCDMatTruoc: existingPerson ? (existingPerson.anhCCCDMatTruoc || '') : '',
+      anhCCCDMatSau: existingPerson ? (existingPerson.anhCCCDMatSau || '') : '',
+      createdAt: existingPerson ? existingPerson.createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // Xác định thư mục ảnh mới
+    const tempPersonsList = persons.filter(p => p.id !== personId).concat([updatedPerson]);
+    const newRelFolder = getPersonFolderRelPath(updatedPerson, tempPersonsList);
+    const newAbsFolder = path.join(dataDir, newRelFolder);
+
+    // Di chuyển folder cũ sang folder mới nếu đổi phòng hoặc đổi tên
+    if (oldAbsFolder && oldAbsFolder !== newAbsFolder && fs.existsSync(oldAbsFolder)) {
+      movePersonPhotoFolder(oldAbsFolder, newAbsFolder);
+    }
+
+    if (!fs.existsSync(newAbsFolder)) {
+      fs.mkdirSync(newAbsFolder, { recursive: true });
+    }
+
+    // Xử lý ảnh mặt trước
+    if (personData.frontImageBase64) {
+      const frontFileName = 'cccd_mat_truoc.jpg';
+      const frontAbsPath = path.join(newAbsFolder, frontFileName);
+      saveBase64Image(frontAbsPath, personData.frontImageBase64);
+      updatedPerson.anhCCCDMatTruoc = path.join(newRelFolder, frontFileName).replace(/\\/g, '/');
+    } else if (personData.removeFrontImage) {
+      if (updatedPerson.anhCCCDMatTruoc) {
+        const p = path.join(dataDir, updatedPerson.anhCCCDMatTruoc);
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+      }
+      updatedPerson.anhCCCDMatTruoc = '';
+    } else if (updatedPerson.anhCCCDMatTruoc && oldRelFolder && oldRelFolder !== newRelFolder) {
+      // Cập nhật lại đường dẫn tương đối sau khi di chuyển thư mục
+      const baseName = path.basename(updatedPerson.anhCCCDMatTruoc);
+      updatedPerson.anhCCCDMatTruoc = path.join(newRelFolder, baseName).replace(/\\/g, '/');
+    }
+
+    // Xử lý ảnh mặt sau
+    if (personData.backImageBase64) {
+      const backFileName = 'cccd_mat_sau.jpg';
+      const backAbsPath = path.join(newAbsFolder, backFileName);
+      saveBase64Image(backAbsPath, personData.backImageBase64);
+      updatedPerson.anhCCCDMatSau = path.join(newRelFolder, backFileName).replace(/\\/g, '/');
+    } else if (personData.removeBackImage) {
+      if (updatedPerson.anhCCCDMatSau) {
+        const p = path.join(dataDir, updatedPerson.anhCCCDMatSau);
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+      }
+      updatedPerson.anhCCCDMatSau = '';
+    } else if (updatedPerson.anhCCCDMatSau && oldRelFolder && oldRelFolder !== newRelFolder) {
+      const baseName = path.basename(updatedPerson.anhCCCDMatSau);
+      updatedPerson.anhCCCDMatSau = path.join(newRelFolder, baseName).replace(/\\/g, '/');
+    }
+
+    // Cập nhật vào persons.json
+    if (isNew) {
+      persons.push(updatedPerson);
+    } else {
+      const idx = persons.findIndex(p => p.id === personId);
+      if (idx !== -1) persons[idx] = updatedPerson;
+      else persons.push(updatedPerson);
+    }
+    writePersonsData(persons);
+
+    // Đồng bộ phòng trong rooms.json
+    const newPhongId = updatedPerson.phongId;
+    const oldPhongId = existingPerson ? existingPerson.phongId : null;
+
+    if (oldPhongId && oldPhongId !== newPhongId) {
+      const oldRoom = rooms.find(r => r.phong === oldPhongId || r.id === oldPhongId);
+      if (oldRoom) {
+        if (oldRoom.chuPhongId === personId) oldRoom.chuPhongId = null;
+        oldRoom.thanhVienIds = (oldRoom.thanhVienIds || []).filter(id => id !== personId);
+      }
+    }
+
+    if (newPhongId) {
+      // Gỡ khỏi các phòng khác nếu có
+      rooms.forEach(r => {
+        if (r.phong !== newPhongId && r.id !== newPhongId) {
+          if (r.chuPhongId === personId) r.chuPhongId = null;
+          r.thanhVienIds = (r.thanhVienIds || []).filter(id => id !== personId);
+        }
+      });
+      // Thêm vào phòng mới
+      const targetRoom = rooms.find(r => r.phong === newPhongId || r.id === newPhongId);
+      if (targetRoom) {
+        if (targetRoom.chuPhongId !== personId && !(targetRoom.thanhVienIds || []).includes(personId)) {
+          targetRoom.thanhVienIds = targetRoom.thanhVienIds || [];
+          targetRoom.thanhVienIds.push(personId);
+        }
+      }
+    } else {
+      // Gỡ khỏi mọi phòng
+      rooms.forEach(r => {
+        if (r.chuPhongId === personId) r.chuPhongId = null;
+        r.thanhVienIds = (r.thanhVienIds || []).filter(id => id !== personId);
+      });
+    }
+    writeRoomsData(rooms);
+
+    return { success: true, person: updatedPerson };
+  } catch (err) {
+    console.error('Lỗi persons:save:', err);
+    return { error: err.message };
+  }
+});
+
+// IPC: Xóa 1 hoặc nhiều Người ở (Hard Delete + Xóa thư mục ảnh)
+ipcMain.handle('persons:delete', async (event, ids) => {
+  try {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return { error: 'Danh sách ID không hợp lệ' };
+    }
+
+    const dataDir = getDataDir();
+    let persons = readPersonsData();
+    let rooms = readRoomsData();
+
+    ids.forEach(id => {
+      const person = persons.find(p => p.id === id);
+      if (person) {
+        const relFolder = getPersonFolderRelPath(person, persons);
+        const absFolder = path.join(dataDir, relFolder);
+        if (fs.existsSync(absFolder)) {
+          try {
+            fs.rmSync(absFolder, { recursive: true, force: true });
+            // Dọn dẹp thư mục cha nếu rỗng
+            const parentDir = path.dirname(absFolder);
+            if (fs.existsSync(parentDir) && fs.readdirSync(parentDir).length === 0) {
+              fs.rmdirSync(parentDir);
+            }
+          } catch (e) {
+            console.error('Lỗi xóa thư mục ảnh người:', e);
+          }
+        }
+      }
+
+      // Gỡ khỏi rooms.json
+      rooms.forEach(r => {
+        if (r.chuPhongId === id) r.chuPhongId = null;
+        r.thanhVienIds = (r.thanhVienIds || []).filter(memId => memId !== id);
+      });
+    });
+
+    persons = persons.filter(p => !ids.includes(p.id));
+    writePersonsData(persons);
+    writeRoomsData(rooms);
+
+    return { success: true, count: ids.length };
+  } catch (err) {
+    console.error('Lỗi persons:delete:', err);
+    return { error: err.message };
+  }
+});
+
+// IPC: Đọc danh sách Phòng
+ipcMain.handle('rooms:load', async () => {
+  try {
+    const rooms = readRoomsData();
+    const persons = readPersonsData();
+    return { rooms, persons };
+  } catch (err) {
+    console.error('Lỗi rooms:load:', err);
+    return { rooms: [], persons: [] };
+  }
+});
+
+// IPC: Cập nhật phân bổ phòng (Chủ phòng & Thành viên)
+ipcMain.handle('rooms:save-assignment', async (event, { roomId, chuPhongId, thanhVienIds }) => {
+  try {
+    if (!roomId) return { error: 'Thiếu roomId' };
+
+    const dataDir = getDataDir();
+    let rooms = readRoomsData();
+    let persons = readPersonsData();
+
+    const targetRoom = rooms.find(r => r.phong === roomId || r.id === roomId);
+    if (!targetRoom) return { error: 'Không tìm thấy phòng ' + roomId };
+
+    // Tập hợp người mới của phòng
+    const newMembersInThisRoom = Array.from(new Set([chuPhongId, ...(thanhVienIds || [])].filter(Boolean)));
+
+    // Những người trước đây ở phòng này nhưng giờ bị gỡ
+    const oldMembersInThisRoom = Array.from(new Set([targetRoom.chuPhongId, ...(targetRoom.thanhVienIds || [])].filter(Boolean)));
+    const removedMemberIds = oldMembersInThisRoom.filter(id => !newMembersInThisRoom.includes(id));
+
+    // Cập nhật target room
+    targetRoom.chuPhongId = chuPhongId || null;
+    targetRoom.thanhVienIds = (thanhVienIds || []).filter(id => id !== chuPhongId);
+
+    // Xử lý các người được thêm / giữ lại ở phòng này
+    newMembersInThisRoom.forEach(id => {
+      const person = persons.find(p => p.id === id);
+      if (person) {
+        const oldRelFolder = getPersonFolderRelPath(person, persons);
+        const oldAbsFolder = path.join(dataDir, oldRelFolder);
+
+        person.phongId = roomId;
+        person.updatedAt = new Date().toISOString();
+
+        const newRelFolder = getPersonFolderRelPath(person, persons);
+        const newAbsFolder = path.join(dataDir, newRelFolder);
+
+        if (oldAbsFolder !== newAbsFolder && fs.existsSync(oldAbsFolder)) {
+          movePersonPhotoFolder(oldAbsFolder, newAbsFolder);
+          if (person.anhCCCDMatTruoc) {
+            person.anhCCCDMatTruoc = path.join(newRelFolder, path.basename(person.anhCCCDMatTruoc)).replace(/\\/g, '/');
+          }
+          if (person.anhCCCDMatSau) {
+            person.anhCCCDMatSau = path.join(newRelFolder, path.basename(person.anhCCCDMatSau)).replace(/\\/g, '/');
+          }
+        }
+      }
+    });
+
+    // Xử lý các người bị gỡ khỏi phòng này (trở về _ChuaXepPhong)
+    removedMemberIds.forEach(id => {
+      const person = persons.find(p => p.id === id);
+      if (person && person.phongId === roomId) {
+        const oldRelFolder = getPersonFolderRelPath(person, persons);
+        const oldAbsFolder = path.join(dataDir, oldRelFolder);
+
+        person.phongId = null;
+        person.updatedAt = new Date().toISOString();
+
+        const newRelFolder = getPersonFolderRelPath(person, persons);
+        const newAbsFolder = path.join(dataDir, newRelFolder);
+
+        if (oldAbsFolder !== newAbsFolder && fs.existsSync(oldAbsFolder)) {
+          movePersonPhotoFolder(oldAbsFolder, newAbsFolder);
+          if (person.anhCCCDMatTruoc) {
+            person.anhCCCDMatTruoc = path.join(newRelFolder, path.basename(person.anhCCCDMatTruoc)).replace(/\\/g, '/');
+          }
+          if (person.anhCCCDMatSau) {
+            person.anhCCCDMatSau = path.join(newRelFolder, path.basename(person.anhCCCDMatSau)).replace(/\\/g, '/');
+          }
+        }
+      }
+    });
+
+    writeRoomsData(rooms);
+    writePersonsData(persons);
+
+    return { success: true, rooms, persons };
+  } catch (err) {
+    console.error('Lỗi rooms:save-assignment:', err);
+    return { error: err.message };
+  }
+});
+
+// IPC: Gỡ 1 hoặc nhiều người khỏi phòng
+ipcMain.handle('rooms:remove-members', async (event, roomId, memberIds) => {
+  try {
+    if (!roomId || !memberIds || !Array.isArray(memberIds)) {
+      return { error: 'Dữ liệu không hợp lệ' };
+    }
+
+    const dataDir = getDataDir();
+    let rooms = readRoomsData();
+    let persons = readPersonsData();
+
+    const targetRoom = rooms.find(r => r.phong === roomId || r.id === roomId);
+    if (!targetRoom) return { error: 'Không tìm thấy phòng' };
+
+    memberIds.forEach(id => {
+      if (targetRoom.chuPhongId === id) targetRoom.chuPhongId = null;
+      targetRoom.thanhVienIds = (targetRoom.thanhVienIds || []).filter(mId => mId !== id);
+
+      const person = persons.find(p => p.id === id);
+      if (person) {
+        const oldRelFolder = getPersonFolderRelPath(person, persons);
+        const oldAbsFolder = path.join(dataDir, oldRelFolder);
+
+        person.phongId = null;
+        person.updatedAt = new Date().toISOString();
+
+        const newRelFolder = getPersonFolderRelPath(person, persons);
+        const newAbsFolder = path.join(dataDir, newRelFolder);
+
+        if (oldAbsFolder !== newAbsFolder && fs.existsSync(oldAbsFolder)) {
+          movePersonPhotoFolder(oldAbsFolder, newAbsFolder);
+          if (person.anhCCCDMatTruoc) {
+            person.anhCCCDMatTruoc = path.join(newRelFolder, path.basename(person.anhCCCDMatTruoc)).replace(/\\/g, '/');
+          }
+          if (person.anhCCCDMatSau) {
+            person.anhCCCDMatSau = path.join(newRelFolder, path.basename(person.anhCCCDMatSau)).replace(/\\/g, '/');
+          }
+        }
+      }
+    });
+
+    writeRoomsData(rooms);
+    writePersonsData(persons);
+
+    return { success: true, rooms, persons };
+  } catch (err) {
+    console.error('Lỗi rooms:remove-members:', err);
+    return { error: err.message };
+  }
+});
+
+// IPC: Chọn file ảnh từ máy tính (qua dialog native)
+ipcMain.handle('dialog:pick-image', async () => {
+  try {
+    const result = await dialog.showOpenDialog({
+      title: 'Chọn ảnh CCCD',
+      properties: ['openFile'],
+      filters: [
+        { name: 'Hình ảnh', extensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp'] }
+      ]
+    });
+
+    if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+      return null;
+    }
+
+    const filePath = result.filePaths[0];
+    const ext = path.extname(filePath).replace('.', '').toLowerCase();
+    const mimeType = ext === 'png' ? 'image/png' : (ext === 'webp' ? 'image/webp' : 'image/jpeg');
+    const fileBuffer = fs.readFileSync(filePath);
+    const base64 = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+
+    return { filePath, base64 };
+  } catch (err) {
+    console.error('Lỗi dialog:pick-image:', err);
+    return null;
+  }
+});
+
+// IPC: Đọc ảnh từ ổ đĩa dạng base64 để hiển thị
+ipcMain.handle('image:read-base64', async (event, relOrAbsPath) => {
+  try {
+    if (!relOrAbsPath) return null;
+    const dataDir = getDataDir();
+    const absPath = path.isAbsolute(relOrAbsPath) ? relOrAbsPath : path.join(dataDir, relOrAbsPath);
+    if (!fs.existsSync(absPath)) return null;
+
+    const ext = path.extname(absPath).replace('.', '').toLowerCase();
+    const mimeType = ext === 'png' ? 'image/png' : (ext === 'webp' ? 'image/webp' : 'image/jpeg');
+    const fileBuffer = fs.readFileSync(absPath);
+    return `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+  } catch (err) {
+    console.error('Lỗi image:read-base64:', err);
+    return null;
+  }
+});
+
 // IPC: Xuất Ảnh JPG (12 file) & PDF (1 file gộp) qua printToPDF + pdfjs-dist rasterizer
 ipcMain.handle('export:receipts', async (event, monthKey, roomDataList) => {
   let receiptWin = null;

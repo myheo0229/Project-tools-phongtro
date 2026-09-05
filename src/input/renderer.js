@@ -316,6 +316,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   await populateMonthSelect();
   await loadRoomsForMonth(document.getElementById('month-year-select').value);
 
+  // Tải danh sách phòng & người ở cho 2 module mới
+  await loadRoomsAndPersons();
+
   // Hiển thị phiên bản app lấy từ package.json qua IPC
   if (window.api && typeof window.api.getAppVersion === 'function') {
     try {
@@ -352,7 +355,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /**
- * Đổi tab giữa Nhập Dữ Liệu và Cài Đặt Chung
+ * Đổi tab giữa 4 phần
  */
 function switchTab(tabName) {
   const sectionSettings = document.getElementById('section-settings');
@@ -371,12 +374,15 @@ function forceSwitchTab(tabName) {
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-  if (tabName === 'data') {
-    document.getElementById('tab-btn-data').classList.add('active');
-    document.getElementById('section-data').classList.add('active');
-  } else if (tabName === 'settings') {
-    document.getElementById('tab-btn-settings').classList.add('active');
-    document.getElementById('section-settings').classList.add('active');
+  const btn = document.getElementById(`tab-btn-${tabName}`);
+  const sec = document.getElementById(`section-${tabName}`);
+  if (btn) btn.classList.add('active');
+  if (sec) sec.classList.add('active');
+
+  if (tabName === 'rooms') {
+    renderRoomsGrid();
+  } else if (tabName === 'persons') {
+    renderPersonsTable();
   }
 }
 
@@ -1560,5 +1566,1445 @@ function cancelUpdateModal() {
   if (modalEl) modalEl.style.display = 'none';
   isManualUpdateCheck = false;
 }
+
+/* ============================================================
+   MODULE 1: QUẢN LÝ PHÒNG & THÔNG TIN NGƯỜI Ở (STATE & LOGIC)
+   ============================================================ */
+
+let allRooms = [];
+let allPersons = [];
+let selectedPersonIds = new Set();
+let currentRoomDetail = null;
+let selectedRoomMemberIds = new Set();
+let activePersonPhotoForm = {
+  frontBase64: null,
+  backBase64: null,
+  removeFront: false,
+  removeBack: false
+};
+let personSearchQuery = '';
+let personFilterRoom = '';
+let currentLightboxPerson = null;
+let currentLightboxSide = 'front';
+
+/**
+ * Tải toàn bộ dữ liệu Phòng và Người ở từ IPC
+ */
+async function loadRoomsAndPersons() {
+  if (!window.api) return;
+  try {
+    const res = await window.api.getRooms();
+    if (res) {
+      allRooms = res.rooms || [];
+      allPersons = res.persons || [];
+    } else {
+      const pRes = await window.api.getPersons();
+      allPersons = pRes || [];
+    }
+    
+    renderRoomsGrid();
+    renderPersonsTable();
+    updateRoomFilterDropdown();
+    updatePersonRoomDropdown();
+
+    // Nếu Modal Chi Tiết Phòng đang mở, cập nhật lại giao diện modal đó theo dữ liệu mới
+    if (currentRoomDetail) {
+      const updatedRoom = allRooms.find(r => r.phong === currentRoomDetail.phong || r.id === currentRoomDetail.id);
+      if (updatedRoom) {
+        currentRoomDetail = updatedRoom;
+        populateRoomOwnerSelect();
+        renderRoomMembersTable();
+      }
+    }
+  } catch (err) {
+    console.error('Lỗi khi tải dữ liệu phòng & người ở:', err);
+  }
+}
+
+/**
+ * Cập nhật danh sách phòng trong dropdown lọc của trang Thông tin người ở
+ */
+function updateRoomFilterDropdown() {
+  const select = document.getElementById('person-filter-room');
+  if (!select) return;
+
+  const currentVal = select.value;
+  select.innerHTML = `
+    <option value="">Tất cả phòng</option>
+    <option value="_unassigned">Chưa xếp phòng</option>
+  `;
+
+  DEFAULT_ROOM_NAMES.forEach(roomName => {
+    const opt = document.createElement('option');
+    opt.value = roomName;
+    opt.textContent = `Phòng ${roomName}`;
+    select.appendChild(opt);
+  });
+
+  if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
+    select.value = currentVal;
+  }
+}
+
+/**
+ * Cập nhật danh sách phòng trong form Thêm/Sửa Người ở
+ */
+function updatePersonRoomDropdown() {
+  const select = document.getElementById('person-phongId');
+  if (!select) return;
+
+  const currentVal = select.value;
+  select.innerHTML = `<option value="">Chưa xếp phòng</option>`;
+
+  DEFAULT_ROOM_NAMES.forEach(roomName => {
+    const opt = document.createElement('option');
+    opt.value = roomName;
+    opt.textContent = `Phòng ${roomName}`;
+    select.appendChild(opt);
+  });
+
+  if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
+    select.value = currentVal;
+  }
+}
+
+/* ============================================================
+   PHẦN 2: QUẢN LÝ PHÒNG (RENDER & ACTIONS)
+   ============================================================ */
+
+/**
+ * Render lưới 12 Card Phòng & Thống kê tổng quan
+ */
+function renderRoomsGrid() {
+  const container = document.getElementById('rooms-grid-container');
+  if (!container) return;
+
+  // 1. Thống kê
+  const totalRooms = 12;
+  const occupiedRoomsList = allRooms.filter(r => r.chuPhongId || (r.thanhVienIds && r.thanhVienIds.length > 0));
+  const occupiedCount = occupiedRoomsList.length;
+  const emptyCount = totalRooms - occupiedCount;
+  const totalTenants = allPersons.filter(p => p.phongId && p.phongId.trim() !== '').length;
+
+  const statTotalEl = document.getElementById('stat-rooms-total');
+  const statTenantsEl = document.getElementById('stat-rooms-tenants');
+  const statOccupiedEl = document.getElementById('stat-rooms-occupied');
+  const statEmptyEl = document.getElementById('stat-rooms-empty');
+
+  if (statTotalEl) statTotalEl.textContent = `${totalRooms} Phòng`;
+  if (statTenantsEl) statTenantsEl.textContent = `${totalTenants} Người`;
+  if (statOccupiedEl) statOccupiedEl.textContent = `${occupiedCount} / ${totalRooms}`;
+  if (statEmptyEl) statEmptyEl.textContent = `${emptyCount} Phòng`;
+
+  // 2. Render 12 Cards
+  container.innerHTML = DEFAULT_ROOM_NAMES.map(roomName => {
+    let room = allRooms.find(r => r.phong === roomName || r.id === roomName);
+    if (!room) {
+      room = { id: roomName, phong: roomName, chuPhongId: null, thanhVienIds: [] };
+    }
+
+    const allMemberIds = Array.from(new Set([room.chuPhongId, ...(room.thanhVienIds || [])].filter(Boolean)));
+    const totalMembers = allMemberIds.length;
+    const isOccupied = totalMembers > 0;
+
+    let ownerPerson = room.chuPhongId ? allPersons.find(p => p.id === room.chuPhongId) : null;
+    let otherMembers = (room.thanhVienIds || []).map(id => allPersons.find(p => p.id === id)).filter(Boolean);
+
+    return `
+      <div class="room-card ${isOccupied ? '' : 'empty'}" onclick="openRoomDetailModal('${roomName}')">
+        <div class="room-card-header">
+          <span class="room-number-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            </svg>
+            Phòng ${roomName}
+          </span>
+          <span class="badge-status ${isOccupied ? 'occupied' : 'empty'}">
+            ${isOccupied ? `Đang thuê (${totalMembers})` : 'Phòng trống'}
+          </span>
+        </div>
+
+        <div class="room-card-body">
+          <div class="room-owner-row">
+            <span>👑 Chủ phòng:</span>
+            ${ownerPerson 
+              ? `<span class="room-owner-name">${ownerPerson.hoTen}</span>` 
+              : `<span class="room-owner-empty">Chưa có chủ phòng</span>`}
+          </div>
+
+          <div class="room-members-preview">
+            <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 2px;">
+              Thành viên khác (${otherMembers.length}):
+            </div>
+            <div class="room-members-list-preview">
+              ${otherMembers.length > 0 
+                ? otherMembers.map(m => `<span class="member-chip">${m.hoTen}</span>`).join('')
+                : `<span style="font-size: 12px; color: #94a3b8; font-style: italic;">Không có</span>`}
+            </div>
+          </div>
+        </div>
+
+        <div class="room-card-footer">
+          <span>Chi tiết phòng & thành viên</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/**
+ * Mở Modal Chi Tiết Phòng
+ */
+function openRoomDetailModal(roomId) {
+  let room = allRooms.find(r => r.phong === roomId || r.id === roomId);
+  if (!room) {
+    room = { id: roomId, phong: roomId, chuPhongId: null, thanhVienIds: [] };
+  }
+
+  currentRoomDetail = { ...room, thanhVienIds: [...(room.thanhVienIds || [])] };
+  selectedRoomMemberIds.clear();
+
+  const titleEl = document.getElementById('room-modal-title');
+  const badgeEl = document.getElementById('room-modal-status-badge');
+  const selectAllCb = document.getElementById('room-member-select-all');
+
+  if (titleEl) titleEl.textContent = `Chi Tiết Phòng ${roomId}`;
+  if (selectAllCb) selectAllCb.checked = false;
+
+  const allMemberIds = Array.from(new Set([currentRoomDetail.chuPhongId, ...(currentRoomDetail.thanhVienIds || [])].filter(Boolean)));
+  if (badgeEl) {
+    if (allMemberIds.length > 0) {
+      badgeEl.className = 'badge-status occupied';
+      badgeEl.textContent = `Đang thuê (${allMemberIds.length} người)`;
+    } else {
+      badgeEl.className = 'badge-status empty';
+      badgeEl.textContent = 'Phòng trống';
+    }
+  }
+
+  populateRoomOwnerSelect();
+  renderRoomMembersTable();
+
+  const modalEl = document.getElementById('room-detail-modal');
+  if (modalEl) modalEl.style.display = 'flex';
+}
+
+/**
+ * Đóng Modal Chi Tiết Phòng
+ */
+function closeRoomDetailModal() {
+  const modalEl = document.getElementById('room-detail-modal');
+  if (modalEl) modalEl.style.display = 'none';
+  currentRoomDetail = null;
+  selectedRoomMemberIds.clear();
+}
+
+/**
+ * Điền danh sách chọn Chủ phòng trong Modal
+ */
+function populateRoomOwnerSelect() {
+  const select = document.getElementById('room-owner-select');
+  if (!select || !currentRoomDetail) return;
+
+  // Lấy danh sách người hợp lệ: người chưa có phòng hoặc đang ở phòng này
+  const validCandidates = allPersons.filter(p => !p.phongId || p.phongId.trim() === '' || p.phongId === currentRoomDetail.phong);
+
+  select.innerHTML = '<option value="">-- Chưa có chủ phòng đại diện --</option>';
+  validCandidates.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    const cccdSuffix = p.soCCCD ? ` (CCCD: ${p.soCCCD})` : '';
+    const phoneSuffix = p.sdtGoi ? ` - SĐT: ${p.sdtGoi}` : '';
+    opt.textContent = `${p.hoTen}${cccdSuffix}${phoneSuffix}`;
+    if (currentRoomDetail.chuPhongId === p.id) {
+      opt.selected = true;
+    }
+    select.appendChild(opt);
+  });
+}
+
+/**
+ * Xử lý khi người dùng chọn chủ phòng khác trong dropdown
+ */
+function onRoomOwnerSelectChange() {
+  const select = document.getElementById('room-owner-select');
+  if (!select || !currentRoomDetail) return;
+
+  const newOwnerId = select.value || null;
+  currentRoomDetail.chuPhongId = newOwnerId;
+
+  // Nếu người này trước đó là thành viên, gỡ khỏi thanhVienIds
+  if (newOwnerId && currentRoomDetail.thanhVienIds.includes(newOwnerId)) {
+    currentRoomDetail.thanhVienIds = currentRoomDetail.thanhVienIds.filter(id => id !== newOwnerId);
+  }
+
+  renderRoomMembersTable();
+}
+
+/**
+ * Bỏ chọn chủ phòng
+ */
+function clearRoomOwner() {
+  const select = document.getElementById('room-owner-select');
+  if (select) select.value = '';
+  if (currentRoomDetail) {
+    currentRoomDetail.chuPhongId = null;
+  }
+  renderRoomMembersTable();
+}
+
+/**
+ * Render bảng thành viên trong Modal Chi Tiết Phòng
+ */
+function renderRoomMembersTable() {
+  const tbody = document.getElementById('room-members-table-body');
+  const countEl = document.getElementById('room-members-count');
+  if (!tbody || !currentRoomDetail) return;
+
+  const memberIds = Array.from(new Set([currentRoomDetail.chuPhongId, ...(currentRoomDetail.thanhVienIds || [])].filter(Boolean)));
+  const members = memberIds.map(id => allPersons.find(p => p.id === id)).filter(Boolean);
+
+  if (countEl) countEl.textContent = members.length;
+
+  if (members.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 24px;">Phòng hiện chưa có thành viên nào</td></tr>`;
+    updateRoomMemberActionButtons();
+    return;
+  }
+
+  tbody.innerHTML = members.map(m => {
+    const isOwner = m.id === currentRoomDetail.chuPhongId;
+    const isChecked = selectedRoomMemberIds.has(m.id);
+    return `
+      <tr>
+        <td style="text-align: center;">
+          <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="onRoomMemberCheckboxChange('${m.id}', this.checked)">
+        </td>
+        <td>
+          <div class="person-name-cell">
+            <span class="gender-avatar ${m.gioiTinh === 'Nữ' ? 'female' : 'male'}">${m.gioiTinh === 'Nữ' ? '👩' : '👨'}</span>
+            <span>${m.hoTen}</span>
+          </div>
+        </td>
+        <td>
+          <span class="badge-status ${isOwner ? 'occupied' : 'empty'}">${isOwner ? '👑 Chủ phòng' : 'Thành viên'}</span>
+        </td>
+        <td>${m.sdtGoi || '-'}</td>
+        <td>${m.soCCCD || '-'}</td>
+        <td style="text-align: center;">${m.ngaySinh ? `<div class="dob-stacked-cell"><span class="dob-date-main">${m.ngaySinh}</span>${calculateAge(m.ngaySinh) !== null ? `<span class="dob-age-sub">(${calculateAge(m.ngaySinh)} tuổi)</span>` : ''}</div>` : '-'}</td>
+        <td style="text-align: center;">${m.ngayVaoO || '-'}</td>
+        <td style="text-align: center;">
+          <div class="table-actions-group">
+            <button type="button" class="btn-icon-action" onclick="openEditPersonModal('${m.id}')" title="Sửa thông tin">✏️</button>
+            <button type="button" class="btn-icon-action delete" onclick="removeSingleMemberFromRoom('${m.id}')" title="Gỡ khỏi phòng">✕</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  updateRoomMemberActionButtons();
+}
+
+/**
+ * Chọn / Bỏ chọn tất cả thành viên trong Modal Chi Tiết Phòng
+ */
+function toggleSelectAllRoomMembers(checked) {
+  if (!currentRoomDetail) return;
+  const memberIds = Array.from(new Set([currentRoomDetail.chuPhongId, ...(currentRoomDetail.thanhVienIds || [])].filter(Boolean)));
+  
+  if (checked) {
+    memberIds.forEach(id => selectedRoomMemberIds.add(id));
+  } else {
+    selectedRoomMemberIds.clear();
+  }
+
+  renderRoomMembersTable();
+}
+
+/**
+ * Xử lý checkbox từng thành viên trong Modal Chi Tiết Phòng
+ */
+function onRoomMemberCheckboxChange(personId, checked) {
+  if (checked) {
+    selectedRoomMemberIds.add(personId);
+  } else {
+    selectedRoomMemberIds.delete(personId);
+  }
+  updateRoomMemberActionButtons();
+}
+
+/**
+ * Cập nhật trạng thái các nút Xóa / Gỡ thành viên đã chọn
+ */
+function updateRoomMemberActionButtons() {
+  const count = selectedRoomMemberIds.size;
+  const btnRemove = document.getElementById('btn-room-remove-selected');
+  const btnDelete = document.getElementById('btn-room-delete-selected');
+  const countRemoveSpan = document.getElementById('room-selected-remove-count');
+
+  if (countRemoveSpan) countRemoveSpan.textContent = count;
+  if (btnRemove) btnRemove.disabled = count === 0;
+  if (btnDelete) btnDelete.disabled = count === 0;
+
+  const selectAllCb = document.getElementById('room-member-select-all');
+  if (selectAllCb && currentRoomDetail) {
+    const memberIds = Array.from(new Set([currentRoomDetail.chuPhongId, ...(currentRoomDetail.thanhVienIds || [])].filter(Boolean)));
+    selectAllCb.checked = memberIds.length > 0 && memberIds.every(id => selectedRoomMemberIds.has(id));
+  }
+}
+
+/**
+ * Lưu thay đổi phân bổ phòng (Chủ phòng & Thành viên)
+ */
+async function saveRoomAssignmentModal() {
+  if (!currentRoomDetail || !window.api) return;
+
+  const roomId = currentRoomDetail.phong;
+  const chuPhongId = document.getElementById('room-owner-select').value || null;
+  const thanhVienIds = (currentRoomDetail.thanhVienIds || []).filter(id => id !== chuPhongId);
+
+  try {
+    const res = await window.api.saveRoomAssignment({ roomId, chuPhongId, thanhVienIds });
+    if (res && res.error) {
+      showToast(`Lỗi: ${res.error}`, 'error');
+      return;
+    }
+
+    showToast(`Đã lưu thông tin phòng ${roomId} thành công!`, 'success');
+    closeRoomDetailModal();
+    await loadRoomsAndPersons();
+  } catch (err) {
+    showToast(`Lỗi khi lưu phòng: ${err.message}`, 'error');
+  }
+}
+
+/**
+ * Gỡ các thành viên đã chọn khỏi phòng (chuyển về Chưa xếp phòng)
+ */
+async function removeSelectedMembersFromRoom() {
+  if (!currentRoomDetail || selectedRoomMemberIds.size === 0 || !window.api) return;
+
+  const count = selectedRoomMemberIds.size;
+  const roomId = currentRoomDetail.phong;
+  const ids = Array.from(selectedRoomMemberIds);
+
+  try {
+    const res = await window.api.removeRoomMembers(roomId, ids);
+    if (res && res.error) {
+      showToast(`Lỗi: ${res.error}`, 'error');
+      return;
+    }
+
+    showToast(`Đã gỡ ${count} người khỏi phòng ${roomId}`, 'success');
+    selectedRoomMemberIds.clear();
+    await loadRoomsAndPersons();
+  } catch (err) {
+    showToast(`Lỗi: ${err.message}`, 'error');
+  }
+}
+
+/**
+ * Gỡ 1 thành viên đơn lẻ khỏi phòng
+ */
+async function removeSingleMemberFromRoom(personId) {
+  if (!currentRoomDetail || !window.api) return;
+  const roomId = currentRoomDetail.phong;
+
+  try {
+    const res = await window.api.removeRoomMembers(roomId, [personId]);
+    if (res && res.error) {
+      showToast(`Lỗi: ${res.error}`, 'error');
+      return;
+    }
+
+    showToast(`Đã gỡ người khỏi phòng ${roomId}`, 'success');
+    selectedRoomMemberIds.delete(personId);
+    await loadRoomsAndPersons();
+  } catch (err) {
+    showToast(`Lỗi: ${err.message}`, 'error');
+  }
+}
+
+/**
+ * Xóa vĩnh viễn các thành viên đã chọn khỏi toàn hệ thống (Hard Delete)
+ */
+async function deleteSelectedMembersFromSystem() {
+  if (selectedRoomMemberIds.size === 0 || !window.api) return;
+  const count = selectedRoomMemberIds.size;
+
+  if (!confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN ${count} người này khỏi toàn bộ hệ thống (bao gồm xóa ảnh CCCD)? Hành động này không thể hoàn tác!`)) {
+    return;
+  }
+
+  try {
+    const ids = Array.from(selectedRoomMemberIds);
+    const res = await window.api.deletePersons(ids);
+    if (res && res.error) {
+      showToast(`Lỗi: ${res.error}`, 'error');
+      return;
+    }
+
+    showToast(`Đã xóa vĩnh viễn ${count} người khỏi hệ thống`, 'success');
+    selectedRoomMemberIds.clear();
+    await loadRoomsAndPersons();
+  } catch (err) {
+    showToast(`Lỗi: ${err.message}`, 'error');
+  }
+}
+
+/**
+ * Mở Modal Chọn Nhanh Người Vào Phòng
+ */
+function openAddMemberToRoomModal() {
+  if (!currentRoomDetail) return;
+
+  const modalEl = document.getElementById('add-member-modal');
+  const titleEl = document.getElementById('add-member-modal-title');
+  const listEl = document.getElementById('unassigned-persons-list');
+
+  if (titleEl) titleEl.textContent = `Thêm Thành Viên Vào Phòng ${currentRoomDetail.phong}`;
+
+  // Lấy những người chưa xếp phòng
+  const unassigned = allPersons.filter(p => !p.phongId || p.phongId.trim() === '');
+
+  if (listEl) {
+    if (unassigned.length === 0) {
+      listEl.innerHTML = `<div style="padding: 12px; text-align: center; color: #94a3b8; font-size: 13px;">Không có người nào đang ở trạng thái "Chưa xếp phòng"</div>`;
+    } else {
+      listEl.innerHTML = unassigned.map(p => `
+        <div class="unassigned-item">
+          <input type="checkbox" id="unassigned-p-${p.id}" value="${p.id}">
+          <label for="unassigned-p-${p.id}">
+            <strong>${p.hoTen}</strong> - SĐT: ${p.sdtGoi || 'N/A'} (CCCD: ${p.soCCCD || 'N/A'})
+          </label>
+        </div>
+      `).join('');
+    }
+  }
+
+  if (modalEl) modalEl.style.display = 'flex';
+}
+
+function closeAddMemberToRoomModal() {
+  const modalEl = document.getElementById('add-member-modal');
+  if (modalEl) modalEl.style.display = 'none';
+}
+
+/**
+ * Xác nhận gán các người đã chọn vào phòng hiện tại
+ */
+async function confirmAddSelectedPersonsToRoom() {
+  if (!currentRoomDetail || !window.api) return;
+
+  const checkboxes = document.querySelectorAll('#unassigned-persons-list input[type="checkbox"]:checked');
+  const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+
+  if (selectedIds.length === 0) {
+    showToast('Vui lòng chọn ít nhất 1 người để gán vào phòng', 'warning');
+    return;
+  }
+
+  const roomId = currentRoomDetail.phong;
+  const chuPhongId = currentRoomDetail.chuPhongId;
+  const existingMembers = currentRoomDetail.thanhVienIds || [];
+  const newMemberList = Array.from(new Set([...existingMembers, ...selectedIds]));
+
+  try {
+    const res = await window.api.saveRoomAssignment({
+      roomId,
+      chuPhongId,
+      thanhVienIds: newMemberList
+    });
+
+    if (res && res.error) {
+      showToast(`Lỗi: ${res.error}`, 'error');
+      return;
+    }
+
+    showToast(`Đã thêm ${selectedIds.length} thành viên vào phòng ${roomId}!`, 'success');
+    closeAddMemberToRoomModal();
+    await loadRoomsAndPersons();
+  } catch (err) {
+    showToast(`Lỗi: ${err.message}`, 'error');
+  }
+}
+
+/**
+ * Tạo mới người thuê và gán luôn vào phòng hiện tại
+ */
+function createAndAssignNewPerson() {
+  const roomId = currentRoomDetail ? currentRoomDetail.phong : '';
+  closeAddMemberToRoomModal();
+  openAddPersonModal(roomId);
+}
+
+/* ============================================================
+   PHẦN 3: QUẢN LÝ THÔNG TIN NGƯỜI Ở (RENDER, FORM & SEARCH)
+   ============================================================ */
+
+/**
+ * Render Bảng danh sách người ở
+ */
+function renderPersonsTable() {
+  const tbody = document.getElementById('persons-table-body');
+  if (!tbody) return;
+
+  // Lọc dữ liệu theo search và theo room
+  let filtered = allPersons.filter(p => {
+    // 1. Filter theo Search Query
+    if (personSearchQuery) {
+      const q = personSearchQuery.toLowerCase();
+      const matchName = (p.hoTen || '').toLowerCase().includes(q);
+      const matchPhone = (p.sdtGoi || '').toLowerCase().includes(q);
+      const matchZalo = (p.sdtZalo || '').toLowerCase().includes(q);
+      const matchCCCD = (p.soCCCD || '').toLowerCase().includes(q);
+      if (!matchName && !matchPhone && !matchZalo && !matchCCCD) {
+        return false;
+      }
+    }
+
+    // 2. Filter theo Phòng
+    if (personFilterRoom) {
+      if (personFilterRoom === '_unassigned') {
+        if (p.phongId && p.phongId.trim() !== '') return false;
+      } else {
+        if (p.phongId !== personFilterRoom) return false;
+      }
+    }
+
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #94a3b8; padding: 30px;">Không tìm thấy người ở nào phù hợp</td></tr>`;
+    updatePersonsTableSelectAll();
+    updateDeleteSelectedPersonsBtn();
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((p, idx) => {
+    const isChecked = selectedPersonIds.has(p.id);
+    const hasFront = !!p.anhCCCDMatTruoc;
+    const hasBack = !!p.anhCCCDMatSau;
+    const cccdCount = (hasFront ? 1 : 0) + (hasBack ? 1 : 0);
+
+    let cccdBadgeClass = 'badge-cccd-count';
+    let cccdBadgeText = 'Chưa có ảnh';
+    if (cccdCount === 2) {
+      cccdBadgeClass += ' full';
+      cccdBadgeText = '💳 Đủ 2/2 ảnh';
+    } else if (cccdCount === 1) {
+      cccdBadgeClass += ' partial';
+      cccdBadgeText = '💳 1/2 ảnh';
+    }
+
+    const age = calculateAge(p.ngaySinh);
+    const dobHtml = p.ngaySinh 
+      ? `<div class="dob-stacked-cell"><span class="dob-date-main">${p.ngaySinh}</span>${age !== null ? `<span class="dob-age-sub">(${age} tuổi)</span>` : ''}</div>`
+      : '-';
+
+    return `
+      <tr>
+        <td style="text-align: center;">
+          <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="onPersonRowCheckboxChange('${p.id}', this.checked)">
+        </td>
+        <td style="text-align: center; color: #64748b; font-weight: 600;">${idx + 1}</td>
+        <td>
+          <div class="person-name-cell">
+            <span class="gender-avatar ${p.gioiTinh === 'Nữ' ? 'female' : 'male'}">${p.gioiTinh === 'Nữ' ? '👩' : '👨'}</span>
+            <span style="font-weight: 700;">${p.hoTen}</span>
+          </div>
+        </td>
+        <td style="text-align: center;">
+          <span class="badge-room ${p.phongId ? 'assigned' : 'unassigned'}">
+            ${p.phongId ? `Phòng ${p.phongId}` : 'Chưa xếp'}
+          </span>
+        </td>
+        <td>${p.sdtGoi || '-'}</td>
+        <td>${p.sdtZalo || '-'}</td>
+        <td><strong style="letter-spacing: 0.5px;">${p.soCCCD || '-'}</strong></td>
+        <td style="text-align: center;">${dobHtml}</td>
+        <td style="text-align: center;">${p.ngayVaoO || '-'}</td>
+        <td style="text-align: center;">
+          <button type="button" class="${cccdBadgeClass}" onclick="openLightbox('${p.id}')">
+            ${cccdBadgeText}
+          </button>
+        </td>
+        <td style="text-align: center;">
+          <div class="table-actions-group">
+            <button type="button" class="btn-icon-action" onclick="openEditPersonModal('${p.id}')" title="Sửa thông tin">✏️</button>
+            <button type="button" class="btn-icon-action delete" onclick="deleteSinglePerson('${p.id}')" title="Xóa người này">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  updatePersonsTableSelectAll();
+  updateDeleteSelectedPersonsBtn();
+}
+
+/**
+ * Tìm kiếm thời gian thực
+ */
+function onPersonSearchInput() {
+  const input = document.getElementById('person-search-input');
+  const clearBtn = document.getElementById('person-search-clear');
+  personSearchQuery = input ? input.value.trim() : '';
+
+  if (clearBtn) {
+    clearBtn.style.display = personSearchQuery ? 'block' : 'none';
+  }
+
+  renderPersonsTable();
+}
+
+function clearPersonSearch() {
+  const input = document.getElementById('person-search-input');
+  const clearBtn = document.getElementById('person-search-clear');
+  if (input) input.value = '';
+  if (clearBtn) clearBtn.style.display = 'none';
+  personSearchQuery = '';
+  renderPersonsTable();
+}
+
+/**
+ * Thay đổi bộ lọc phòng
+ */
+function onPersonFilterChange() {
+  const select = document.getElementById('person-filter-room');
+  personFilterRoom = select ? select.value : '';
+  renderPersonsTable();
+}
+
+/**
+ * Chọn / Bỏ chọn tất cả người trong bảng
+ */
+function toggleSelectAllPersons(checked) {
+  if (checked) {
+    allPersons.forEach(p => selectedPersonIds.add(p.id));
+  } else {
+    selectedPersonIds.clear();
+  }
+  renderPersonsTable();
+}
+
+function onPersonRowCheckboxChange(personId, checked) {
+  if (checked) {
+    selectedPersonIds.add(personId);
+  } else {
+    selectedPersonIds.delete(personId);
+  }
+  updatePersonsTableSelectAll();
+  updateDeleteSelectedPersonsBtn();
+}
+
+function updatePersonsTableSelectAll() {
+  const selectAllCb = document.getElementById('person-select-all');
+  if (selectAllCb) {
+    selectAllCb.checked = allPersons.length > 0 && allPersons.every(p => selectedPersonIds.has(p.id));
+  }
+}
+
+function updateDeleteSelectedPersonsBtn() {
+  const btn = document.getElementById('btn-delete-selected-persons');
+  const countSpan = document.getElementById('selected-person-count');
+  const count = selectedPersonIds.size;
+
+  if (countSpan) countSpan.textContent = count;
+  if (btn) btn.disabled = count === 0;
+}
+
+/**
+ * Xóa các người đã chọn trong bảng
+ */
+async function deleteSelectedPersons() {
+  if (selectedPersonIds.size === 0 || !window.api) return;
+  const count = selectedPersonIds.size;
+
+  if (!confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN ${count} người này khỏi toàn bộ hệ thống (kèm xóa thư mục ảnh CCCD)?`)) {
+    return;
+  }
+
+  try {
+    const ids = Array.from(selectedPersonIds);
+    const res = await window.api.deletePersons(ids);
+    if (res && res.error) {
+      showToast(`Lỗi: ${res.error}`, 'error');
+      return;
+    }
+
+    showToast(`Đã xóa thành công ${count} người!`, 'success');
+    selectedPersonIds.clear();
+    await loadRoomsAndPersons();
+  } catch (err) {
+    showToast(`Lỗi: ${err.message}`, 'error');
+  }
+}
+
+/**
+ * Xóa 1 người đơn lẻ
+ */
+async function deleteSinglePerson(personId) {
+  const p = allPersons.find(item => item.id === personId);
+  const name = p ? p.hoTen : 'người này';
+
+  if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn "${name}" khỏi hệ thống (kèm xóa ảnh CCCD)?`)) {
+    return;
+  }
+
+  try {
+    const res = await window.api.deletePersons([personId]);
+    if (res && res.error) {
+      showToast(`Lỗi: ${res.error}`, 'error');
+      return;
+    }
+
+    showToast(`Đã xóa "${name}" thành công!`, 'success');
+    selectedPersonIds.delete(personId);
+    await loadRoomsAndPersons();
+  } catch (err) {
+    showToast(`Lỗi: ${err.message}`, 'error');
+  }
+}
+
+/* ============================================================
+   MODAL THÊM / SỬA NGƯỜI Ở & VALIDATE & UPLOAD CCCD
+   ============================================================ */
+
+/**
+ * Mở Modal Thêm Người Thuê Mới
+ */
+function openAddPersonModal(preselectedRoomId = '') {
+  document.getElementById('person-form-id').value = '';
+  const titleEl = document.getElementById('person-modal-title');
+  if (titleEl) titleEl.textContent = 'Thêm Người Thuê Mới';
+
+  // Reset form inputs
+  document.getElementById('person-hoTen').value = '';
+  document.getElementById('person-sdtGoi').value = '';
+  document.getElementById('person-sdtZalo').value = '';
+  document.getElementById('person-email').value = '';
+  document.getElementById('person-soCCCD').value = '';
+  document.getElementById('person-ngaySinh').value = '';
+  document.getElementById('person-gioiTinh').value = 'Nam';
+  document.getElementById('person-phongId').value = preselectedRoomId || '';
+  document.getElementById('person-queQuan').value = '';
+  document.getElementById('person-ngayVaoO').value = '';
+
+  clearPersonFormErrors();
+  setupDateInputAutoMask('person-ngaySinh');
+  setupDateInputAutoMask('person-ngayVaoO');
+
+  // Reset photo form state
+  activePersonPhotoForm = {
+    frontBase64: null,
+    backBase64: null,
+    removeFront: false,
+    removeBack: false
+  };
+
+  resetCCCDPreviewBoxes();
+  switchPersonFormTab('info');
+
+  const modalEl = document.getElementById('person-modal');
+  if (modalEl) modalEl.style.display = 'flex';
+}
+
+/**
+ * Mở Modal Chỉnh Sửa Thông Tin Người Thuê
+ */
+async function openEditPersonModal(personId) {
+  const person = allPersons.find(p => p.id === personId);
+  if (!person) return;
+
+  document.getElementById('person-form-id').value = person.id;
+  const titleEl = document.getElementById('person-modal-title');
+  if (titleEl) titleEl.textContent = 'Chỉnh Sửa Thông Tin Người Thuê';
+
+  document.getElementById('person-hoTen').value = person.hoTen || '';
+  document.getElementById('person-sdtGoi').value = person.sdtGoi || '';
+  document.getElementById('person-sdtZalo').value = person.sdtZalo || '';
+  document.getElementById('person-email').value = person.email || '';
+  document.getElementById('person-soCCCD').value = person.soCCCD || '';
+  document.getElementById('person-ngaySinh').value = person.ngaySinh || '';
+  document.getElementById('person-gioiTinh').value = person.gioiTinh || 'Nam';
+  document.getElementById('person-phongId').value = person.phongId || '';
+  document.getElementById('person-queQuan').value = person.queQuan || '';
+  document.getElementById('person-ngayVaoO').value = person.ngayVaoO || '';
+
+  clearPersonFormErrors();
+
+  activePersonPhotoForm = {
+    frontBase64: null,
+    backBase64: null,
+    removeFront: false,
+    removeBack: false
+  };
+
+  resetCCCDPreviewBoxes();
+
+  // Load existing photos if available
+  if (person.anhCCCDMatTruoc && window.api) {
+    try {
+      const base64 = await window.api.readImageBase64(person.anhCCCDMatTruoc);
+      if (base64) {
+        showCCCDPreview('front', base64);
+      }
+    } catch (e) {}
+  }
+
+  if (person.anhCCCDMatSau && window.api) {
+    try {
+      const base64 = await window.api.readImageBase64(person.anhCCCDMatSau);
+      if (base64) {
+        showCCCDPreview('back', base64);
+      }
+    } catch (e) {}
+  }
+
+  updateCCCDStatusBadge();
+  switchPersonFormTab('info');
+
+  const modalEl = document.getElementById('person-modal');
+  if (modalEl) modalEl.style.display = 'flex';
+}
+
+function closePersonModal() {
+  const modalEl = document.getElementById('person-modal');
+  if (modalEl) modalEl.style.display = 'none';
+}
+
+/**
+ * Đổi tab trong Form Người ở (Thông tin / Ảnh CCCD)
+ */
+function switchPersonFormTab(tabName) {
+  const btnInfo = document.getElementById('person-tab-btn-info');
+  const btnCCCD = document.getElementById('person-tab-btn-cccd');
+  const tabInfo = document.getElementById('person-form-tab-info');
+  const tabCCCD = document.getElementById('person-form-tab-cccd');
+
+  if (tabName === 'info') {
+    if (btnInfo) btnInfo.classList.add('active');
+    if (btnCCCD) btnCCCD.classList.remove('active');
+    if (tabInfo) tabInfo.style.display = 'block';
+    if (tabCCCD) tabCCCD.style.display = 'none';
+  } else {
+    if (btnInfo) btnInfo.classList.remove('active');
+    if (btnCCCD) btnCCCD.classList.add('active');
+    if (tabInfo) tabInfo.style.display = 'none';
+    if (tabCCCD) tabCCCD.style.display = 'block';
+  }
+}
+
+/**
+ * Chọn file ảnh CCCD qua Dialog Native Windows
+ */
+async function pickCCCDFile(side) {
+  if (!window.api || typeof window.api.pickImage !== 'function') return;
+
+  try {
+    const res = await window.api.pickImage();
+    if (res && res.base64) {
+      if (side === 'front') {
+        activePersonPhotoForm.frontBase64 = res.base64;
+        activePersonPhotoForm.removeFront = false;
+      } else {
+        activePersonPhotoForm.backBase64 = res.base64;
+        activePersonPhotoForm.removeBack = false;
+      }
+      showCCCDPreview(side, res.base64);
+      updateCCCDStatusBadge();
+    }
+  } catch (err) {
+    showToast(`Lỗi chọn ảnh: ${err.message}`, 'error');
+  }
+}
+
+function showCCCDPreview(side, base64Url) {
+  const emptyEl = document.getElementById(`cccd-${side}-empty`);
+  const previewEl = document.getElementById(`cccd-${side}-preview`);
+  const imgEl = document.getElementById(`cccd-${side}-img`);
+
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (previewEl) previewEl.style.display = 'block';
+  if (imgEl) imgEl.src = base64Url;
+}
+
+function removeCCCDImage(side) {
+  const emptyEl = document.getElementById(`cccd-${side}-empty`);
+  const previewEl = document.getElementById(`cccd-${side}-preview`);
+  const imgEl = document.getElementById(`cccd-${side}-img`);
+
+  if (emptyEl) emptyEl.style.display = 'flex';
+  if (previewEl) previewEl.style.display = 'none';
+  if (imgEl) imgEl.src = '';
+
+  if (side === 'front') {
+    activePersonPhotoForm.frontBase64 = null;
+    activePersonPhotoForm.removeFront = true;
+  } else {
+    activePersonPhotoForm.backBase64 = null;
+    activePersonPhotoForm.removeBack = true;
+  }
+
+  updateCCCDStatusBadge();
+}
+
+function resetCCCDPreviewBoxes() {
+  ['front', 'back'].forEach(side => {
+    const emptyEl = document.getElementById(`cccd-${side}-empty`);
+    const previewEl = document.getElementById(`cccd-${side}-preview`);
+    const imgEl = document.getElementById(`cccd-${side}-img`);
+    if (emptyEl) emptyEl.style.display = 'flex';
+    if (previewEl) previewEl.style.display = 'none';
+    if (imgEl) imgEl.src = '';
+  });
+  updateCCCDStatusBadge();
+}
+
+function updateCCCDStatusBadge() {
+  const frontImg = document.getElementById('cccd-front-img');
+  const backImg = document.getElementById('cccd-back-img');
+  const badge = document.getElementById('cccd-status-badge');
+  if (!badge) return;
+
+  const hasFront = frontImg && frontImg.src && !frontImg.src.endsWith('index.html') && frontImg.src !== '';
+  const hasBack = backImg && backImg.src && !backImg.src.endsWith('index.html') && backImg.src !== '';
+
+  const count = (hasFront ? 1 : 0) + (hasBack ? 1 : 0);
+
+  if (count === 2) {
+    badge.className = 'badge-status-pill success';
+    badge.textContent = '✓ Đã có đủ 2 ảnh CCCD';
+  } else if (count === 1) {
+    badge.className = 'badge-status-pill warning';
+    badge.textContent = 'Còn thiếu 1 ảnh CCCD';
+  } else {
+    badge.className = 'badge-status-pill';
+    badge.textContent = 'Còn thiếu 2 ảnh CCCD';
+  }
+}
+
+function clearPersonFormErrors() {
+  document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+  document.querySelectorAll('.form-control').forEach(el => el.classList.remove('input-error'));
+}
+
+/**
+ * Mở picker ngày native khi click vào icon 📅
+ */
+function openNativeDatePicker(inputId) {
+  const textInput = document.getElementById(inputId);
+  const pickerInput = document.getElementById(`${inputId}-picker`);
+  if (!pickerInput) return;
+
+  if (textInput && textInput.value) {
+    const parts = textInput.value.trim().split('/');
+    if (parts.length === 3 && parts[2].length === 4) {
+      const day = parts[0].padStart(2, '0');
+      const month = parts[1].padStart(2, '0');
+      const year = parts[2];
+      pickerInput.value = `${year}-${month}-${day}`;
+    }
+  }
+
+  if (typeof pickerInput.showPicker === 'function') {
+    try {
+      pickerInput.showPicker();
+    } catch (e) {
+      pickerInput.click();
+    }
+  } else {
+    pickerInput.click();
+  }
+}
+
+/**
+ * Xử lý khi chọn ngày trên Lịch native -> Format dd/mm/yyyy
+ */
+function onDatePickerChange(inputId, dateVal) {
+  if (!dateVal) return;
+  const parts = dateVal.split('-');
+  if (parts.length === 3) {
+    const [yyyy, mm, dd] = parts;
+    const textInput = document.getElementById(inputId);
+    if (textInput) {
+      textInput.value = `${dd}/${mm}/${yyyy}`;
+      textInput.dispatchEvent(new Event('input'));
+    }
+  }
+}
+
+/**
+ * Tự động chèn / và nhảy dd -> mm -> yyyy khi gõ số (Auto Masking)
+ */
+function setupDateInputAutoMask(inputId) {
+  const inputEl = document.getElementById(inputId);
+  if (!inputEl || inputEl.dataset.maskAttached === 'true') return;
+  inputEl.dataset.maskAttached = 'true';
+
+  let isBackspacing = false;
+
+  inputEl.addEventListener('keydown', function(e) {
+    isBackspacing = e.key === 'Backspace';
+  });
+
+  inputEl.addEventListener('input', function(e) {
+    if (isBackspacing) return;
+
+    let v = this.value.replace(/\D/g, ''); // Chỉ giữ số
+    if (v.length > 8) v = v.substring(0, 8);
+
+    let formatted = '';
+    if (v.length > 0) {
+      formatted += v.substring(0, 2);
+      if (v.length >= 2) {
+        formatted += '/';
+        formatted += v.substring(2, 4);
+        if (v.length >= 4) {
+          formatted += '/';
+          formatted += v.substring(4, 8);
+        }
+      }
+    }
+    this.value = formatted;
+  });
+}
+
+// Khởi tạo mask tự động cho các ô nhập ngày tháng
+document.addEventListener('DOMContentLoaded', () => {
+  setupDateInputAutoMask('person-ngaySinh');
+  setupDateInputAutoMask('person-ngayVaoO');
+});
+
+// Chạy luôn nếu DOM đã ready
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  setTimeout(() => {
+    setupDateInputAutoMask('person-ngaySinh');
+    setupDateInputAutoMask('person-ngayVaoO');
+  }, 100);
+}
+
+/**
+ * Tính tuổi chính xác theo Luật Việt Nam (Năm hiện tại - Năm sinh, trừ 1 nếu chưa tới ngày/tháng sinh trong năm nay)
+ */
+function calculateAge(dobStr) {
+  if (!dobStr || typeof dobStr !== 'string') return null;
+  const parts = dobStr.trim().split('/');
+  if (parts.length !== 3) return null;
+
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const year = parseInt(parts[2], 10);
+
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1; // 1-indexed (1-12)
+  const currentDay = today.getDate();
+
+  let age = currentYear - year;
+  if (currentMonth < month || (currentMonth === month && currentDay < day)) {
+    age--;
+  }
+
+  return age >= 0 ? age : null;
+}
+
+/**
+ * Validate định dạng ngày tháng dd/mm/yyyy
+ */
+function isValidDateStr(str) {
+  if (!str || typeof str !== 'string') return false;
+  const match = str.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!match) return false;
+
+  const day = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const year = parseInt(match[3], 10);
+
+  if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+    return false;
+  }
+
+  // Check ngày thực tế
+  const d = new Date(year, month - 1, day);
+  return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day;
+}
+
+/**
+ * Validate và Submit Form Người ở
+ */
+async function submitPersonForm(e) {
+  if (e) e.preventDefault();
+  clearPersonFormErrors();
+
+  const id = document.getElementById('person-form-id').value.trim() || null;
+  const hoTen = document.getElementById('person-hoTen').value.trim();
+  const sdtGoi = document.getElementById('person-sdtGoi').value.trim();
+  let sdtZalo = document.getElementById('person-sdtZalo') ? document.getElementById('person-sdtZalo').value.trim() : '';
+  const email = document.getElementById('person-email') ? document.getElementById('person-email').value.trim() : '';
+  const soCCCD = document.getElementById('person-soCCCD').value.trim();
+  const ngaySinh = document.getElementById('person-ngaySinh').value.trim();
+  const gioiTinh = document.getElementById('person-gioiTinh') ? document.getElementById('person-gioiTinh').value : 'Nam';
+  const phongId = document.getElementById('person-phongId') ? document.getElementById('person-phongId').value.trim() || null : null;
+  const queQuan = document.getElementById('person-queQuan') ? document.getElementById('person-queQuan').value.trim() : '';
+  const ngayVaoO = document.getElementById('person-ngayVaoO') ? document.getElementById('person-ngayVaoO').value.trim() : '';
+
+  let hasError = false;
+
+  // 1. Validate Họ tên
+  if (!hoTen) {
+    document.getElementById('err-person-hoTen').textContent = 'Vui lòng nhập họ và tên';
+    document.getElementById('person-hoTen').classList.add('input-error');
+    hasError = true;
+  }
+
+  // 2. Validate SĐT gọi (chuẩn VN 10 số)
+  const phoneRegex = /^(0|\+84)(3|5|7|8|9)[0-9]{8}$/;
+  if (!sdtGoi) {
+    document.getElementById('err-person-sdtGoi').textContent = 'Vui lòng nhập số điện thoại';
+    document.getElementById('person-sdtGoi').classList.add('input-error');
+    hasError = true;
+  } else if (!phoneRegex.test(sdtGoi)) {
+    document.getElementById('err-person-sdtGoi').textContent = 'Số điện thoại không hợp lệ (VD: 0982141407)';
+    document.getElementById('person-sdtGoi').classList.add('input-error');
+    hasError = true;
+  }
+
+  // 3. Validate SĐT Zalo (optional, tự động lấy SĐT gọi nếu để trống)
+  if (!sdtZalo && sdtGoi) {
+    sdtZalo = sdtGoi;
+  } else if (sdtZalo && !phoneRegex.test(sdtZalo)) {
+    const errZalo = document.getElementById('err-person-sdtZalo');
+    if (errZalo) errZalo.textContent = 'Số điện thoại Zalo không hợp lệ';
+    const inputZalo = document.getElementById('person-sdtZalo');
+    if (inputZalo) inputZalo.classList.add('input-error');
+    hasError = true;
+  }
+
+  // 4. Validate Số CCCD (đúng 12 chữ số)
+  const cccdRegex = /^[0-9]{12}$/;
+  if (!soCCCD) {
+    document.getElementById('err-person-soCCCD').textContent = 'Vui lòng nhập số CCCD';
+    document.getElementById('person-soCCCD').classList.add('input-error');
+    hasError = true;
+  } else if (!cccdRegex.test(soCCCD)) {
+    document.getElementById('err-person-soCCCD').textContent = 'Số CCCD phải đúng 12 chữ số';
+    document.getElementById('person-soCCCD').classList.add('input-error');
+    hasError = true;
+  }
+
+  // 5. Validate Ngày sinh (bắt buộc, dd/mm/yyyy)
+  if (!ngaySinh) {
+    document.getElementById('err-person-ngaySinh').textContent = 'Vui lòng nhập ngày sinh';
+    document.getElementById('person-ngaySinh').classList.add('input-error');
+    hasError = true;
+  } else if (!isValidDateStr(ngaySinh)) {
+    document.getElementById('err-person-ngaySinh').textContent = 'Ngày sinh phải đúng định dạng dd/mm/yyyy';
+    document.getElementById('person-ngaySinh').classList.add('input-error');
+    hasError = true;
+  }
+
+  // 6. Validate Ngày vào ở (optional, nếu có thì phải đúng dd/mm/yyyy)
+  if (ngayVaoO && !isValidDateStr(ngayVaoO)) {
+    document.getElementById('err-person-ngayVaoO').textContent = 'Ngày vào ở phải đúng định dạng dd/mm/yyyy';
+    document.getElementById('person-ngayVaoO').classList.add('input-error');
+    hasError = true;
+  }
+
+  // 7. Validate Email (optional)
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    document.getElementById('err-person-email').textContent = 'Email không hợp lệ';
+    document.getElementById('person-email').classList.add('input-error');
+    hasError = true;
+  }
+
+  if (hasError) {
+    switchPersonFormTab('info');
+    showToast('Vui lòng kiểm tra lại các trường thông tin bị lỗi', 'error');
+    return;
+  }
+
+  const payload = {
+    id,
+    hoTen,
+    sdtGoi,
+    sdtZalo,
+    email,
+    soCCCD,
+    ngaySinh,
+    gioiTinh,
+    queQuan,
+    ngayVaoO,
+    phongId,
+    frontImageBase64: activePersonPhotoForm.frontBase64,
+    backImageBase64: activePersonPhotoForm.backBase64,
+    removeFrontImage: activePersonPhotoForm.removeFront,
+    removeBackImage: activePersonPhotoForm.removeBack
+  };
+
+  const btnSave = document.getElementById('btn-save-person');
+  if (btnSave) {
+    btnSave.disabled = true;
+    btnSave.textContent = 'Đang lưu...';
+  }
+
+  try {
+    const res = await window.api.savePerson(payload);
+    if (res && res.error) {
+      showToast(`Lỗi: ${res.error}`, 'error');
+      return;
+    }
+
+    showToast(`Đã lưu thông tin "${hoTen}" thành công!`, 'success');
+    closePersonModal();
+    await loadRoomsAndPersons();
+  } catch (err) {
+    showToast(`Lỗi khi lưu thông tin: ${err.message}`, 'error');
+  } finally {
+    if (btnSave) {
+      btnSave.disabled = false;
+      btnSave.textContent = 'Lưu Thông Tin';
+    }
+  }
+}
+
+/* ============================================================
+   MODAL 4: LIGHTBOX XEM ẢNH CCCD PHÓNG TO
+   ============================================================ */
+
+let currentLightboxSource = 'person'; // 'person' hoặc 'form'
+
+/**
+ * Mở Lightbox từ bảng bên ngoài -> Mặc định luôn mở xem Mặt trước trước
+ */
+async function openLightbox(personId, initialSide = 'front') {
+  const person = allPersons.find(p => p.id === personId);
+  if (!person) return;
+
+  currentLightboxSource = 'person';
+  currentLightboxPerson = person;
+
+  const titleEl = document.getElementById('lightbox-title');
+  if (titleEl) titleEl.textContent = `Ảnh CCCD - ${person.hoTen}`;
+
+  // Switch tab hiển thị (mặc định 'front') và load ảnh
+  switchLightboxTab(initialSide || 'front');
+
+  const modalEl = document.getElementById('lightbox-modal');
+  if (modalEl) modalEl.style.display = 'flex';
+}
+
+/**
+ * Xem preview phóng to khi click vào icon con mắt 👁 trong form chỉnh sửa/thêm người ở
+ */
+function previewImageZoom(side = 'front') {
+  const hoTenInput = document.getElementById('person-hoTen');
+  const hoTen = hoTenInput ? hoTenInput.value.trim() : '';
+
+  currentLightboxSource = 'form';
+  currentLightboxPerson = null;
+
+  const titleEl = document.getElementById('lightbox-title');
+  if (titleEl) titleEl.textContent = `Ảnh CCCD - ${hoTen || 'Người thuê'}`;
+
+  // Switch tab hiển thị ('front' hoặc 'back') và load ảnh từ form
+  switchLightboxTab(side);
+
+  const modalEl = document.getElementById('lightbox-modal');
+  if (modalEl) modalEl.style.display = 'flex';
+}
+
+/**
+ * Đổi tab Mặt trước / Mặt sau trong Lightbox
+ */
+function switchLightboxTab(side) {
+  currentLightboxSide = side || 'front';
+
+  const btnFront = document.getElementById('lb-tab-front');
+  const btnBack = document.getElementById('lb-tab-back');
+
+  if (currentLightboxSide === 'front') {
+    if (btnFront) btnFront.classList.add('active');
+    if (btnBack) btnBack.classList.remove('active');
+  } else {
+    if (btnFront) btnFront.classList.remove('active');
+    if (btnBack) btnBack.classList.add('active');
+  }
+
+  updateLightboxImage();
+}
+
+/**
+ * Cập nhật hiển thị ảnh trong Lightbox dựa theo nguồn (person/form) và side (front/back)
+ */
+async function updateLightboxImage() {
+  const imgEl = document.getElementById('lightbox-img');
+  const emptyNotice = document.getElementById('lightbox-empty-notice');
+  const sideName = currentLightboxSide === 'front' ? 'mặt trước' : 'mặt sau';
+
+  // 1. Nguồn mở từ Form thêm/sửa người ở (preview box)
+  if (currentLightboxSource === 'form') {
+    const formImgEl = document.getElementById(`cccd-${currentLightboxSide}-img`);
+    if (formImgEl && formImgEl.src && formImgEl.src !== '' && !formImgEl.src.endsWith('index.html')) {
+      if (imgEl) {
+        imgEl.src = formImgEl.src;
+        imgEl.style.display = 'block';
+      }
+      if (emptyNotice) emptyNotice.style.display = 'none';
+    } else {
+      if (imgEl) imgEl.style.display = 'none';
+      if (emptyNotice) {
+        emptyNotice.style.display = 'block';
+        emptyNotice.textContent = `Chưa có ảnh CCCD ${sideName}`;
+      }
+    }
+    return;
+  }
+
+  // 2. Nguồn mở từ Bảng danh sách người ở
+  if (currentLightboxSource === 'person' && currentLightboxPerson) {
+    const relPath = currentLightboxSide === 'front' 
+      ? currentLightboxPerson.anhCCCDMatTruoc 
+      : currentLightboxPerson.anhCCCDMatSau;
+
+    if (relPath && window.api) {
+      try {
+        const base64 = await window.api.readImageBase64(relPath);
+        if (base64) {
+          if (imgEl) {
+            imgEl.src = base64;
+            imgEl.style.display = 'block';
+          }
+          if (emptyNotice) emptyNotice.style.display = 'none';
+          return;
+        }
+      } catch (e) {}
+    }
+
+    if (imgEl) imgEl.style.display = 'none';
+    if (emptyNotice) {
+      emptyNotice.style.display = 'block';
+      emptyNotice.textContent = `Chưa có ảnh CCCD ${sideName}`;
+    }
+  }
+}
+
+/**
+ * Đóng Lightbox Modal
+ */
+function closeLightboxModal(e) {
+  if (e && e.target !== e.currentTarget && !e.target.classList.contains('lightbox-close')) return;
+  const modalEl = document.getElementById('lightbox-modal');
+  if (modalEl) modalEl.style.display = 'none';
+}
+
 
 

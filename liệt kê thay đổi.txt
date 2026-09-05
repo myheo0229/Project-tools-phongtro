@@ -47,3 +47,5 @@ v2.3.7
 
 v2.3.8
 - Kiểm tra thử nghiệm toàn diện luồng nâng cấp tự động hoàn tất (Final Auto Update Test Release)
+
+- Thêm phần nhập thông tin người dùng ở phần 2,3
