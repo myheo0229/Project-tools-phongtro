@@ -145,10 +145,12 @@
           <div class="table-card-header">
             <div class="table-card-header-left">
               <h2>BẢNG NHẬP CHỈ SỐ VÀ TÍNH TIỀN PHÒNG TRỌ (12 PHÒNG)</h2>
-              <span class="table-subtitle">Nhập số mới điện nước để tự động tính toán điện/nước tiêu thụ và thành tiền</span>
+              <span class="table-subtitle">Nhập số mới điện nước để tự động tính toán điện/nước tiêu thụ và thành
+                tiền</span>
             </div>
             <div class="table-card-header-actions">
-              <button type="button" class="btn btn-zalo-send" id="btn-send-zalo-month" onclick="handleSendZaloMonthClick()">
+              <button type="button" class="btn btn-zalo-send" id="btn-send-zalo-month"
+                onclick="handleSendZaloMonthClick()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M22 2L11 13"></path>
                   <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
@@ -331,7 +333,8 @@
                 <div class="toggle-switch-group">
                   <div class="toggle-switch-label">
                     <span class="toggle-title">Pop-up Cảnh báo Số điện bất thường</span>
-                    <span class="toggle-desc">Hiển thị pop-up cảnh báo khi điện tiêu thụ chênh lệch ≥ 40% so với tháng trước</span>
+                    <span class="toggle-desc">Hiển thị pop-up cảnh báo khi điện tiêu thụ chênh lệch ≥ 40% so với tháng
+                      trước</span>
                   </div>
                   <div class="toggle-switch-wrapper">
                     <input type="checkbox" id="set-enableAnomalyPopup" class="toggle-checkbox" checked>
@@ -413,7 +416,8 @@
             </div>
 
             <div class="zalo-actions-row">
-              <button type="button" class="btn btn-zalo-login" id="btn-zalo-qr-login" onclick="handleZaloQrLoginClick()">
+              <button type="button" class="btn btn-zalo-login" id="btn-zalo-qr-login"
+                onclick="handleZaloQrLoginClick()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="3" y="3" width="7" height="7"></rect>
                   <rect x="14" y="3" width="7" height="7"></rect>
@@ -423,14 +427,16 @@
                 <span>Đăng Nhập Bằng Mã QR</span>
               </button>
 
-              <button type="button" class="btn btn-secondary" id="btn-zalo-switch" onclick="handleZaloSwitchAccountClick()">
+              <button type="button" class="btn btn-secondary" id="btn-zalo-switch"
+                onclick="handleZaloSwitchAccountClick()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"></path>
                 </svg>
                 <span>Đổi Tài Khoản</span>
               </button>
 
-              <button type="button" class="btn btn-outline-danger" id="btn-zalo-logout" onclick="handleZaloLogoutClick()">
+              <button type="button" class="btn btn-outline-danger" id="btn-zalo-logout"
+                onclick="handleZaloLogoutClick()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                   <polyline points="16 17 21 12 16 7"></polyline>
@@ -455,10 +461,12 @@
 
                 <!-- Custom Bank Select with Logo & Search -->
                 <div class="custom-bank-select" id="custom-bank-select">
-                  <button type="button" class="bank-select-trigger" id="bank-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                  <button type="button" class="bank-select-trigger" id="bank-select-trigger" aria-haspopup="listbox"
+                    aria-expanded="false">
                     <div class="bank-trigger-content" id="bank-trigger-content">
                       <div class="bank-trigger-placeholder">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2">
                           <rect x="2" y="5" width="20" height="14" rx="2"></rect>
                           <line x1="2" y1="10" x2="22" y2="10"></line>
                         </svg>
@@ -466,7 +474,8 @@
                       </div>
                     </div>
                     <div class="bank-trigger-arrow">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
                         <polyline points="6 9 12 15 18 9"></polyline>
                       </svg>
                     </div>
@@ -474,12 +483,15 @@
 
                   <div class="bank-select-dropdown" id="bank-select-dropdown" style="display: none;">
                     <div class="bank-search-wrap">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                       </svg>
-                      <input type="text" id="bank-search-input" class="bank-search-input" placeholder="Tìm tên, mã ngân hàng (VD: MB, VCB, Techcombank, 970422)..." autocomplete="off">
-                      <button type="button" class="bank-search-clear" id="bank-search-clear" style="display: none;" title="Xóa tìm kiếm">&times;</button>
+                      <input type="text" id="bank-search-input" class="bank-search-input"
+                        placeholder="Tìm tên, mã ngân hàng (VD: MB, VCB, Techcombank, 970422)..." autocomplete="off">
+                      <button type="button" class="bank-search-clear" id="bank-search-clear" style="display: none;"
+                        title="Xóa tìm kiếm">&times;</button>
                     </div>
 
                     <div class="bank-options-list" id="bank-options-list" role="listbox">
@@ -491,12 +503,14 @@
 
               <div class="form-group">
                 <label for="set-bankAccount">Số Tài Khoản:</label>
-                <input type="text" id="set-bankAccount" class="form-control" placeholder="Ví dụ: 0123456789" inputmode="numeric" autocomplete="off">
+                <input type="text" id="set-bankAccount" class="form-control" placeholder="Ví dụ: 0123456789"
+                  inputmode="numeric" autocomplete="off">
               </div>
 
               <div class="form-group">
                 <label for="set-bankOwner">Chủ Sở Hữu (Tên tài khoản):</label>
-                <input type="text" id="set-bankOwner" class="form-control uppercase-input" placeholder="Ví dụ: NGUYEN VAN A" autocomplete="off">
+                <input type="text" id="set-bankOwner" class="form-control uppercase-input"
+                  placeholder="Ví dụ: NGUYEN VAN A" autocomplete="off">
               </div>
             </div>
 
@@ -506,7 +520,20 @@
                 <line x1="12" y1="16" x2="12" y2="12"></line>
                 <line x1="12" y1="8" x2="12.01" y2="8"></line>
               </svg>
-              <span>Mã <strong>VietQR</strong> chuyển khoản tự động kèm cú pháp tiền phòng sẽ được tạo dựa trên ngân hàng và STK này.</span>
+              <span>Mã <strong>VietQR</strong> chuyển khoản tự động kèm cú pháp tiền phòng sẽ được tạo dựa trên ngân
+                hàng và STK này.</span>
+            </div>
+
+            <div class="form-actions bank-form-actions">
+              <button type="button" class="btn btn-primary btn-lg" id="btn-save-bank-settings"
+                onclick="saveBankSettings(event)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                Lưu Cài Đặt Ngân Hàng
+              </button>
             </div>
           </div>
         </div>
@@ -519,8 +546,9 @@
           <div class="stat-card highlight">
             <div class="stat-card__icon">
               <svg viewBox="0 0 24 24" fill="none" width="22" height="22">
-                <path d="M3 11.5 12 4l9 7.5" stroke="currentColor" stroke-width="1.7"/>
-                <path d="M5.5 10v9a1 1 0 0 0 1 1H9v-5.5h6V20h2.5a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M3 11.5 12 4l9 7.5" stroke="currentColor" stroke-width="1.7" />
+                <path d="M5.5 10v9a1 1 0 0 0 1 1H9v-5.5h6V20h2.5a1 1 0 0 0 1-1v-9" stroke="currentColor"
+                  stroke-width="1.7" />
               </svg>
             </div>
             <div>
@@ -532,9 +560,10 @@
           <div class="stat-card">
             <div class="stat-card__icon">
               <svg viewBox="0 0 24 24" fill="none" width="22" height="22">
-                <circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.6"/>
-                <path d="M2.5 19c0-3.3 2.9-5.5 6.5-5.5s6.5 2.2 6.5 5.5" stroke="currentColor" stroke-width="1.6"/>
-                <path d="M16 8.5a2.5 2.5 0 1 0 0-5M15.5 13.7c2.7.5 4.5 2.4 4.5 5.3" stroke="currentColor" stroke-width="1.6"/>
+                <circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.6" />
+                <path d="M2.5 19c0-3.3 2.9-5.5 6.5-5.5s6.5 2.2 6.5 5.5" stroke="currentColor" stroke-width="1.6" />
+                <path d="M16 8.5a2.5 2.5 0 1 0 0-5M15.5 13.7c2.7.5 4.5 2.4 4.5 5.3" stroke="currentColor"
+                  stroke-width="1.6" />
               </svg>
             </div>
             <div>
@@ -546,7 +575,8 @@
           <div class="stat-card">
             <div class="stat-card__icon">
               <svg viewBox="0 0 24 24" fill="none" width="22" height="22">
-                <path d="M4 12.5l5 5L20 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 12.5l5 5L20 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" />
               </svg>
             </div>
             <div>
@@ -558,8 +588,8 @@
           <div class="stat-card">
             <div class="stat-card__icon">
               <svg viewBox="0 0 24 24" fill="none" width="22" height="22">
-                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/>
-                <path d="M12 7v5l3.2 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6" />
+                <path d="M12 7v5l3.2 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
               </svg>
             </div>
             <div>
@@ -594,22 +624,26 @@
             <div class="table-tools">
               <div class="search-box">
                 <svg viewBox="0 0 24 24" fill="none">
-                  <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/>
-                  <path d="M20 20l-4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                  <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6" />
+                  <path d="M20 20l-4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
                 </svg>
-                <input type="text" id="resident-search-input" placeholder="Tìm theo họ tên, SĐT, CCCD..." oninput="filterResidentsTable()">
+                <input type="text" id="resident-search-input" placeholder="Tìm theo họ tên, SĐT, CCCD..."
+                  oninput="filterResidentsTable()">
               </div>
 
-              <button type="button" class="btn-outline-danger" id="btn-delete-selected-residents" disabled onclick="confirmDeleteSelectedResidents()">
+              <button type="button" class="btn-outline-danger" id="btn-delete-selected-residents" disabled
+                onclick="confirmDeleteSelectedResidents()">
                 <svg viewBox="0 0 24 24" fill="none">
-                  <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-.8 12.1a2 2 0 0 1-2 1.9H8.8a2 2 0 0 1-2-1.9L6 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  <path
+                    d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-.8 12.1a2 2 0 0 1-2 1.9H8.8a2 2 0 0 1-2-1.9L6 7"
+                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                 </svg>
                 <span id="btn-delete-selected-text">Xóa Đã Chọn</span>
               </button>
 
               <button type="button" class="btn-solid" onclick="openAddResidentModal()">
                 <svg viewBox="0 0 24 24" fill="none">
-                  <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                 </svg>
                 Thêm Người Mới
               </button>
@@ -621,7 +655,8 @@
               <thead>
                 <tr>
                   <th style="width: 44px; text-align: center;">
-                    <input type="checkbox" id="th-select-all-residents" onchange="toggleSelectAllResidents(this.checked)">
+                    <input type="checkbox" id="th-select-all-residents"
+                      onchange="toggleSelectAllResidents(this.checked)">
                   </th>
                   <th style="width: 50px; text-align: center;">STT</th>
                   <th>Họ Và Tên</th>
@@ -748,12 +783,14 @@
         </div>
       </div>
       <div class="modal-body">
-        <p>Bạn vừa điều chỉnh một số thông tin trong <strong>Cài Đặt Chung</strong> nhưng chưa bấm nút <strong>Lưu Cài Đặt</strong>.</p>
+        <p>Bạn vừa điều chỉnh một số thông tin trong <strong>Cài Đặt Chung</strong> nhưng chưa bấm nút <strong>Lưu Cài
+            Đặt</strong>.</p>
         <p class="modal-question">Bạn có muốn lưu lại các thay đổi này trước khi tiếp tục không?</p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="cancelUnsavedSettingsModal()">Hủy (Ở lại)</button>
-        <button type="button" class="btn btn-secondary" style="color: var(--accent-danger);" onclick="discardUnsavedSettingsModal()">Bỏ qua thay đổi</button>
+        <button type="button" class="btn btn-secondary" style="color: var(--accent-danger);"
+          onclick="discardUnsavedSettingsModal()">Bỏ qua thay đổi</button>
         <button type="button" class="btn btn-primary" onclick="confirmSaveUnsavedSettingsModal()">Lưu cài đặt</button>
       </div>
     </div>
@@ -794,8 +831,9 @@
 
       <!-- TRẠNG THÁI 2: THANH TIẾN TRÌNH TẢI (%) -->
       <div id="update-state-downloading" class="modal-body" style="display: none;">
-        <p>Đang tiến hành tải bản cập nhật <strong id="update-download-version" class="text-success">v2.2.3</strong>...</p>
-        
+        <p>Đang tiến hành tải bản cập nhật <strong id="update-download-version" class="text-success">v2.2.3</strong>...
+        </p>
+
         <div class="update-progress-container">
           <div class="update-progress-bar">
             <div id="update-progress-fill" class="update-progress-fill" style="width: 0%;"></div>
@@ -816,7 +854,8 @@
             <span class="badge-success">ĐÃ TẢI XONG 100%</span>
           </div>
           <p class="installing-countdown">
-            Ứng dụng sẽ tạm đóng sau <strong id="update-countdown-text" class="text-highlight">3 giây</strong> để tự động nâng cấp.
+            Ứng dụng sẽ tạm đóng sau <strong id="update-countdown-text" class="text-highlight">3 giây</strong> để tự
+            động nâng cấp.
           </p>
           <div class="installing-tips">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -824,7 +863,8 @@
               <line x1="12" y1="16" x2="12" y2="12"></line>
               <line x1="12" y1="8" x2="12.01" y2="8"></line>
             </svg>
-            <span>Phần mềm sẽ <strong>tự động khởi động lại</strong> sau khi nâng cấp xong. Vui lòng không mở lại ứng dụng thủ công trong lúc này!</span>
+            <span>Phần mềm sẽ <strong>tự động khởi động lại</strong> sau khi nâng cấp xong. Vui lòng không mở lại ứng
+              dụng thủ công trong lúc này!</span>
           </div>
         </div>
       </div>
@@ -865,7 +905,8 @@
           <div id="room-members-checklist" class="members-checklist-container">
             <!-- Render checklist dynamically -->
           </div>
-          <span class="field-hint">Tích chọn các thành viên cùng phòng (danh sách đã loại trừ người ở phòng khác).</span>
+          <span class="field-hint">Tích chọn các thành viên cùng phòng (danh sách đã loại trừ người ở phòng
+            khác).</span>
         </div>
       </div>
       <div class="modal-footer">
@@ -890,8 +931,10 @@
           <div class="modal__title-row">
             <div class="modal__icon">
               <svg viewBox="0 0 24 24" fill="none" width="28" height="28">
-                <path d="M12 12c2.5 0 4.5-2 4.5-4.5S14.5 3 12 3 7.5 5 7.5 7.5 9.5 12 12 12Z" stroke="currentColor" stroke-width="1.6"/>
-                <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                <path d="M12 12c2.5 0 4.5-2 4.5-4.5S14.5 3 12 3 7.5 5 7.5 7.5 9.5 12 12 12Z" stroke="currentColor"
+                  stroke-width="1.6" />
+                <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" stroke="currentColor" stroke-width="1.6"
+                  stroke-linecap="round" />
               </svg>
             </div>
             <div>
@@ -899,11 +942,13 @@
               <p id="res-modal-subtitle">Điền thông tin cá nhân và ảnh CCCD</p>
             </div>
           </div>
-          <button type="button" class="modal__close" aria-label="Đóng" onclick="closeResidentFormModal()">&times;</button>
+          <button type="button" class="modal__close" aria-label="Đóng"
+            onclick="closeResidentFormModal()">&times;</button>
         </div>
 
         <div class="tabs">
-          <button type="button" class="tab active" id="form-tab-btn-info" data-tab="info" onclick="switchFormTab('info')">
+          <button type="button" class="tab active" id="form-tab-btn-info" data-tab="info"
+            onclick="switchFormTab('info')">
             <span class="tab-step">1</span> Thông Tin Cá Nhân
           </button>
           <button type="button" class="tab" id="form-tab-btn-cccd" data-tab="photos" onclick="switchFormTab('cccd')">
@@ -925,40 +970,57 @@
 
               <div class="field">
                 <label for="res-cccd">Số CCCD <span class="req">*</span></label>
-                <input type="text" id="res-cccd" placeholder="12 chữ số" maxlength="12" inputmode="numeric" required autocomplete="off">
+                <input type="text" id="res-cccd" placeholder="12 chữ số" maxlength="12" inputmode="numeric" required
+                  autocomplete="off">
                 <div class="field-error-msg" id="err-res-cccd"></div>
               </div>
 
               <div class="field">
                 <label for="res-sdtGoi">Số Điện Thoại Gọi <span class="req">*</span></label>
-                <input id="res-sdtGoi" type="tel" placeholder="Ví dụ: 0912 345 678" maxlength="10" inputmode="numeric" required autocomplete="off">
+                <input id="res-sdtGoi" type="tel" placeholder="Ví dụ: 0912 345 678" maxlength="10" inputmode="numeric"
+                  required autocomplete="off">
                 <div class="field-error-msg" id="err-res-sdtGoi"></div>
               </div>
 
               <div class="field">
                 <div class="field-label-row">
                   <label for="res-sdtZalo">Số Điện Thoại Zalo <span class="req">*</span></label>
-                  <button type="button" class="label-action" id="copyPhoneBtn" onclick="copyPhoneToZalo(event)">Giống SĐT gọi</button>
+                  <button type="button" class="label-action" id="copyPhoneBtn" onclick="copyPhoneToZalo(event)">Giống
+                    SĐT gọi</button>
                 </div>
-                <input id="res-sdtZalo" type="tel" placeholder="Ví dụ: 0912 345 678" maxlength="10" inputmode="numeric" required autocomplete="off">
+                <input id="res-sdtZalo" type="tel" placeholder="Ví dụ: 0912 345 678" maxlength="10" inputmode="numeric"
+                  required autocomplete="off">
                 <div class="field-error-msg" id="err-res-sdtZalo"></div>
               </div>
 
               <div class="field">
                 <label for="res-ngaySinh">Ngày Sinh <span class="req">*</span></label>
                 <div class="date-input-wrap" id="wrap-res-ngaySinh">
-                  <input type="text" id="res-ngaySinh" inputmode="numeric" autocomplete="off" value="dd/mm/yyyy" required>
+                  <input type="text" id="res-ngaySinh" inputmode="numeric" autocomplete="off" value="dd/mm/yyyy"
+                    required>
                   <button type="button" class="calendar-toggle" id="calToggle-ngaySinh" aria-label="Chọn ngày sinh">
-                    <svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="16" rx="2.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 3v4M16 3v4M3.5 10h17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <rect x="3.5" y="5" width="17" height="16" rx="2.5" stroke="currentColor" stroke-width="1.6" />
+                      <path d="M8 3v4M16 3v4M3.5 10h17" stroke="currentColor" stroke-width="1.6"
+                        stroke-linecap="round" />
+                    </svg>
                   </button>
                   <div class="calendar-popup" id="calPopup-ngaySinh">
                     <div class="cal-head">
-                      <button type="button" class="cal-nav cal-prev-btn" aria-label="Tháng trước"><svg viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                      <button type="button" class="cal-nav cal-prev-btn" aria-label="Tháng trước"><svg
+                          viewBox="0 0 24 24" fill="none">
+                          <path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                        </svg></button>
                       <div class="cal-selects">
                         <select class="cal-month-select"></select>
                         <select class="cal-year-select"></select>
                       </div>
-                      <button type="button" class="cal-nav cal-next-btn" aria-label="Tháng sau"><svg viewBox="0 0 24 24" fill="none"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                      <button type="button" class="cal-nav cal-next-btn" aria-label="Tháng sau"><svg viewBox="0 0 24 24"
+                          fill="none">
+                          <path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                        </svg></button>
                     </div>
                     <div class="cal-weekdays">
                       <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span>
@@ -991,21 +1053,34 @@
               <div class="field">
                 <div class="field-label-row">
                   <label for="res-ngayVaoO">Ngày Vào Ở <span class="opt-tag">Tùy chọn</span></label>
-                  <button type="button" class="label-action" id="setTodayMoveInBtn" onclick="setMoveInDateToday(event)">Hôm nay</button>
+                  <button type="button" class="label-action" id="setTodayMoveInBtn"
+                    onclick="setMoveInDateToday(event)">Hôm nay</button>
                 </div>
                 <div class="date-input-wrap" id="wrap-res-ngayVaoO">
                   <input type="text" id="res-ngayVaoO" inputmode="numeric" autocomplete="off" value="dd/mm/yyyy">
                   <button type="button" class="calendar-toggle" id="calToggle-ngayVaoO" aria-label="Chọn ngày vào ở">
-                    <svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="16" rx="2.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 3v4M16 3v4M3.5 10h17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <rect x="3.5" y="5" width="17" height="16" rx="2.5" stroke="currentColor" stroke-width="1.6" />
+                      <path d="M8 3v4M16 3v4M3.5 10h17" stroke="currentColor" stroke-width="1.6"
+                        stroke-linecap="round" />
+                    </svg>
                   </button>
                   <div class="calendar-popup" id="calPopup-ngayVaoO">
                     <div class="cal-head">
-                      <button type="button" class="cal-nav cal-prev-btn" aria-label="Tháng trước"><svg viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                      <button type="button" class="cal-nav cal-prev-btn" aria-label="Tháng trước"><svg
+                          viewBox="0 0 24 24" fill="none">
+                          <path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                        </svg></button>
                       <div class="cal-selects">
                         <select class="cal-month-select"></select>
                         <select class="cal-year-select"></select>
                       </div>
-                      <button type="button" class="cal-nav cal-next-btn" aria-label="Tháng sau"><svg viewBox="0 0 24 24" fill="none"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                      <button type="button" class="cal-nav cal-next-btn" aria-label="Tháng sau"><svg viewBox="0 0 24 24"
+                          fill="none">
+                          <path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                        </svg></button>
                     </div>
                     <div class="cal-weekdays">
                       <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span>
@@ -1022,7 +1097,8 @@
 
               <div class="field full">
                 <label for="res-queQuan">Quê Quán <span class="opt-tag">Tùy chọn</span></label>
-                <input type="text" id="res-queQuan" placeholder="Ví dụ: Phường Bến Nghé, Quận 1, TP.HCM" autocomplete="off">
+                <input type="text" id="res-queQuan" placeholder="Ví dụ: Phường Bến Nghé, Quận 1, TP.HCM"
+                  autocomplete="off">
                 <div class="hint">Có thể để trống, hoặc quét tự động từ ảnh CCCD ở phiên bản sau.</div>
               </div>
 
@@ -1037,14 +1113,16 @@
                 <div class="upload-box__label">Mặt Trước CCCD</div>
                 <div class="upload-box__area" id="frontArea" onclick="onCccdAreaClick('mat_truoc', event)">
                   <svg id="cccd-front-svg" viewBox="0 0 24 24" fill="none">
-                    <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
-                    <circle cx="8.5" cy="10" r="1.5" fill="currentColor"/>
-                    <path d="M21 15l-5.5-5-9.5 9" stroke="currentColor" stroke-width="1.5"/>
+                    <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.5" />
+                    <circle cx="8.5" cy="10" r="1.5" fill="currentColor" />
+                    <path d="M21 15l-5.5-5-9.5 9" stroke="currentColor" stroke-width="1.5" />
                   </svg>
                   <span id="cccd-front-empty">Chưa có ảnh mặt trước</span>
                   <img id="cccd-front-img" style="display:none;" alt="Mặt trước CCCD">
-                  <input type="file" id="input-file-front" accept="image/*" style="display:none;" onchange="onNativeFileChange('mat_truoc', this)">
-                  <button type="button" class="upload-box__remove" id="btn-remove-front-cccd" onclick="onCccdRemoveClick('mat_truoc', event)" title="Xóa ảnh">&times;</button>
+                  <input type="file" id="input-file-front" accept="image/*" style="display:none;"
+                    onchange="onNativeFileChange('mat_truoc', this)">
+                  <button type="button" class="upload-box__remove" id="btn-remove-front-cccd"
+                    onclick="onCccdRemoveClick('mat_truoc', event)" title="Xóa ảnh">&times;</button>
                 </div>
               </div>
 
@@ -1052,14 +1130,16 @@
                 <div class="upload-box__label">Mặt Sau CCCD</div>
                 <div class="upload-box__area" id="backArea" onclick="onCccdAreaClick('mat_sau', event)">
                   <svg id="cccd-back-svg" viewBox="0 0 24 24" fill="none">
-                    <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
-                    <circle cx="8.5" cy="10" r="1.5" fill="currentColor"/>
-                    <path d="M21 15l-5.5-5-9.5 9" stroke="currentColor" stroke-width="1.5"/>
+                    <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.5" />
+                    <circle cx="8.5" cy="10" r="1.5" fill="currentColor" />
+                    <path d="M21 15l-5.5-5-9.5 9" stroke="currentColor" stroke-width="1.5" />
                   </svg>
                   <span id="cccd-back-empty">Chưa có ảnh mặt sau</span>
                   <img id="cccd-back-img" style="display:none;" alt="Mặt sau CCCD">
-                  <input type="file" id="input-file-back" accept="image/*" style="display:none;" onchange="onNativeFileChange('mat_sau', this)">
-                  <button type="button" class="upload-box__remove" id="btn-remove-back-cccd" onclick="onCccdRemoveClick('mat_sau', event)" title="Xóa ảnh">&times;</button>
+                  <input type="file" id="input-file-back" accept="image/*" style="display:none;"
+                    onchange="onNativeFileChange('mat_sau', this)">
+                  <button type="button" class="upload-box__remove" id="btn-remove-back-cccd"
+                    onclick="onCccdRemoveClick('mat_sau', event)" title="Xóa ảnh">&times;</button>
                 </div>
               </div>
 
@@ -1067,10 +1147,11 @@
 
             <div class="upload-note">
               <svg viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M12 8v.01M12 11v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" />
+                <path d="M12 8v.01M12 11v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
               </svg>
-              <div>Ảnh sẽ được lưu vào thư mục riêng của người này. Chọn ảnh rõ nét, đủ sáng để dễ đối chiếu khi cần.</div>
+              <div>Ảnh sẽ được lưu vào thư mục riêng của người này. Chọn ảnh rõ nét, đủ sáng để dễ đối chiếu khi cần.
+              </div>
             </div>
           </section>
 
@@ -1080,7 +1161,8 @@
           <button type="button" class="btn btn--ghost" onclick="closeResidentFormModal()">Hủy</button>
           <button type="button" class="btn btn--primary" onclick="submitResidentForm()">
             <svg viewBox="0 0 24 24" fill="none" width="15" height="15">
-              <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
             </svg>
             Lưu Người Thuê
           </button>
@@ -1110,29 +1192,48 @@
       <!-- TABS CHUYỂN MẶT TRƯỚC / MẶT SAU -->
       <div class="lightbox-tabs-bar">
         <div class="lightbox-tabs">
-          <button type="button" id="lightbox-tab-front" class="lightbox-tab active" onclick="switchLightboxPhoto('mat_truoc')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <button type="button" id="lightbox-tab-front" class="lightbox-tab active"
+            onclick="switchLightboxPhoto('mat_truoc')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
             Mặt Trước <span class="photo-tab-pill" id="lightbox-tag-front">Có ảnh</span>
           </button>
           <button type="button" id="lightbox-tab-back" class="lightbox-tab" onclick="switchLightboxPhoto('mat_sau')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
             Mặt Sau <span class="photo-tab-pill" id="lightbox-tag-back">Có ảnh</span>
           </button>
         </div>
       </div>
 
-      <div class="modal-body text-center" style="padding: 16px; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-        <div class="lightbox-img-wrapper" style="max-height: 60vh; overflow: auto; width: 100%; display: flex; justify-content: center; align-items: center; min-height: 240px;">
-          <img id="lightbox-img" src="" alt="Ảnh CCCD" style="max-width: 100%; max-height: 55vh; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); object-fit: contain;">
-          <div id="lightbox-empty-notice" style="display: none; padding: 40px 20px; color: var(--ink-muted); font-size: 14px;">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 12px; display: block; opacity: 0.5;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      <div class="modal-body text-center"
+        style="padding: 16px; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+        <div class="lightbox-img-wrapper"
+          style="max-height: 60vh; overflow: auto; width: 100%; display: flex; justify-content: center; align-items: center; min-height: 240px;">
+          <img id="lightbox-img" src="" alt="Ảnh CCCD"
+            style="max-width: 100%; max-height: 55vh; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); object-fit: contain;">
+          <div id="lightbox-empty-notice"
+            style="display: none; padding: 40px 20px; color: var(--ink-muted); font-size: 14px;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+              style="margin: 0 auto 12px; display: block; opacity: 0.5;">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
             <span id="lightbox-empty-text">Chưa có ảnh cho mặt này</span>
           </div>
         </div>
       </div>
 
       <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
-        <div id="lightbox-status-text" style="font-size: 13.5px; color: var(--ink-soft); font-weight: 500;">Ảnh 1 / 2: Mặt trước</div>
+        <div id="lightbox-status-text" style="font-size: 13.5px; color: var(--ink-soft); font-weight: 500;">Ảnh 1 / 2:
+          Mặt trước</div>
         <button type="button" class="btn btn-secondary" onclick="closeCccdLightbox()">Đóng</button>
       </div>
     </div>
@@ -1155,15 +1256,18 @@
         </div>
       </div>
       <div class="modal-body">
-        <p>Bạn có chắc chắn muốn xóa <strong id="delete-resident-count-text" class="text-danger">1 người thuê</strong> sau đây khỏi hệ thống?</p>
+        <p>Bạn có chắc chắn muốn xóa <strong id="delete-resident-count-text" class="text-danger">1 người thuê</strong>
+          sau đây khỏi hệ thống?</p>
         <div id="delete-resident-list" class="delete-names-box"></div>
         <p class="modal-question text-danger" style="margin-top: 12px; font-size: 0.9rem;">
-          Lưu ý: Nếu người này đang ở phòng trọ, phòng đó sẽ được tự động cập nhật gỡ bỏ người này. Toàn bộ ảnh CCCD liên quan cũng sẽ bị xóa vĩnh viễn trên ổ đĩa.
+          Lưu ý: Nếu người này đang ở phòng trọ, phòng đó sẽ được tự động cập nhật gỡ bỏ người này. Toàn bộ ảnh CCCD
+          liên quan cũng sẽ bị xóa vĩnh viễn trên ổ đĩa.
         </p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="closeDeleteResidentModal()">Hủy</button>
-        <button type="button" class="btn btn-danger" id="btn-confirm-delete-resident" onclick="executeDeleteResidents()">Xóa Vĩnh Viễn</button>
+        <button type="button" class="btn btn-danger" id="btn-confirm-delete-resident"
+          onclick="executeDeleteResidents()">Xóa Vĩnh Viễn</button>
       </div>
     </div>
   </div>
@@ -1184,7 +1288,8 @@
           <h3 id="zalo-qr-modal-title">Đăng Nhập Zalo Bằng Mã QR</h3>
           <p class="modal-subtitle" id="zalo-qr-modal-subtitle">Dùng ứng dụng Zalo trên điện thoại để quét mã</p>
         </div>
-        <button type="button" class="zalo-qr-close-btn" onclick="cancelZaloQrLogin()" title="Đóng / Hủy">&times;</button>
+        <button type="button" class="zalo-qr-close-btn" onclick="cancelZaloQrLogin()"
+          title="Đóng / Hủy">&times;</button>
       </div>
 
       <div class="modal-body text-center zalo-qr-body">
@@ -1200,7 +1305,7 @@
             <!-- Ảnh QR thật -->
             <div class="zalo-qr-image-wrap" id="zalo-qr-image-wrap" style="display: none;">
               <img id="zalo-qr-image" src="" alt="Mã QR Zalo" class="zalo-qr-img">
-              
+
               <!-- Overlay khi Đã quét / Hết hạn / Từ chối -->
               <div class="zalo-qr-overlay" id="zalo-qr-overlay" style="display: none;">
                 <div class="zalo-overlay-content" id="zalo-overlay-content">
@@ -1222,7 +1327,8 @@
 
         <!-- Hộp thông báo trạng thái -->
         <div class="zalo-qr-status-box">
-          <p class="zalo-qr-status-text" id="zalo-qr-status-text">Mở Zalo trên điện thoại &gt; Chọn biểu tượng Quét mã QR</p>
+          <p class="zalo-qr-status-text" id="zalo-qr-status-text">Mở Zalo trên điện thoại &gt; Chọn biểu tượng Quét mã
+            QR</p>
         </div>
 
         <!-- Nút Tạo mã mới / Thử lại -->
@@ -1239,6 +1345,105 @@
 
       <div class="modal-footer" style="justify-content: flex-end;">
         <button type="button" class="btn btn-secondary" onclick="cancelZaloQrLogin()">Hủy Bỏ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CHỌN PHÒNG GỬI PHIẾU THU QUA ZALO -->
+  <div id="zalo-select-rooms-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card zalo-select-modal-card">
+      <div class="modal-header">
+        <div class="modal-icon zalo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 2L11 13"></path>
+            <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+          </svg>
+        </div>
+        <div class="modal-title-group">
+          <h3 id="zalo-select-modal-title">Gửi Phiếu Thu Qua Zalo</h3>
+          <p class="modal-subtitle" id="zalo-select-modal-subtitle">Chọn danh sách các phòng muốn gửi phiếu thu tự động</p>
+        </div>
+        <button type="button" class="zalo-qr-close-btn" onclick="closeZaloSelectRoomsModal()" title="Đóng">&times;</button>
+      </div>
+
+      <div class="zalo-select-toolbar">
+        <div class="zalo-select-toolbar-left">
+          <button type="button" class="btn btn-sm btn-outline-primary" id="btn-zalo-select-all" onclick="toggleSelectAllZaloRooms(true)">Chọn Tất Cả</button>
+          <button type="button" class="btn btn-sm btn-secondary" id="btn-zalo-deselect-all" onclick="toggleSelectAllZaloRooms(false)">Bỏ Chọn</button>
+        </div>
+        <div class="zalo-select-stats" id="zalo-select-stats-text">
+          Đã chọn: <strong id="zalo-selected-count">0</strong> / <span id="zalo-eligible-count">0</span> phòng đủ điều kiện
+        </div>
+      </div>
+
+      <div class="modal-body zalo-select-body">
+        <div class="zalo-rooms-grid" id="zalo-rooms-grid">
+          <!-- Render danh sách 12 phòng động qua JS -->
+        </div>
+      </div>
+
+      <div class="modal-footer" style="justify-content: space-between;">
+        <button type="button" class="btn btn-secondary" onclick="closeZaloSelectRoomsModal()">Hủy</button>
+        <button type="button" class="btn btn-zalo-send" id="btn-confirm-send-zalo" disabled onclick="executeSendZaloReceipts()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 2L11 13"></path>
+            <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+          </svg>
+          <span id="btn-confirm-send-zalo-text">Xác Nhận Gửi (0 phòng)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL BÁO CÁO TỔNG KẾT KẾT QUẢ GỬI ZALO -->
+  <div id="zalo-summary-report-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card zalo-summary-modal-card">
+      <div class="modal-header">
+        <div class="modal-icon zalo" id="zalo-summary-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+        <div class="modal-title-group">
+          <h3 id="zalo-summary-modal-title">Kết Quả Gửi Phiếu Thu Zalo</h3>
+          <p class="modal-subtitle" id="zalo-summary-modal-subtitle">Báo cáo tổng kết gửi phiếu thu qua Zalo</p>
+        </div>
+        <button type="button" class="zalo-qr-close-btn" onclick="closeZaloSummaryReportModal()" title="Đóng">&times;</button>
+      </div>
+
+      <div class="modal-body zalo-summary-body">
+        <!-- Stat Cards -->
+        <div class="zalo-summary-stats-row">
+          <div class="zalo-summary-stat-card success">
+            <div class="zalo-stat-num" id="zalo-stat-success-count">0</div>
+            <div class="zalo-stat-label">Gửi Thành Công</div>
+          </div>
+          <div class="zalo-summary-stat-card failed" id="zalo-stat-card-failed">
+            <div class="zalo-stat-num" id="zalo-stat-failed-count">0</div>
+            <div class="zalo-stat-label">Gửi Thất Bại</div>
+          </div>
+        </div>
+
+        <!-- Chi tiết phòng gửi lỗi -->
+        <div class="zalo-summary-details-section" id="zalo-summary-failed-section" style="display: none;">
+          <h4 class="zalo-summary-section-title text-danger">Chi Tiết Phòng Gửi Thất Bại:</h4>
+          <div class="zalo-summary-list failed" id="zalo-summary-failed-list">
+            <!-- Render danh sách lỗi động -->
+          </div>
+        </div>
+
+        <!-- Chi tiết phòng gửi thành công -->
+        <div class="zalo-summary-details-section" id="zalo-summary-success-section">
+          <h4 class="zalo-summary-section-title text-success">Chi Tiết Phòng Gửi Thành Công:</h4>
+          <div class="zalo-summary-list success" id="zalo-summary-success-list">
+            <!-- Render danh sách thành công động -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="justify-content: flex-end;">
+        <button type="button" class="btn btn-primary" onclick="closeZaloSummaryReportModal()">Đóng / Hoàn Tất</button>
       </div>
     </div>
   </div>

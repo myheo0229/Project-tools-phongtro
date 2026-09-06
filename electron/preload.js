@@ -66,5 +66,10 @@ contextBridge.exposeInMainWorld('api', {
   onZaloQrEvent: (callback) => {
     ipcRenderer.removeAllListeners('zalo:qr-event');
     ipcRenderer.on('zalo:qr-event', (event, data) => callback(data));
+  },
+  sendZaloReceipts: (payload) => ipcRenderer.invoke('zalo:send-receipts', payload),
+  onZaloSendProgress: (callback) => {
+    ipcRenderer.removeAllListeners('zalo:send-progress');
+    ipcRenderer.on('zalo:send-progress', (event, data) => callback(data));
   }
 });

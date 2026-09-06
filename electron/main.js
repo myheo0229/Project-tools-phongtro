@@ -843,6 +843,27 @@ ipcMain.handle('zalo:logout', async () => {
   return { success: true };
 });
 
+ipcMain.handle('zalo:send-receipts', async (event, { monthKey, roomTasks, appSettings }) => {
+  const pointer = getPointer();
+  const baseFolder = pointer ? pointer.baseFolder : (appSettings ? appSettings.baseFolder : '');
+  if (!baseFolder) {
+    return { error: 'CHUA_CHON_THU_MUC', message: 'Chưa chọn thư mục lưu dữ liệu!' };
+  }
+
+  const onProgress = (progressData) => {
+    if (event.sender && !event.sender.isDestroyed()) {
+      event.sender.send('zalo:send-progress', progressData);
+    }
+  };
+
+  try {
+    return await zaloManager.sendReceipts({ monthKey, baseFolder, roomTasks, appSettings }, onProgress);
+  } catch (err) {
+    console.error('Lỗi khi thực hiện gửi phiếu thu Zalo:', err);
+    return { error: 'SEND_FAILED', message: err.message };
+  }
+});
+
 app.whenReady().then(() => {
   createWindow();
 

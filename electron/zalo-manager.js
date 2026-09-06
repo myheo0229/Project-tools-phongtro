@@ -1,12 +1,27 @@
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 const { Zalo, LoginQRCallbackEventType, ZaloApiLoginQRAborted, ZaloApiLoginQRDeclined } = require('zca-js');
+
+/**
+ * Hàm lấy metadata ảnh (chiều cao, chiều rộng, kích thước) bằng sharp cho zca-js v2+
+ */
+async function imageMetadataGetter(filePath) {
+  const data = await fs.promises.readFile(filePath);
+  const metadata = await sharp(data).metadata();
+  return {
+    height: metadata.height,
+    width: metadata.width,
+    size: metadata.size || data.length,
+  };
+}
 
 class ZaloManager {
   constructor() {
     this.zalo = new Zalo({
-      logging: true
+      logging: true,
+      imageMetadataGetter
     });
     this.api = null;
     this.currentProfile = null;
@@ -348,6 +363,220 @@ class ZaloManager {
       connected: !!this.api,
       profile: this.currentProfile,
       isLoginInProgress: this.isLoginInProgress
+    };
+  }
+
+  /**
+   * Tải ảnh VietQR về file tạm
+   */
+  async downloadVietQrImage(url, destPath) {
+    const https = require('https');
+    const http = require('http');
+    return new Promise((resolve, reject) => {
+      const file = fs.createWriteStream(destPath);
+      const client = url.startsWith('https') ? https : http;
+      const req = client.get(url, (response) => {
+        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+          file.close();
+          if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
+          return this.downloadVietQrImage(response.headers.location, destPath).then(resolve).catch(reject);
+        }
+        if (response.statusCode !== 200) {
+          file.close();
+          if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
+          return reject(new Error(`Tải mã VietQR thất bại (HTTP ${response.statusCode})`));
+        }
+        response.pipe(file);
+        file.on('finish', () => {
+          file.close(() => resolve(destPath));
+        });
+      });
+      req.on('error', (err) => {
+        file.close();
+        if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
+        reject(err);
+      });
+      req.setTimeout(10000, () => {
+        req.destroy(new Error('Timeout khi tải ảnh VietQR (quá 10s)'));
+      });
+    });
+  }
+
+  /**
+   * Gửi phiếu thu tự động cho các phòng đã chọn qua Zalo
+   * @param {Object} payload { monthKey, baseFolder, roomTasks, appSettings }
+   * @param {Function} onProgress Callback cập nhật tiến trình ({ current, total, phong })
+   */
+  async sendReceipts({ monthKey, baseFolder, roomTasks, appSettings }, onProgress) {
+    if (!this.api) {
+      throw new Error('Chưa kết nối tài khoản Zalo hoặc phiên đăng nhập đã hết hạn!');
+    }
+
+    if (!Array.isArray(roomTasks) || roomTasks.length === 0) {
+      return { total: 0, successCount: 0, failedCount: 0, results: [] };
+    }
+
+    const [yyyy, mm] = monthKey.split('-');
+    const monthFolderName = `Thang_${mm}_${yyyy}`;
+    const phieuThuDir = path.join(baseFolder, 'PhieuThu', monthFolderName);
+
+    // Tra cứu thông tin ngân hàng
+    let banksMap = {};
+    try {
+      banksMap = require('../src/shared/banks-data.js');
+    } catch (e) {
+      console.warn('Không thể load banks-data.js:', e.message);
+    }
+
+    let bankInfo = null;
+    if (appSettings && appSettings.bankName) {
+      bankInfo = banksMap[appSettings.bankName] || Object.values(banksMap).find(b =>
+        b.id === appSettings.bankName || b.code === appSettings.bankName || b.bin === appSettings.bankName
+      );
+    }
+
+    const hasBankConfig = bankInfo && appSettings.bankAccount && appSettings.bankOwner;
+    const bankShortName = bankInfo ? (bankInfo.shortName || bankInfo.name || appSettings.bankName) : (appSettings.bankName || '');
+    const bankBin = bankInfo ? (bankInfo.bin || bankInfo.code || appSettings.bankName) : (appSettings.bankName || '');
+    const bankAccount = appSettings ? (appSettings.bankAccount || '') : '';
+    const bankOwner = appSettings ? (appSettings.bankOwner || '') : '';
+
+    const results = [];
+    const total = roomTasks.length;
+
+    for (let i = 0; i < roomTasks.length; i++) {
+      const task = roomTasks[i];
+      const current = i + 1;
+
+      if (typeof onProgress === 'function') {
+        onProgress({ current, total, phong: task.phong });
+      }
+
+      console.log(`[Zalo Send] (${current}/${total}) Bắt đầu gửi cho Phòng ${task.phong}...`);
+
+      const sendSingleRoomTask = async () => {
+        // 1. Tìm người dùng Zalo qua SĐT
+        let cleanPhone = String(task.sdtZalo || task.sdtGoi || '').replace(/\D/g, '');
+        if (!cleanPhone) {
+          throw new Error('Chủ phòng chưa có Số điện thoại Zalo hợp lệ.');
+        }
+
+        const user = await this.api.findUser(cleanPhone);
+        if (!user || (!user.uid && !user.userId)) {
+          throw new Error(`SĐT [${cleanPhone}] chưa đăng ký tài khoản Zalo hoặc không tìm thấy.`);
+        }
+        const targetUid = String(user.uid || user.userId);
+
+        // 2. Kiểm tra file ảnh phiếu thu đã xuất
+        const receiptImgPath = path.join(phieuThuDir, `Phong-${task.phong}.jpg`);
+        if (!fs.existsSync(receiptImgPath)) {
+          throw new Error(`Chưa tìm thấy file ảnh phiếu thu (Phong-${task.phong}.jpg). Vui lòng bấm 'Lưu & Xuất' trước khi gửi Zalo.`);
+        }
+
+        // Bước 1: Gửi ảnh phiếu thu
+        console.log(`[Zalo Send] Phòng ${task.phong}: Gửi ảnh phiếu thu...`);
+        await this.api.sendMessage({ msg: "", attachments: [receiptImgPath] }, targetUid);
+
+        // Delay nhỏ giữa các bước (0.2s - 1.0s)
+        const intraDelay1 = Math.floor(Math.random() * 800) + 200;
+        await new Promise(r => setTimeout(r, intraDelay1));
+
+        // Bước 2: Gửi ảnh mã VietQR (nếu có cấu hình ngân hàng)
+        if (hasBankConfig && task.tongCong > 0) {
+          let tempQrPath = null;
+          try {
+            const noiDungCK = `${task.tenChuPhong || ''} phong ${task.phong} thang ${mm}/${yyyy}`;
+            const qrUrl = `https://img.vietqr.io/image/${bankBin}-${bankAccount}-compact2.png?amount=${task.tongCong}&addInfo=${encodeURIComponent(noiDungCK)}&accountName=${encodeURIComponent(bankOwner)}`;
+            
+            tempQrPath = path.join(app.getPath('temp'), `vietqr_${task.phong}_${Date.now()}.png`);
+            console.log(`[Zalo Send] Phòng ${task.phong}: Tải và gửi mã VietQR...`);
+            await this.downloadVietQrImage(qrUrl, tempQrPath);
+            await this.api.sendMessage({ msg: "", attachments: [tempQrPath] }, targetUid);
+          } catch (qrErr) {
+            console.warn(`[Zalo Send] Lỗi khi tạo/gửi VietQR cho phòng ${task.phong}:`, qrErr.message);
+            // Tiếp tục gửi tin nhắn text dù VietQR gặp lỗi tải
+          } finally {
+            if (tempQrPath && fs.existsSync(tempQrPath)) {
+              try { fs.unlinkSync(tempQrPath); } catch (e) { }
+            }
+          }
+
+          // Delay nhỏ giữa các bước (0.2s - 1.0s)
+          const intraDelay2 = Math.floor(Math.random() * 800) + 200;
+          await new Promise(r => setTimeout(r, intraDelay2));
+        }
+
+        // Bước 3: Gửi tin nhắn text theo đúng mẫu
+        const formatMoney = (val) => new Intl.NumberFormat('vi-VN').format(val || 0);
+        let textMsg = "";
+
+        if (hasBankConfig) {
+          textMsg = `📋 HÓA ĐƠN PHÒNG ${task.phong} - THÁNG ${mm}/${yyyy}
+
+💰 TỔNG: ${formatMoney(task.tongCong)} đ
+
+💳 THÔNG TIN CHUYỂN KHOẢN
+- Ngân hàng: ${bankShortName}
+- Số tài khoản: ${bankAccount}
+- Chủ tài khoản: ${bankOwner}
+- ND CK: ${task.tenChuPhong || ''} phòng ${task.phong} tháng ${mm}/${yyyy}
+
+(Chi tiết xem ảnh phiếu thu đính kèm)`;
+        } else {
+          textMsg = `📋 HÓA ĐƠN PHÒNG ${task.phong} - THÁNG ${mm}/${yyyy}
+
+💰 TỔNG: ${formatMoney(task.tongCong)} đ
+
+(Chi tiết xem ảnh phiếu thu đính kèm)`;
+        }
+
+        console.log(`[Zalo Send] Phòng ${task.phong}: Gửi tin nhắn text...`);
+        await this.api.sendMessage({ msg: textMsg }, targetUid);
+      };
+
+      // Bảo vệ timeout 15 giây cho mỗi phòng
+      try {
+        await Promise.race([
+          sendSingleRoomTask(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Hết thời gian chờ xử lý (Timeout 15s)')), 15000))
+        ]);
+
+        results.push({
+          phong: task.phong,
+          tenChuPhong: task.tenChuPhong,
+          sdt: task.sdtZalo || task.sdtGoi,
+          tongCong: task.tongCong,
+          success: true
+        });
+        console.log(`[Zalo Send] ✅ Gửi thành công cho Phòng ${task.phong}!`);
+      } catch (err) {
+        console.error(`[Zalo Send] ❌ Gửi thất bại cho Phòng ${task.phong}:`, err.message);
+        results.push({
+          phong: task.phong,
+          tenChuPhong: task.tenChuPhong,
+          sdt: task.sdtZalo || task.sdtGoi,
+          tongCong: task.tongCong,
+          success: false,
+          error: err.message
+        });
+      }
+
+      // Anti-ban delay giữa các phòng (3.0s - 4.5s) nếu còn phòng tiếp theo
+      if (i < roomTasks.length - 1) {
+        const antiBanDelay = Math.floor(Math.random() * 1500) + 3000;
+        console.log(`[Zalo Send] Nghỉ an toàn ${antiBanDelay}ms trước khi gửi phòng tiếp theo...`);
+        await new Promise(r => setTimeout(r, antiBanDelay));
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const failedCount = results.filter(r => !r.success).length;
+
+    return {
+      total,
+      successCount,
+      failedCount,
+      results
     };
   }
 }

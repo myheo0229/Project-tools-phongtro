@@ -407,7 +407,10 @@ function switchTab(tabName) {
   const sectionSettings = document.getElementById('section-settings');
   const isCurrentSettings = sectionSettings && sectionSettings.classList.contains('active');
 
-  if (isCurrentSettings && tabName !== 'settings' && isSettingsDirty) {
+  if (isCurrentSettings && tabName !== 'settings' && (isSettingsDirty || isBankDirty)) {
+    if (isBankDirty) {
+      highlightUnsavedBankFields();
+    }
     pendingActionAfterUnsavedModal = () => forceSwitchTab(tabName);
     showUnsavedSettingsModal();
     return;
@@ -471,14 +474,48 @@ function initSettingsForm() {
   }
 
   const bankAccountInput = document.getElementById('set-bankAccount');
-  if (bankAccountInput) bankAccountInput.value = appSettings.bankAccount || "";
+  if (bankAccountInput) {
+    bankAccountInput.value = appSettings.bankAccount || "";
+    bankAccountInput.classList.remove('input-error');
+    if (!bankAccountInput.dataset.dirtyBound) {
+      bankAccountInput.dataset.dirtyBound = 'true';
+      bankAccountInput.addEventListener('input', () => {
+        bankAccountInput.classList.remove('input-error');
+        markBankDirty();
+      });
+      bankAccountInput.addEventListener('change', () => {
+        bankAccountInput.classList.remove('input-error');
+        markBankDirty();
+      });
+    }
+  }
 
   const bankOwnerInput = document.getElementById('set-bankOwner');
-  if (bankOwnerInput) bankOwnerInput.value = appSettings.bankOwner || "";
+  if (bankOwnerInput) {
+    bankOwnerInput.value = appSettings.bankOwner || "";
+    bankOwnerInput.classList.remove('input-error');
+    if (!bankOwnerInput.dataset.dirtyBound) {
+      bankOwnerInput.dataset.dirtyBound = 'true';
+      bankOwnerInput.addEventListener('input', () => {
+        bankOwnerInput.classList.remove('input-error');
+        markBankDirty();
+      });
+      bankOwnerInput.addEventListener('change', () => {
+        bankOwnerInput.classList.remove('input-error');
+        markBankDirty();
+      });
+    }
+  }
+
+  const customBankSelect = document.getElementById('custom-bank-select');
+  if (customBankSelect) {
+    customBankSelect.classList.remove('input-error');
+  }
 
   setSelectedBank(appSettings.bankName || "");
 
   isSettingsDirty = false;
+  isBankDirty = false;
 }
 
 /**
@@ -676,7 +713,9 @@ function setSelectedBank(bankIdOrCode, isUserAction = false) {
   });
 
   if (isUserAction) {
-    markSettingsDirty();
+    const customBankSelect = document.getElementById('custom-bank-select');
+    if (customBankSelect) customBankSelect.classList.remove('input-error');
+    markBankDirty();
   }
 }
 
@@ -1163,6 +1202,8 @@ async function saveSettings(event) {
   }
 
   isSettingsDirty = false;
+  isBankDirty = false;
+  clearBankFieldsError();
 
   // Đã lưu thành công
   if (baseFolderInput) baseFolderInput.classList.remove('input-error');
@@ -1185,7 +1226,10 @@ async function saveSettings(event) {
  * 3. Tự động mở thư mục xuất
  */
 async function saveAndExport() {
-  if (isSettingsDirty) {
+  if (isSettingsDirty || isBankDirty) {
+    if (isBankDirty) {
+      highlightUnsavedBankFields();
+    }
     pendingActionAfterUnsavedModal = () => saveAndExport();
     showUnsavedSettingsModal();
     return;
@@ -1569,13 +1613,70 @@ function closeAnomalyModal() {
 }
 
 /* ============================================================
-   XỬ LÝ MODAL CẢNH BÁO THAY ĐỔI CÀI ĐẶT CHƯA LƯU
+   XỬ LÝ MODAL CẢNH BÁO THAY ĐỔI CÀI ĐẶT CHƯA LƯU & LƯU TÀI KHOẢN NGÂN HÀNG
    ============================================================ */
 let isSettingsDirty = false;
+let isBankDirty = false;
 let pendingActionAfterUnsavedModal = null;
 
 function markSettingsDirty() {
   isSettingsDirty = true;
+}
+
+function markBankDirty() {
+  isBankDirty = true;
+}
+
+function highlightUnsavedBankFields() {
+  const customBankSelect = document.getElementById('custom-bank-select');
+  const bankAccountInput = document.getElementById('set-bankAccount');
+  const bankOwnerInput = document.getElementById('set-bankOwner');
+
+  if (customBankSelect) customBankSelect.classList.add('input-error');
+  if (bankAccountInput) bankAccountInput.classList.add('input-error');
+  if (bankOwnerInput) bankOwnerInput.classList.add('input-error');
+}
+
+function clearBankFieldsError() {
+  const customBankSelect = document.getElementById('custom-bank-select');
+  const bankAccountInput = document.getElementById('set-bankAccount');
+  const bankOwnerInput = document.getElementById('set-bankOwner');
+
+  if (customBankSelect) customBankSelect.classList.remove('input-error');
+  if (bankAccountInput) bankAccountInput.classList.remove('input-error');
+  if (bankOwnerInput) bankOwnerInput.classList.remove('input-error');
+}
+
+/**
+ * Lưu Cài Đặt Tài Khoản Ngân Hàng (My Bank) vào settings.json
+ */
+async function saveBankSettings(event) {
+  if (event && typeof event.preventDefault === 'function') {
+    event.preventDefault();
+  }
+
+  const bankNameInput = document.getElementById('set-bankName');
+  const bankAccountInput = document.getElementById('set-bankAccount');
+  const bankOwnerInput = document.getElementById('set-bankOwner');
+
+  const bankName = bankNameInput ? bankNameInput.value.trim() : "";
+  const bankAccount = bankAccountInput ? bankAccountInput.value.trim() : "";
+  const bankOwner = bankOwnerInput ? bankOwnerInput.value.trim().toUpperCase() : "";
+
+  appSettings.bankName = bankName;
+  appSettings.bankAccount = bankAccount;
+  appSettings.bankOwner = bankOwner;
+
+  const ok = await saveSettingsFile();
+  if (!ok) {
+    showToast("Lỗi khi lưu thông tin tài khoản ngân hàng!", "error");
+    return false;
+  }
+
+  isBankDirty = false;
+  clearBankFieldsError();
+  showToast("Đã lưu thông tin tài khoản ngân hàng thành công!", "success");
+  return true;
 }
 
 function showUnsavedSettingsModal() {
@@ -1585,9 +1686,17 @@ function showUnsavedSettingsModal() {
 
 async function confirmSaveUnsavedSettingsModal() {
   closeUnsavedSettingsModal();
-  const fakeEvent = { preventDefault: () => {} };
-  const saved = await saveSettings(fakeEvent);
-  if (saved !== false && typeof pendingActionAfterUnsavedModal === 'function') {
+  let ok = true;
+  if (isSettingsDirty) {
+    const fakeEvent = { preventDefault: () => {} };
+    const res = await saveSettings(fakeEvent);
+    if (res === false) ok = false;
+  }
+  if (isBankDirty) {
+    const res = await saveBankSettings();
+    if (res === false) ok = false;
+  }
+  if (ok && typeof pendingActionAfterUnsavedModal === 'function') {
     const action = pendingActionAfterUnsavedModal;
     pendingActionAfterUnsavedModal = null;
     action();
@@ -1598,6 +1707,8 @@ function discardUnsavedSettingsModal() {
   closeUnsavedSettingsModal();
   initSettingsForm();
   isSettingsDirty = false;
+  isBankDirty = false;
+  clearBankFieldsError();
   if (typeof pendingActionAfterUnsavedModal === 'function') {
     const action = pendingActionAfterUnsavedModal;
     pendingActionAfterUnsavedModal = null;
@@ -3317,10 +3428,407 @@ async function executeDeleteResidents() {
  * Nút "Gửi Zalo" trên tiêu đề Bảng nhập chỉ số (Phần 1: Nhập Dữ Liệu)
  * Kích hoạt gửi phiếu thu qua Zalo cho tháng đang chọn
  */
-function handleSendZaloMonthClick() {
+let pendingActionAfterZaloLogin = null;
+let selectedZaloRooms = new Set();
+let eligibleZaloRooms = [];
+
+/**
+ * Nút "Gửi Zalo" trên tiêu đề Bảng nhập chỉ số (Phần 1: Nhập Dữ Liệu)
+ * Kích hoạt gửi phiếu thu qua Zalo cho tháng đang chọn
+ */
+async function handleSendZaloMonthClick() {
+  if (isSettingsDirty || isBankDirty) {
+    if (isBankDirty) {
+      highlightUnsavedBankFields();
+    }
+    pendingActionAfterUnsavedModal = () => handleSendZaloMonthClick();
+    showUnsavedSettingsModal();
+    return;
+  }
+
+  // 1. Kiểm tra session Zalo trước khi mở popup
+  if (!window.api || typeof window.api.getZaloStatus !== 'function') {
+    showToast('Chức năng Gửi Zalo chỉ khả dụng trên ứng dụng Electron!', 'error');
+    return;
+  }
+
+  try {
+    const status = await window.api.getZaloStatus();
+    if (!status || !status.connected) {
+      showToast('Phiên đăng nhập Zalo đã hết hạn hoặc chưa kết nối. Vui lòng quét mã QR để tiếp tục!', 'warning');
+      pendingActionAfterZaloLogin = () => openZaloSelectRoomsModal();
+      openZaloQrModal(false);
+      return;
+    }
+
+    await openZaloSelectRoomsModal();
+  } catch (err) {
+    console.error('Lỗi khi kiểm tra trạng thái Zalo:', err);
+    showToast(`Lỗi kiểm tra Zalo: ${err.message}`, 'error');
+  }
+}
+
+/**
+ * Mở Popup Chọn Phòng Để Gửi Zalo
+ */
+async function openZaloSelectRoomsModal() {
+  if (!residentsList || residentsList.length === 0) {
+    await loadResidentsData();
+  }
+  if (!roomsList || roomsList.length === 0) {
+    await loadRoomsData();
+  }
+
   const monthYearSelect = document.getElementById('month-year-select');
-  const monthYearText = monthYearSelect ? monthYearSelect.options[monthYearSelect.selectedIndex]?.text : '';
-  showToast(`[Giao diện] Sẵn sàng gửi phiếu thu Zalo cho ${monthYearText || 'tháng đang chọn'}.`, 'info');
+  const monthKey = monthYearSelect ? monthYearSelect.value : '';
+  const [yyyy, mm] = monthKey ? monthKey.split('-') : ['', ''];
+
+  const titleEl = document.getElementById('zalo-select-modal-title');
+  const subtitleEl = document.getElementById('zalo-select-modal-subtitle');
+  if (titleEl) titleEl.textContent = `Gửi Phiếu Thu Qua Zalo - Tháng ${mm}/${yyyy}`;
+  if (subtitleEl) subtitleEl.textContent = `Chọn danh sách các phòng muốn gửi phiếu thu tự động cho Tháng ${mm}/${yyyy}`;
+
+  selectedZaloRooms.clear();
+  eligibleZaloRooms = [];
+
+  const gridEl = document.getElementById('zalo-rooms-grid');
+  if (!gridEl) return;
+  gridEl.innerHTML = '';
+
+  const formatMoney = (val) => new Intl.NumberFormat('vi-VN').format(val || 0);
+
+  roomsData.forEach(room => {
+    // 1. Tìm thông tin chủ phòng từ roomsList và residentsList
+    const roomInfo = (roomsList || []).find(r => r.phong === room.phong);
+    let hostResident = null;
+    if (roomInfo) {
+      if (roomInfo.chuPhong) {
+        hostResident = (residentsList || []).find(res => res.id === roomInfo.chuPhong);
+      }
+      if (!hostResident && roomInfo.cmnd) {
+        hostResident = (residentsList || []).find(res => res.cccd === roomInfo.cmnd);
+      }
+    }
+
+    const hasDienMoi = isNotEmpty(room.dienMoi);
+    const hasNuocMoi = isNotEmpty(room.nuocMoi);
+    const isFullyEntered = hasDienMoi && hasNuocMoi;
+    const calc = isFullyEntered ? calcRoom(room, appSettings) : null;
+
+    let disabledReason = null;
+
+    // Điều kiện 1: Phòng trống / Chưa có chủ phòng
+    if (!hostResident || !hostResident.hoTen || hostResident.hoTen.trim() === '') {
+      disabledReason = 'Phòng trống, chưa có chủ phòng';
+    }
+    // Điều kiện 2: Chưa có SĐT Zalo hợp lệ
+    else {
+      const rawPhone = String(hostResident.sdtZalo || hostResident.sdtGoi || '').replace(/\D/g, '');
+      if (!rawPhone || rawPhone.length < 10) {
+        disabledReason = 'Chủ phòng chưa có SĐT Zalo';
+      }
+      // Điều kiện 3: Chưa nhập đủ điện nước / tổng tiền <= 0
+      else if (!isFullyEntered || !calc || calc.tongCong <= 0) {
+        disabledReason = 'Chưa nhập đủ chỉ số điện/nước tháng này';
+      }
+    }
+
+    const isEligible = !disabledReason;
+    if (isEligible) {
+      eligibleZaloRooms.push(room.phong);
+      selectedZaloRooms.add(room.phong); // Mặc định chọn tất cả phòng đủ điều kiện
+    }
+
+    const guestName = hostResident ? hostResident.hoTen : (roomInfo?.tenKhach || 'Chưa gán người ở');
+    const phoneVal = hostResident ? (hostResident.sdtZalo || hostResident.sdtGoi || '') : '';
+    const phoneDisplay = phoneVal ? phoneVal : 'Chưa có SĐT';
+    const amountDisplay = (isFullyEntered && calc && calc.tongCong > 0) ? `${formatMoney(calc.tongCong)} đ` : 'Chưa tính tiền';
+
+    const card = document.createElement('div');
+    card.className = `zalo-room-card ${isEligible ? 'selected' : 'disabled'}`;
+    card.id = `zalo-room-card-${room.phong}`;
+
+    card.innerHTML = `
+      <input type="checkbox" class="zalo-room-checkbox" id="zalo-chk-${room.phong}" 
+        ${isEligible ? 'checked' : 'disabled'} 
+        onclick="event.stopPropagation(); toggleZaloRoomSelection('${room.phong}')">
+      <div class="zalo-room-info">
+        <div class="zalo-room-top">
+          <span class="zalo-room-name">Phòng ${room.phong}</span>
+          <span class="zalo-room-amount">${amountDisplay}</span>
+        </div>
+        <span class="zalo-room-guest" title="${escapeHtml(guestName)}">Chủ phòng: <strong>${escapeHtml(guestName)}</strong></span>
+        <span class="zalo-room-phone">SĐT Zalo: ${escapeHtml(phoneDisplay)}</span>
+        ${disabledReason ? `<div class="zalo-room-reason-badge">⚠ ${disabledReason}</div>` : ''}
+      </div>
+    `;
+
+    if (isEligible) {
+      card.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'INPUT') {
+          toggleZaloRoomSelection(room.phong);
+        }
+      });
+    }
+
+    gridEl.appendChild(card);
+  });
+
+  updateZaloSelectRoomsUI();
+
+  const modalEl = document.getElementById('zalo-select-rooms-modal');
+  if (modalEl) modalEl.style.display = 'flex';
+}
+
+/**
+ * Chọn tất cả hoặc bỏ chọn tất cả các phòng đủ điều kiện
+ */
+function toggleSelectAllZaloRooms(selectAll) {
+  if (selectAll) {
+    eligibleZaloRooms.forEach(phong => selectedZaloRooms.add(phong));
+  } else {
+    selectedZaloRooms.clear();
+  }
+  updateZaloSelectRoomsUI();
+}
+
+/**
+ * Bật/tắt chọn 1 phòng cụ thể
+ */
+function toggleZaloRoomSelection(phong) {
+  if (!eligibleZaloRooms.includes(phong)) return;
+
+  if (selectedZaloRooms.has(phong)) {
+    selectedZaloRooms.delete(phong);
+  } else {
+    selectedZaloRooms.add(phong);
+  }
+  updateZaloSelectRoomsUI();
+}
+
+/**
+ * Cập nhật giao diện đếm số và nút bấm trong Popup chọn phòng
+ */
+function updateZaloSelectRoomsUI() {
+  const selectedCount = selectedZaloRooms.size;
+  const eligibleCount = eligibleZaloRooms.length;
+
+  const selectedCountEl = document.getElementById('zalo-selected-count');
+  const eligibleCountEl = document.getElementById('zalo-eligible-count');
+  if (selectedCountEl) selectedCountEl.textContent = selectedCount;
+  if (eligibleCountEl) eligibleCountEl.textContent = eligibleCount;
+
+  // Cập nhật từng checkbox và class selected
+  eligibleZaloRooms.forEach(phong => {
+    const cardEl = document.getElementById(`zalo-room-card-${phong}`);
+    const chkEl = document.getElementById(`zalo-chk-${phong}`);
+    const isChecked = selectedZaloRooms.has(phong);
+
+    if (chkEl) chkEl.checked = isChecked;
+    if (cardEl) {
+      if (isChecked) {
+        cardEl.classList.add('selected');
+      } else {
+        cardEl.classList.remove('selected');
+      }
+    }
+  });
+
+  // Cập nhật nút Xác Nhận Gửi
+  const confirmBtn = document.getElementById('btn-confirm-send-zalo');
+  const confirmBtnText = document.getElementById('btn-confirm-send-zalo-text');
+  if (confirmBtn) {
+    confirmBtn.disabled = selectedCount === 0;
+  }
+  if (confirmBtnText) {
+    confirmBtnText.textContent = `Xác Nhận Gửi (${selectedCount} phòng)`;
+  }
+}
+
+/**
+ * Đóng Popup Chọn Phòng
+ */
+function closeZaloSelectRoomsModal() {
+  const modalEl = document.getElementById('zalo-select-rooms-modal');
+  if (modalEl) modalEl.style.display = 'none';
+}
+
+/**
+ * Thực hiện gửi phiếu thu cho các phòng đã chọn
+ */
+async function executeSendZaloReceipts() {
+  if (selectedZaloRooms.size === 0) return;
+
+  const monthYearSelect = document.getElementById('month-year-select');
+  const monthKey = monthYearSelect ? monthYearSelect.value : '';
+
+  // Thu thập danh sách tác vụ gửi cho các phòng đã chọn
+  const roomTasks = [];
+  for (const phong of selectedZaloRooms) {
+    const room = roomsData.find(r => r.phong === phong);
+    if (!room) continue;
+
+    const roomInfo = (roomsList || []).find(r => r.phong === room.phong);
+    let hostResident = null;
+    if (roomInfo) {
+      if (roomInfo.chuPhong) {
+        hostResident = (residentsList || []).find(res => res.id === roomInfo.chuPhong);
+      }
+      if (!hostResident && roomInfo.cmnd) {
+        hostResident = (residentsList || []).find(res => res.cccd === roomInfo.cmnd);
+      }
+    }
+
+    const hasDienMoi = isNotEmpty(room.dienMoi);
+    const hasNuocMoi = isNotEmpty(room.nuocMoi);
+    const isFullyEntered = hasDienMoi && hasNuocMoi;
+    const calc = isFullyEntered ? calcRoom(room, appSettings) : null;
+
+    roomTasks.push({
+      phong: room.phong,
+      tenChuPhong: hostResident ? hostResident.hoTen : (roomInfo?.tenKhach || ''),
+      sdtZalo: hostResident ? (hostResident.sdtZalo || hostResident.sdtGoi || '') : '',
+      sdtGoi: hostResident ? (hostResident.sdtGoi || '') : '',
+      tongCong: (isFullyEntered && calc) ? calc.tongCong : 0
+    });
+  }
+
+  // Đóng modal chọn phòng
+  closeZaloSelectRoomsModal();
+
+  // Khóa nút Gửi Zalo ở header và cập nhật text tiến trình
+  const sendBtn = document.getElementById('btn-send-zalo-month');
+  const originalBtnHTML = sendBtn ? sendBtn.innerHTML : '';
+
+  if (sendBtn) {
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon">
+        <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+        <path d="M12 2a10 10 0 0 1 10 10"></path>
+      </svg>
+      <span>Đang gửi 1/${roomTasks.length}...</span>
+    `;
+  }
+
+  // Lắng nghe stream tiến trình từ backend
+  if (window.api && typeof window.api.onZaloSendProgress === 'function') {
+    window.api.onZaloSendProgress(({ current, total, phong }) => {
+      if (sendBtn) {
+        const spanEl = sendBtn.querySelector('span');
+        if (spanEl) spanEl.textContent = `Đang gửi ${current}/${total}...`;
+      }
+    });
+  }
+
+  try {
+    const result = await window.api.sendZaloReceipts({
+      monthKey,
+      roomTasks,
+      appSettings
+    });
+
+    if (result && result.error) {
+      showToast(`Lỗi gửi Zalo: ${result.message || result.error}`, 'error');
+    } else if (result) {
+      showZaloSummaryReportModal(result, monthKey);
+    }
+  } catch (err) {
+    console.error('Lỗi khi thực thi gửi Zalo:', err);
+    showToast(`Lỗi khi gửi Zalo: ${err.message}`, 'error');
+  } finally {
+    // Khôi phục nút Gửi Zalo ở header
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = originalBtnHTML;
+    }
+  }
+}
+
+/**
+ * Hiển thị Modal Báo Cáo Tổng Kết Kết Quả
+ */
+function showZaloSummaryReportModal(result, monthKey) {
+  const [yyyy, mm] = monthKey ? monthKey.split('-') : ['', ''];
+  const formatMoney = (val) => new Intl.NumberFormat('vi-VN').format(val || 0);
+
+  const titleEl = document.getElementById('zalo-summary-modal-title');
+  const subtitleEl = document.getElementById('zalo-summary-modal-subtitle');
+  if (titleEl) titleEl.textContent = `Kết Quả Gửi Phiếu Thu Zalo - Tháng ${mm}/${yyyy}`;
+  if (subtitleEl) subtitleEl.textContent = `Tổng kết quá trình gửi phiếu thu tự động cho ${result.total} phòng`;
+
+  const successCountEl = document.getElementById('zalo-stat-success-count');
+  const failedCountEl = document.getElementById('zalo-stat-failed-count');
+  const failedCardEl = document.getElementById('zalo-stat-card-failed');
+
+  if (successCountEl) successCountEl.textContent = `${result.successCount} / ${result.total}`;
+  if (failedCountEl) failedCountEl.textContent = result.failedCount;
+
+  if (failedCardEl) {
+    if (result.failedCount === 0) {
+      failedCardEl.className = 'zalo-summary-stat-card failed zero';
+    } else {
+      failedCardEl.className = 'zalo-summary-stat-card failed';
+    }
+  }
+
+  // Danh sách thất bại
+  const failedSection = document.getElementById('zalo-summary-failed-section');
+  const failedList = document.getElementById('zalo-summary-failed-list');
+  const failedItems = (result.results || []).filter(r => !r.success);
+
+  if (failedSection && failedList) {
+    if (failedItems.length > 0) {
+      failedSection.style.display = 'flex';
+      failedList.innerHTML = failedItems.map(item => `
+        <div class="zalo-summary-item failed">
+          <div class="zalo-summary-item-left">
+            <span class="zalo-summary-item-title">Phòng ${item.phong} · ${item.tenChuPhong || 'Chưa rõ'}</span>
+            <span class="zalo-summary-item-sub">SĐT: ${item.sdt || 'Chưa có SĐT'}</span>
+            <span class="zalo-summary-item-error">❌ ${item.error || 'Lỗi không xác định'}</span>
+          </div>
+          <span class="zalo-summary-item-badge failed">Thất Bại</span>
+        </div>
+      `).join('');
+    } else {
+      failedSection.style.display = 'none';
+      failedList.innerHTML = '';
+    }
+  }
+
+  // Danh sách thành công
+  const successSection = document.getElementById('zalo-summary-success-section');
+  const successList = document.getElementById('zalo-summary-success-list');
+  const successItems = (result.results || []).filter(r => r.success);
+
+  if (successSection && successList) {
+    if (successItems.length > 0) {
+      successSection.style.display = 'flex';
+      successList.innerHTML = successItems.map(item => `
+        <div class="zalo-summary-item success">
+          <div class="zalo-summary-item-left">
+            <span class="zalo-summary-item-title">Phòng ${item.phong} · ${item.tenChuPhong}</span>
+            <span class="zalo-summary-item-sub">SĐT: ${item.sdt} · ${formatMoney(item.tongCong)} đ</span>
+          </div>
+          <span class="zalo-summary-item-badge success">Thành Công</span>
+        </div>
+      `).join('');
+    } else {
+      successSection.style.display = 'none';
+      successList.innerHTML = '';
+    }
+  }
+
+  const modalEl = document.getElementById('zalo-summary-report-modal');
+  if (modalEl) modalEl.style.display = 'flex';
+}
+
+/**
+ * Đóng Modal Báo Cáo Tổng Kết
+ */
+function closeZaloSummaryReportModal() {
+  const modalEl = document.getElementById('zalo-summary-report-modal');
+  if (modalEl) modalEl.style.display = 'none';
 }
 
 /* ============================================================
@@ -3773,6 +4281,12 @@ function handleZaloQrStreamEvent(event) {
       setTimeout(() => {
         const modalEl = document.getElementById('zalo-qr-modal');
         if (modalEl) modalEl.style.display = 'none';
+
+        if (typeof pendingActionAfterZaloLogin === 'function') {
+          const action = pendingActionAfterZaloLogin;
+          pendingActionAfterZaloLogin = null;
+          action();
+        }
       }, 500);
       showToast(`Đăng nhập Zalo thành công: ${profile?.displayName || 'Tài khoản Zalo'}!`, 'success');
       break;
@@ -3782,6 +4296,7 @@ function handleZaloQrStreamEvent(event) {
       stopZaloCountdown();
       clearZaloQrImage();
       isZaloLoginInProgress = false;
+      pendingActionAfterZaloLogin = null;
       const modalEl = document.getElementById('zalo-qr-modal');
       if (modalEl) modalEl.style.display = 'none';
       break;
@@ -3791,6 +4306,7 @@ function handleZaloQrStreamEvent(event) {
       stopZaloCountdown();
       clearZaloQrImage();
       isZaloLoginInProgress = false;
+      pendingActionAfterZaloLogin = null;
       if (overlayEl) overlayEl.style.display = 'flex';
       const errMsg = event.data?.message || 'Không thể kết nối tới Zalo. Vui lòng kiểm tra lại mạng!';
       if (overlayContentEl) {
@@ -3822,6 +4338,7 @@ function handleZaloQrStreamEvent(event) {
 async function cancelZaloQrLogin() {
   stopZaloCountdown();
   clearZaloQrImage();
+  pendingActionAfterZaloLogin = null;
 
   const modalEl = document.getElementById('zalo-qr-modal');
   if (modalEl) modalEl.style.display = 'none';
@@ -3926,12 +4443,20 @@ window.confirmDeleteSelectedResidents = confirmDeleteSelectedResidents;
 window.closeDeleteResidentModal = closeDeleteResidentModal;
 window.executeDeleteResidents = executeDeleteResidents;
 window.handleSendZaloMonthClick = handleSendZaloMonthClick;
+window.openZaloSelectRoomsModal = openZaloSelectRoomsModal;
+window.closeZaloSelectRoomsModal = closeZaloSelectRoomsModal;
+window.toggleSelectAllZaloRooms = toggleSelectAllZaloRooms;
+window.toggleZaloRoomSelection = toggleZaloRoomSelection;
+window.executeSendZaloReceipts = executeSendZaloReceipts;
+window.showZaloSummaryReportModal = showZaloSummaryReportModal;
+window.closeZaloSummaryReportModal = closeZaloSummaryReportModal;
 window.handleZaloQrLoginClick = handleZaloQrLoginClick;
 window.handleZaloSwitchAccountClick = handleZaloSwitchAccountClick;
 window.handleZaloLogoutClick = handleZaloLogoutClick;
 window.cancelZaloQrLogin = cancelZaloQrLogin;
 window.retryZaloQrLogin = retryZaloQrLogin;
 window.removeVietnameseTones = removeVietnameseTones;
+window.saveBankSettings = saveBankSettings;
 
 
 
