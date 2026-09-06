@@ -44,5 +44,16 @@ contextBridge.exposeInMainWorld('api', {
   onUpdateError: (callback) => {
     ipcRenderer.removeAllListeners('updater:error');
     ipcRenderer.on('updater:error', (event, data) => callback(data));
-  }
+  },
+
+  // Quản lý Phòng & Người ở
+  loadResidents: () => ipcRenderer.invoke('residents:load'),
+  saveResidents: (data) => ipcRenderer.invoke('residents:save', data),
+  loadRooms: () => ipcRenderer.invoke('rooms:load'),
+  saveRooms: (data) => ipcRenderer.invoke('rooms:save', data),
+  pickImage: () => ipcRenderer.invoke('dialog:pick-image'),
+  saveCccdImage: (payload) => ipcRenderer.invoke('cccd:save-image', payload),
+  moveCccdFolder: (payload) => ipcRenderer.invoke('cccd:move-folder', payload),
+  deleteCccdFolder: (payload) => ipcRenderer.invoke('cccd:delete-folder', payload),
+  readCccdImageAsDataUrl: (relativePath) => ipcRenderer.invoke('cccd:read-image', relativePath)
 });

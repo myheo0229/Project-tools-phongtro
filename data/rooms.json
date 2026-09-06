@@ -1,14 +1,86 @@
 [
-  { "phong": "1A", "tenKhach": "", "cmnd": "" },
-  { "phong": "1B", "tenKhach": "", "cmnd": "" },
-  { "phong": "2A", "tenKhach": "", "cmnd": "" },
-  { "phong": "2B", "tenKhach": "", "cmnd": "" },
-  { "phong": "3A", "tenKhach": "", "cmnd": "" },
-  { "phong": "3B", "tenKhach": "", "cmnd": "" },
-  { "phong": "4A", "tenKhach": "", "cmnd": "" },
-  { "phong": "4B", "tenKhach": "", "cmnd": "" },
-  { "phong": "5A", "tenKhach": "", "cmnd": "" },
-  { "phong": "5B", "tenKhach": "", "cmnd": "" },
-  { "phong": "6A", "tenKhach": "", "cmnd": "" },
-  { "phong": "6B", "tenKhach": "", "cmnd": "" }
+  {
+    "phong": "1A",
+    "tenKhach": "Lê Công Bá Nhân",
+    "cmnd": "051209000152",
+    "chuPhong": "person_1788676064549",
+    "thanhVien": []
+  },
+  {
+    "phong": "2A",
+    "tenKhach": "",
+    "cmnd": "",
+    "chuPhong": null,
+    "thanhVien": []
+  },
+  {
+    "phong": "3A",
+    "tenKhach": "",
+    "cmnd": "",
+    "chuPhong": null,
+    "thanhVien": []
+  },
+  {
+    "phong": "4A",
+    "tenKhach": "",
+    "cmnd": "",
+    "chuPhong": null,
+    "thanhVien": []
+  },
+  {
+    "phong": "5A",
+    "tenKhach": "",
+    "cmnd": "",
+    "chuPhong": null,
+    "thanhVien": []
+  },
+  {
+    "phong": "6A",
+    "tenKhach": "",
+    "cmnd": "",
+    "chuPhong": null,
+    "thanhVien": []
+  },
+  {
+    "phong": "1B",
+    "tenKhach": "",
+    "cmnd": "",
+    "chuPhong": null,
+    "thanhVien": []
+  },
+  {
+    "phong": "2B",
+    "tenKhach": "",
+    "cmnd": "",
+    "chuPhong": null,
+    "thanhVien": []
+  },
+  {
+    "phong": "3B",
+    "tenKhach": "",
+    "cmnd": "",
+    "chuPhong": null,
+    "thanhVien": []
+  },
+  {
+    "phong": "4B",
+    "tenKhach": "",
+    "cmnd": "",
+    "chuPhong": null,
+    "thanhVien": []
+  },
+  {
+    "phong": "5B",
+    "tenKhach": "",
+    "cmnd": "",
+    "chuPhong": null,
+    "thanhVien": []
+  },
+  {
+    "phong": "6B",
+    "tenKhach": "",
+    "cmnd": "",
+    "chuPhong": null,
+    "thanhVien": []
+  }
 ]

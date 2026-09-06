@@ -1,0 +1,227 @@
+/* ============================================================
+   DATE-PICKER.CSS - REUSABLE DATE INPUT & POPUP CALENDAR
+   Matching date-input-picker-template.html exact design tokens
+   ============================================================ */
+
+.date-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.date-input-wrap input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: .5px;
+  color: var(--ink, #101828);
+  background: var(--field-bg, #FBFBFC);
+  border: 1px solid var(--border-strong, #D0D5DD);
+  border-radius: var(--radius-field, 7px);
+  padding: 9px 40px 9px 11px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.date-input-wrap input.filled {
+  color: var(--ink, #101828);
+}
+
+.date-input-wrap input:focus {
+  border-color: var(--accent, #1D4E89);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--accent-tint, #EAF1FB);
+}
+
+.calendar-toggle {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--ink-muted, #98A2B3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+  z-index: 2;
+}
+
+.calendar-toggle:hover {
+  background: var(--accent-tint, #EAF1FB);
+  color: var(--accent, #1D4E89);
+}
+
+.calendar-toggle svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* ---------- Calendar popup ---------- */
+.calendar-popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 290px;
+  background: #fff;
+  border: 1px solid var(--border, #E4E7EC);
+  border-radius: 12px;
+  box-shadow: 0 12px 34px rgba(16, 24, 40, 0.18);
+  padding: 14px;
+  z-index: 1070;
+  display: none;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.calendar-popup.open {
+  display: block;
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.cal-nav {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border, #E4E7EC);
+  background: #fff;
+  color: var(--ink-soft, #475467);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.cal-nav:hover {
+  background: var(--accent-tint, #EAF1FB);
+  color: var(--accent, #1D4E89);
+  border-color: #D5E3F7;
+}
+
+.cal-nav svg {
+  width: 14px;
+  height: 14px;
+}
+
+.cal-selects {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.cal-selects select {
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink, #101828);
+  border: 1px solid var(--border-strong, #D0D5DD);
+  border-radius: 6px;
+  padding: 5px 6px;
+  background: #fff;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.cal-selects select:focus {
+  border-color: var(--accent, #1D4E89);
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 4px;
+}
+
+.cal-weekdays span {
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-muted, #98A2B3);
+  padding: 4px 0;
+}
+
+.cal-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.cal-day {
+  aspect-ratio: 1;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--ink, #101828);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.cal-day:hover {
+  background: var(--accent-tint, #EAF1FB);
+  color: var(--accent, #1D4E89);
+}
+
+.cal-day.muted {
+  color: var(--ink-muted, #98A2B3);
+}
+
+.cal-day.today {
+  font-weight: 700;
+  color: var(--accent, #1D4E89);
+}
+
+.cal-day.selected {
+  background: var(--accent, #1D4E89);
+  color: #fff;
+}
+
+.cal-day.selected:hover {
+  background: var(--accent-dark, #163D6D);
+  color: #fff;
+}
+
+.cal-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid var(--border, #E4E7EC);
+}
+
+.cal-link {
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent, #1D4E89);
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.cal-link:hover {
+  text-decoration: underline;
+}
+
+.cal-link.muted {
+  color: var(--ink-muted, #98A2B3);
+}
