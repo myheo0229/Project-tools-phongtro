@@ -143,9 +143,19 @@
         <!-- MAIN DATA TABLE -->
         <div class="table-card">
           <div class="table-card-header">
-            <h2>BẢNG NHẬP CHỈ SỐ VÀ TÍNH TIỀN PHÒNG TRỌ (12 PHÒNG)</h2>
-            <span class="table-subtitle">Nhập số mới điện nước để tự động tính toán điện/nước tiêu thụ và thành
-              tiền</span>
+            <div class="table-card-header-left">
+              <h2>BẢNG NHẬP CHỈ SỐ VÀ TÍNH TIỀN PHÒNG TRỌ (12 PHÒNG)</h2>
+              <span class="table-subtitle">Nhập số mới điện nước để tự động tính toán điện/nước tiêu thụ và thành tiền</span>
+            </div>
+            <div class="table-card-header-actions">
+              <button type="button" class="btn btn-zalo-send" id="btn-send-zalo-month" onclick="handleSendZaloMonthClick()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 2L11 13"></path>
+                  <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+                </svg>
+                <span>Gửi Zalo</span>
+              </button>
+            </div>
           </div>
 
           <div class="table-wrapper">
@@ -206,8 +216,8 @@
                   <td class="summary-val" id="sum-rac">0 đ</td>
                   <td class="summary-val" id="sum-internet">0 đ</td>
                   <td class="summary-val" id="sum-hao-tai-kwh">0 kWh</td>
-                  <td class="summary-val" id="sum-tien-hao-tai">0 đ</td>
-                  <td class="summary-val grand-total" id="grand-total-revenue">0 đ</td>
+                  <td class="summary-val highlight" id="sum-tien-hao-tai">0 đ</td>
+                  <td class="summary-val highlight col-total" id="grand-total-revenue">0 đ</td>
                 </tr>
               </tfoot>
             </table>
@@ -217,149 +227,288 @@
 
       <!-- SECTION 2: CÀI ĐẶT CHUNG -->
       <section id="section-settings" class="tab-content">
-        <div class="settings-card">
-          <div class="settings-card-header">
-            <h2>THIẾT LẬP GIÁ & THÔNG TIN CHUNG</h2>
-            <p>Cấu hình bảng giá mặc định và thư mục lưu xuất phiếu thu</p>
+        <div class="settings-cards-wrapper">
+          <!-- CARD 1: THIẾT LẬP GIÁ & THÔNG TIN CHUNG -->
+          <div class="settings-card">
+            <div class="settings-card-header">
+              <h2>THIẾT LẬP GIÁ & THÔNG TIN CHUNG</h2>
+              <p>Cấu hình bảng giá mặc định và thư mục lưu xuất phiếu thu</p>
+            </div>
+
+            <form id="settings-form" onsubmit="saveSettings(event)" class="settings-form">
+              <!-- BỔ SUNG TRƯỜNG "THƯ MỤC LƯU ÁNH/PDF" VỚI NÚT BROWSE -->
+              <div class="form-group full-width">
+                <label for="set-baseFolder">Thư mục lưu ảnh & PDF phiếu thu:</label>
+                <div class="input-with-button">
+                  <input type="text" id="set-baseFolder" class="form-control" readonly
+                    placeholder="Chưa chọn thư mục lưu (Vui lòng bấm Browse)">
+                  <button type="button" class="btn btn-secondary" onclick="pickBaseFolder()">Browse</button>
+                </div>
+              </div>
+
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="set-giaPhong">Tiền Phòng mặc định (VNĐ):</label>
+                  <div class="input-with-unit">
+                    <input type="number" id="set-giaPhong" class="form-control" required step="1000" min="0"
+                      placeholder="2200000">
+                    <span class="unit-tag">đ/tháng</span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="set-giaDien">Đơn giá Điện (VNĐ/kWh):</label>
+                  <div class="input-with-unit">
+                    <input type="number" id="set-giaDien" class="form-control" required step="100" min="0"
+                      placeholder="2900">
+                    <span class="unit-tag">đ/kWh</span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="set-giaNuoc">Đơn giá Nước (VNĐ/m³):</label>
+                  <div class="input-with-unit">
+                    <input type="number" id="set-giaNuoc" class="form-control" required step="500" min="0"
+                      placeholder="12000">
+                    <span class="unit-tag">đ/m³</span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="set-rac">Tiền Rác (VNĐ/tháng/phòng):</label>
+                  <div class="input-with-unit">
+                    <input type="number" id="set-rac" class="form-control" required step="1000" min="0"
+                      placeholder="40000">
+                    <span class="unit-tag">đ</span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="set-internet">Tiền Internet (VNĐ/tháng/phòng):</label>
+                  <div class="input-with-unit">
+                    <input type="number" id="set-internet" class="form-control" required step="1000" min="0"
+                      placeholder="24000">
+                    <span class="unit-tag">đ</span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="set-tileHaoTai">Tỷ lệ Điện Hao Tải (%):</label>
+                  <div class="input-with-unit">
+                    <input type="number" id="set-tileHaoTai" class="form-control" required step="0.1" min="0" max="50"
+                      placeholder="7">
+                    <span class="unit-tag">%</span>
+                  </div>
+                </div>
+
+                <div class="form-group full-width">
+                  <label for="set-dienThoai">Số điện thoại hiển thị trên phiếu thu:</label>
+                  <input type="text" id="set-dienThoai" class="form-control" placeholder="0982 141 407">
+                </div>
+              </div>
+
+              <!-- CẤU HÌNH POPUP THÔNG BÁO -->
+              <div class="settings-divider"></div>
+              <div class="settings-subsection-title">
+                <h3>CẤU HÌNH POPUP THÔNG BÁO</h3>
+                <p>Bật hoặc tắt các pop-up xác nhận và cảnh báo khi nhập số điện</p>
+              </div>
+
+              <div class="toggle-switch-container">
+                <!-- Toggle 1: Điện Mới < Điện Cũ -->
+                <div class="toggle-switch-group">
+                  <div class="toggle-switch-label">
+                    <span class="toggle-title">Pop-up Xác nhận Đồng hồ quay vòng</span>
+                    <span class="toggle-desc">Hiển thị pop-up xác nhận khi Điện Mới nhỏ hơn Điện Cũ</span>
+                  </div>
+                  <div class="toggle-switch-wrapper">
+                    <input type="checkbox" id="set-enableRolloverPopup" class="toggle-checkbox" checked>
+                    <label for="set-enableRolloverPopup" class="toggleSwitch"></label>
+                  </div>
+                </div>
+
+                <!-- Toggle 2: Điện tiêu thụ chênh lệch >= 40% -->
+                <div class="toggle-switch-group">
+                  <div class="toggle-switch-label">
+                    <span class="toggle-title">Pop-up Cảnh báo Số điện bất thường</span>
+                    <span class="toggle-desc">Hiển thị pop-up cảnh báo khi điện tiêu thụ chênh lệch ≥ 40% so với tháng trước</span>
+                  </div>
+                  <div class="toggle-switch-wrapper">
+                    <input type="checkbox" id="set-enableAnomalyPopup" class="toggle-checkbox" checked>
+                    <label for="set-enableAnomalyPopup" class="toggleSwitch"></label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                  </svg>
+                  Lưu Cài Đặt Giá
+                </button>
+              </div>
+
+              <!-- CẤU HÌNH THÔNG TIN PHIÊN BẢN & CẬP NHẬT -->
+              <div class="settings-divider"></div>
+              <div class="settings-subsection-title">
+                <h3>THÔNG TIN PHIÊN BẢN & CẬP NHẬT</h3>
+                <p>Kiểm tra và nâng cấp phiên bản ứng dụng tự động</p>
+              </div>
+
+              <div class="update-check-card">
+                <div class="update-info-left">
+                  <span class="update-version-label">Phiên bản hiện tại:</span>
+                  <strong id="settings-app-version" class="update-version-val">v2.3.8</strong>
+                </div>
+                <button type="button" id="btn-check-update" class="btn btn-secondary" onclick="checkUpdateManual()">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6"></path>
+                    <path d="M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8M2.5 16l1.2 1.8A10 10 0 0 0 22 12.5"></path>
+                  </svg>
+                  <span id="btn-check-update-text">Kiểm Tra Cập Nhật</span>
+                </button>
+              </div>
+            </form>
           </div>
 
-          <form id="settings-form" onsubmit="saveSettings(event)" class="settings-form">
-            <!-- BỔ SUNG TRƯỜNG "THƯ MỤC LƯU ÁNH/PDF" VỚI NÚT BROWSE -->
-            <div class="form-group full-width">
-              <label for="set-baseFolder">Thư mục lưu ảnh & PDF phiếu thu:</label>
-              <div class="input-with-button">
-                <input type="text" id="set-baseFolder" class="form-control" readonly
-                  placeholder="Chưa chọn thư mục lưu (Vui lòng bấm Browse)">
-                <button type="button" class="btn btn-secondary" onclick="pickBaseFolder()">Browse</button>
+          <!-- CARD 2: TÀI KHOẢN ZALO & NGÂN HÀNG -->
+          <div class="settings-card" id="zalo-bank-settings-card">
+            <div class="settings-card-header">
+              <h2>TÀI KHOẢN ZALO & NGÂN HÀNG</h2>
+              <p>Quản lý phiên kết nối Zalo gửi tin và cấu hình tài khoản nhận thanh toán</p>
+            </div>
+
+            <!-- PHẦN 1: TÀI KHOẢN ZALO -->
+            <div class="settings-subsection-title" style="margin-top: 0;">
+              <h3>TÀI KHOẢN ZALO GỬI PHIẾU THU</h3>
+              <p>Kết nối Zalo để gửi phiếu thu tự động tới người thuê phòng</p>
+            </div>
+
+            <div class="zalo-profile-card">
+              <div class="zalo-profile-avatar-wrap">
+                <!-- Khối avatar placeholder nền xám (khi chưa đăng nhập) -->
+                <div class="zalo-avatar-placeholder" id="zalo-avatar-placeholder">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+                <!-- Ảnh avatar thật (khi đã kết nối thành công) -->
+                <img id="zalo-avatar-img" class="zalo-avatar-img" src="" alt="Avatar Zalo" style="display: none;">
               </div>
+
+              <div class="zalo-profile-info">
+                <div class="zalo-status-row">
+                  <span class="zalo-status-badge disconnected" id="zalo-status-badge">
+                    <span class="status-dot"></span>
+                    <span id="zalo-status-text">Chưa kết nối Zalo</span>
+                  </span>
+                </div>
+                <h4 class="zalo-profile-name" id="zalo-display-name">Chưa Đăng Nhập</h4>
+                <p class="zalo-profile-desc" id="zalo-display-phone">Bấm "Đăng Nhập Bằng Mã QR" để quét mã kết nối</p>
+              </div>
+            </div>
+
+            <div class="zalo-actions-row">
+              <button type="button" class="btn btn-zalo-login" id="btn-zalo-qr-login" onclick="handleZaloQrLoginClick()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect>
+                  <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <span>Đăng Nhập Bằng Mã QR</span>
+              </button>
+
+              <button type="button" class="btn btn-secondary" id="btn-zalo-switch" onclick="handleZaloSwitchAccountClick()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"></path>
+                </svg>
+                <span>Đổi Tài Khoản</span>
+              </button>
+
+              <button type="button" class="btn btn-outline-danger" id="btn-zalo-logout" onclick="handleZaloLogoutClick()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Đăng Xuất</span>
+              </button>
+            </div>
+
+            <!-- PHẦN 2: TÀI KHOẢN NGÂN HÀNG (MY BANK) -->
+            <div class="settings-divider"></div>
+            <div class="settings-subsection-title">
+              <h3>TÀI KHOẢN NGÂN HÀNG (MY BANK)</h3>
+              <p>Cấu hình tài khoản nhận thanh toán và tạo mã VietQR tự động</p>
             </div>
 
             <div class="form-grid">
-              <div class="form-group">
-                <label for="set-giaPhong">Tiền Phòng mặc định (VNĐ):</label>
-                <div class="input-with-unit">
-                  <input type="number" id="set-giaPhong" class="form-control" required step="1000" min="0"
-                    placeholder="2200000">
-                  <span class="unit-tag">đ/tháng</span>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="set-giaDien">Đơn giá Điện (VNĐ/kWh):</label>
-                <div class="input-with-unit">
-                  <input type="number" id="set-giaDien" class="form-control" required step="100" min="0"
-                    placeholder="2900">
-                  <span class="unit-tag">đ/kWh</span>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="set-giaNuoc">Đơn giá Nước (VNĐ/m³):</label>
-                <div class="input-with-unit">
-                  <input type="number" id="set-giaNuoc" class="form-control" required step="500" min="0"
-                    placeholder="12000">
-                  <span class="unit-tag">đ/m³</span>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="set-rac">Tiền Rác (VNĐ/tháng/phòng):</label>
-                <div class="input-with-unit">
-                  <input type="number" id="set-rac" class="form-control" required step="1000" min="0"
-                    placeholder="40000">
-                  <span class="unit-tag">đ</span>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="set-internet">Tiền Internet (VNĐ/tháng/phòng):</label>
-                <div class="input-with-unit">
-                  <input type="number" id="set-internet" class="form-control" required step="1000" min="0"
-                    placeholder="24000">
-                  <span class="unit-tag">đ</span>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="set-tileHaoTai">Tỷ lệ Điện Hao Tải (%):</label>
-                <div class="input-with-unit">
-                  <input type="number" id="set-tileHaoTai" class="form-control" required step="0.1" min="0" max="50"
-                    placeholder="7">
-                  <span class="unit-tag">%</span>
-                </div>
-              </div>
-
               <div class="form-group full-width">
-                <label for="set-dienThoai">Số điện thoại hiển thị trên phiếu thu:</label>
-                <input type="text" id="set-dienThoai" class="form-control" placeholder="0982 141 407">
+                <label for="set-bankName">Ngân Hàng Nhận Thanh Toán:</label>
+                <!-- Hidden input giữ giá trị ID/Code ngân hàng đang chọn -->
+                <input type="hidden" id="set-bankName" name="bankName" value="">
+
+                <!-- Custom Bank Select with Logo & Search -->
+                <div class="custom-bank-select" id="custom-bank-select">
+                  <button type="button" class="bank-select-trigger" id="bank-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                    <div class="bank-trigger-content" id="bank-trigger-content">
+                      <div class="bank-trigger-placeholder">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                          <line x1="2" y1="10" x2="22" y2="10"></line>
+                        </svg>
+                        <span>-- Chọn Ngân Hàng Nhận Tiền --</span>
+                      </div>
+                    </div>
+                    <div class="bank-trigger-arrow">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </div>
+                  </button>
+
+                  <div class="bank-select-dropdown" id="bank-select-dropdown" style="display: none;">
+                    <div class="bank-search-wrap">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                      </svg>
+                      <input type="text" id="bank-search-input" class="bank-search-input" placeholder="Tìm tên, mã ngân hàng (VD: MB, VCB, Techcombank, 970422)..." autocomplete="off">
+                      <button type="button" class="bank-search-clear" id="bank-search-clear" style="display: none;" title="Xóa tìm kiếm">&times;</button>
+                    </div>
+
+                    <div class="bank-options-list" id="bank-options-list" role="listbox">
+                      <!-- Render động từ VIETNAM_BANKS_LIST -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="set-bankAccount">Số Tài Khoản:</label>
+                <input type="text" id="set-bankAccount" class="form-control" placeholder="Ví dụ: 0123456789" inputmode="numeric" autocomplete="off">
+              </div>
+
+              <div class="form-group">
+                <label for="set-bankOwner">Chủ Sở Hữu (Tên tài khoản):</label>
+                <input type="text" id="set-bankOwner" class="form-control uppercase-input" placeholder="Ví dụ: NGUYEN VAN A" autocomplete="off">
               </div>
             </div>
 
-            <!-- CẤU HÌNH POPUP THÔNG BÁO -->
-            <div class="settings-divider"></div>
-            <div class="settings-subsection-title">
-              <h3>CẤU HÌNH POPUP THÔNG BÁO</h3>
-              <p>Bật hoặc tắt các pop-up xác nhận và cảnh báo khi nhập số điện</p>
+            <div class="bank-vietqr-preview-hint">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <span>Mã <strong>VietQR</strong> chuyển khoản tự động kèm cú pháp tiền phòng sẽ được tạo dựa trên ngân hàng và STK này.</span>
             </div>
-
-            <div class="toggle-switch-container">
-              <!-- Toggle 1: Điện Mới < Điện Cũ -->
-              <div class="toggle-switch-group">
-                <div class="toggle-switch-label">
-                  <span class="toggle-title">Pop-up Xác nhận Đồng hồ quay vòng</span>
-                  <span class="toggle-desc">Hiển thị pop-up xác nhận khi Điện Mới nhỏ hơn Điện Cũ</span>
-                </div>
-                <div class="toggle-switch-wrapper">
-                  <input type="checkbox" id="set-enableRolloverPopup" class="toggle-checkbox" checked>
-                  <label for="set-enableRolloverPopup" class="toggleSwitch"></label>
-                </div>
-              </div>
-
-              <!-- Toggle 2: Điện tiêu thụ chênh lệch >= 40% -->
-              <div class="toggle-switch-group">
-                <div class="toggle-switch-label">
-                  <span class="toggle-title">Pop-up Cảnh báo Số điện bất thường</span>
-                  <span class="toggle-desc">Hiển thị pop-up cảnh báo khi điện tiêu thụ chênh lệch ≥ 40% so với tháng trước</span>
-                </div>
-                <div class="toggle-switch-wrapper">
-                  <input type="checkbox" id="set-enableAnomalyPopup" class="toggle-checkbox" checked>
-                  <label for="set-enableAnomalyPopup" class="toggleSwitch"></label>
-                </div>
-              </div>
-            </div>
-
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary btn-lg">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                  <polyline points="7 3 7 8 15 8"></polyline>
-                </svg>
-                Lưu Cài Đặt Giá
-              </button>
-            </div>
-
-            <!-- CẤU HÌNH THÔNG TIN PHIÊN BẢN & CẬP NHẬT -->
-            <div class="settings-divider"></div>
-            <div class="settings-subsection-title">
-              <h3>THÔNG TIN PHIÊN BẢN & CẬP NHẬT</h3>
-              <p>Kiểm tra và nâng cấp phiên bản ứng dụng tự động</p>
-            </div>
-
-            <div class="update-check-card">
-              <div class="update-info-left">
-                <span class="update-version-label">Phiên bản hiện tại:</span>
-                <strong id="settings-app-version" class="update-version-val">v2.3.8</strong>
-              </div>
-              <button type="button" id="btn-check-update" class="btn btn-secondary" onclick="checkUpdateManual()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21.5 2v6h-6M2.5 22v-6h6"></path>
-                  <path d="M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8M2.5 16l1.2 1.8A10 10 0 0 0 22 12.5"></path>
-                </svg>
-                <span id="btn-check-update-text">Kiểm Tra Cập Nhật</span>
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
       </section>
 
@@ -1019,10 +1168,86 @@
     </div>
   </div>
 
+  <!-- MODAL ĐĂNG NHẬP / ĐỔI TÀI KHOẢN ZALO BẰNG QR -->
+  <div id="zalo-qr-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card zalo-qr-modal-card">
+      <div class="modal-header">
+        <div class="modal-icon zalo">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+        </div>
+        <div class="modal-title-group">
+          <h3 id="zalo-qr-modal-title">Đăng Nhập Zalo Bằng Mã QR</h3>
+          <p class="modal-subtitle" id="zalo-qr-modal-subtitle">Dùng ứng dụng Zalo trên điện thoại để quét mã</p>
+        </div>
+        <button type="button" class="zalo-qr-close-btn" onclick="cancelZaloQrLogin()" title="Đóng / Hủy">&times;</button>
+      </div>
+
+      <div class="modal-body text-center zalo-qr-body">
+        <!-- Khung chứa ảnh QR Code & Trạng thái -->
+        <div class="zalo-qr-container">
+          <div class="zalo-qr-box" id="zalo-qr-box">
+            <!-- Trạng thái Loading spinner -->
+            <div class="zalo-qr-loading" id="zalo-qr-loading">
+              <div class="zalo-qr-spinner"></div>
+              <span id="zalo-qr-loading-text">Đang tạo mã QR đăng nhập...</span>
+            </div>
+
+            <!-- Ảnh QR thật -->
+            <div class="zalo-qr-image-wrap" id="zalo-qr-image-wrap" style="display: none;">
+              <img id="zalo-qr-image" src="" alt="Mã QR Zalo" class="zalo-qr-img">
+              
+              <!-- Overlay khi Đã quét / Hết hạn / Từ chối -->
+              <div class="zalo-qr-overlay" id="zalo-qr-overlay" style="display: none;">
+                <div class="zalo-overlay-content" id="zalo-overlay-content">
+                  <!-- Render động trạng thái overlay -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Đồng hồ đếm ngược 2 phút -->
+        <div class="zalo-qr-countdown" id="zalo-qr-countdown" style="display: none;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span>Mã hết hạn sau: <strong id="zalo-countdown-timer">02:00</strong></span>
+        </div>
+
+        <!-- Hộp thông báo trạng thái -->
+        <div class="zalo-qr-status-box">
+          <p class="zalo-qr-status-text" id="zalo-qr-status-text">Mở Zalo trên điện thoại &gt; Chọn biểu tượng Quét mã QR</p>
+        </div>
+
+        <!-- Nút Tạo mã mới / Thử lại -->
+        <div class="zalo-qr-actions" id="zalo-qr-actions" style="display: none;">
+          <button type="button" class="btn btn-primary" id="btn-zalo-qr-retry" onclick="retryZaloQrLogin()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6M2.5 22v-6h6"></path>
+              <path d="M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8M2.5 16l1.2 1.8A10 10 0 0 0 22 12.5"></path>
+            </svg>
+            <span>Tạo Mã QR Mới</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="cancelZaloQrLogin()">Hủy Bỏ</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Shared Calc & Format Scripts -->
   <script src="../shared/calc.js"></script>
   <script src="../shared/format.js"></script>
   <script src="../shared/date-picker.js"></script>
+  <script src="../shared/banks-data.js"></script>
   <!-- Renderer Script -->
   <script src="renderer.js"></script>
 </body>

@@ -13,7 +13,10 @@ let appSettings = {
   tienInternet: 24000,
   tyLeHaoTai: 0.07,
   enableRolloverPopup: true,
-  enableAnomalyPopup: true
+  enableAnomalyPopup: true,
+  bankName: "",
+  bankAccount: "",
+  bankOwner: ""
 };
 
 // Dữ liệu ban đầu mặc định cho Tháng 07/2026
@@ -168,7 +171,10 @@ async function loadSettingsFile() {
             tienInternet: data.tienInternet || data.internet || appSettings.tienInternet,
             tyLeHaoTai: data.tyLeHaoTai || data.tileHaoTai || appSettings.tyLeHaoTai,
             enableRolloverPopup: data.enableRolloverPopup !== undefined ? data.enableRolloverPopup : true,
-            enableAnomalyPopup: data.enableAnomalyPopup !== undefined ? data.enableAnomalyPopup : true
+            enableAnomalyPopup: data.enableAnomalyPopup !== undefined ? data.enableAnomalyPopup : true,
+            bankName: data.bankName || "",
+            bankAccount: data.bankAccount || "",
+            bankOwner: data.bankOwner || ""
           };
           return;
         }
@@ -206,7 +212,10 @@ async function saveSettingsFile() {
     tyLeHaoTai: appSettings.tyLeHaoTai,
     tileHaoTai: appSettings.tyLeHaoTai,
     enableRolloverPopup: appSettings.enableRolloverPopup !== false,
-    enableAnomalyPopup: appSettings.enableAnomalyPopup !== false
+    enableAnomalyPopup: appSettings.enableAnomalyPopup !== false,
+    bankName: appSettings.bankName || "",
+    bankAccount: appSettings.bankAccount || "",
+    bankOwner: appSettings.bankOwner || ""
   };
 
   if (window.api) {
@@ -300,6 +309,7 @@ async function writeHistoryFile(monthYearStr, data) {
 // Khởi tạo ứng dụng
 document.addEventListener('DOMContentLoaded', async () => {
   await loadSettingsFile();
+  initBankSelectDropdown();
   initSettingsForm();
 
   const baseFolderInput = document.getElementById('set-baseFolder');
@@ -329,6 +339,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   restrictDigitsOnly(cccdInput, 12);
   restrictDigitsOnly(sdtGoiInput, 10);
   restrictDigitsOnly(sdtZaloInput, 10);
+
+  // Ràng buộc nhập số cho Số Tài Khoản Ngân Hàng & Tự động viết hoa không dấu cho Tên Chủ Sở Hữu
+  const bankAccountInput = document.getElementById('set-bankAccount');
+  const bankOwnerInput = document.getElementById('set-bankOwner');
+  if (bankAccountInput) {
+    restrictDigitsOnly(bankAccountInput, 24);
+  }
+  if (bankOwnerInput) {
+    bankOwnerInput.addEventListener('input', () => {
+      const start = bankOwnerInput.selectionStart;
+      bankOwnerInput.value = removeVietnameseTones(bankOwnerInput.value).toUpperCase();
+      bankOwnerInput.setSelectionRange(start, start);
+    });
+  }
 
   // Tự động xóa lỗi đỏ khi người dùng gõ
   ['res-hoTen', 'res-cccd', 'res-sdtGoi', 'res-sdtZalo', 'res-email'].forEach(id => {
@@ -371,6 +395,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Lắng nghe sự kiện bàn phím phím Enter & Tab kiểu Excel cho toàn bảng
   document.getElementById('rooms-table-body').addEventListener('keydown', handleTableKeyDown);
+
+  // Khởi tạo trạng thái và sự kiện Tích hợp Zalo
+  initZaloIntegration();
 });
 
 /**
@@ -443,7 +470,214 @@ function initSettingsForm() {
     anomalyCheck.checked = appSettings.enableAnomalyPopup !== false;
   }
 
+  const bankAccountInput = document.getElementById('set-bankAccount');
+  if (bankAccountInput) bankAccountInput.value = appSettings.bankAccount || "";
+
+  const bankOwnerInput = document.getElementById('set-bankOwner');
+  if (bankOwnerInput) bankOwnerInput.value = appSettings.bankOwner || "";
+
+  setSelectedBank(appSettings.bankName || "");
+
   isSettingsDirty = false;
+}
+
+/**
+ * Khởi tạo Custom Bank Select Dropdown với logo ngân hàng và tính năng tìm kiếm
+ */
+function initBankSelectDropdown() {
+  const container = document.getElementById('custom-bank-select');
+  const trigger = document.getElementById('bank-select-trigger');
+  const dropdown = document.getElementById('bank-select-dropdown');
+  const searchInput = document.getElementById('bank-search-input');
+  const clearBtn = document.getElementById('bank-search-clear');
+  const optionsList = document.getElementById('bank-options-list');
+  const hiddenInput = document.getElementById('set-bankName');
+
+  if (!container || !trigger || !dropdown || !optionsList) return;
+
+  const banksList = window.VIETNAM_BANKS_LIST || [];
+
+  function renderBankOptions(filterText = '') {
+    optionsList.innerHTML = '';
+    const cleanQuery = typeof removeVietnameseTones === 'function'
+      ? removeVietnameseTones(filterText.trim().toLowerCase())
+      : filterText.trim().toLowerCase();
+
+    const filtered = banksList.filter(b => {
+      if (!cleanQuery) return true;
+      const codeMatch = (b.code || '').toLowerCase().includes(cleanQuery);
+      const binMatch = (b.bin || '').toLowerCase().includes(cleanQuery);
+      const shortMatch = typeof removeVietnameseTones === 'function'
+        ? removeVietnameseTones((b.shortName || '').toLowerCase()).includes(cleanQuery)
+        : (b.shortName || '').toLowerCase().includes(cleanQuery);
+      const nameMatch = typeof removeVietnameseTones === 'function'
+        ? removeVietnameseTones((b.name || '').toLowerCase()).includes(cleanQuery)
+        : (b.name || '').toLowerCase().includes(cleanQuery);
+      return codeMatch || binMatch || shortMatch || nameMatch;
+    });
+
+    if (filtered.length === 0) {
+      optionsList.innerHTML = `<div class="bank-options-empty">Không tìm thấy ngân hàng phù hợp với "${filterText}"</div>`;
+      return;
+    }
+
+    const currentVal = hiddenInput ? hiddenInput.value : '';
+
+    filtered.forEach(b => {
+      const item = document.createElement('div');
+      item.className = `bank-option-item ${currentVal === b.id || currentVal === b.code ? 'selected' : ''}`;
+      item.setAttribute('role', 'option');
+      item.setAttribute('data-id', b.id);
+      item.setAttribute('data-code', b.code);
+
+      const localLogo = `../../assets/bank_napas_payment/Bank/${b.code}.png`;
+      const fallbackLogo = b.bankLogoUrl || '';
+
+      item.innerHTML = `
+        <div class="bank-item-left">
+          <img src="${localLogo}" alt="${b.shortName}" class="bank-item-logo" onerror="this.onerror=null; if('${fallbackLogo}') this.src='${fallbackLogo}';">
+          <div class="bank-item-info">
+            <div class="bank-item-top">
+              <span class="bank-item-name">${b.shortName}</span>
+              <span class="bank-bin-badge">${b.code} · ${b.bin}</span>
+            </div>
+            <span class="bank-item-sub">${b.name}</span>
+          </div>
+        </div>
+        <div class="bank-check-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+      `;
+
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setSelectedBank(b.id, true);
+        closeBankDropdown();
+      });
+
+      optionsList.appendChild(item);
+    });
+  }
+
+  function openBankDropdown() {
+    dropdown.style.display = 'flex';
+    trigger.classList.add('active');
+    trigger.setAttribute('aria-expanded', 'true');
+    searchInput.value = '';
+    clearBtn.style.display = 'none';
+    renderBankOptions('');
+    setTimeout(() => searchInput.focus(), 50);
+  }
+
+  function closeBankDropdown() {
+    dropdown.style.display = 'none';
+    trigger.classList.remove('active');
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (dropdown.style.display === 'none' || !dropdown.style.display) {
+      openBankDropdown();
+    } else {
+      closeBankDropdown();
+    }
+  });
+
+  searchInput.addEventListener('input', (e) => {
+    const val = e.target.value;
+    clearBtn.style.display = val ? 'block' : 'none';
+    renderBankOptions(val);
+  });
+
+  clearBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    searchInput.value = '';
+    clearBtn.style.display = 'none';
+    renderBankOptions('');
+    searchInput.focus();
+  });
+
+  // Đóng khi click ngoài
+  document.addEventListener('click', (e) => {
+    if (!container.contains(e.target)) {
+      closeBankDropdown();
+    }
+  });
+
+  // Phím Esc để đóng
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && dropdown.style.display !== 'none') {
+      closeBankDropdown();
+      trigger.focus();
+    }
+  });
+
+  // Render danh sách ban đầu
+  renderBankOptions('');
+}
+
+/**
+ * Cập nhật hiển thị Ngân hàng đang chọn
+ */
+function setSelectedBank(bankIdOrCode, isUserAction = false) {
+  const hiddenInput = document.getElementById('set-bankName');
+  const triggerContent = document.getElementById('bank-trigger-content');
+  if (!triggerContent) return;
+
+  const banksMap = window.VIETNAM_BANKS_MAP || {};
+  let bank = null;
+
+  if (bankIdOrCode) {
+    bank = banksMap[bankIdOrCode] || Object.values(banksMap).find(b => b.id === bankIdOrCode || b.code === bankIdOrCode || b.bin === bankIdOrCode);
+  }
+
+  if (bank) {
+    if (hiddenInput) hiddenInput.value = bank.id;
+    const localLogo = `../../assets/bank_napas_payment/Bank/${bank.code}.png`;
+    const fallbackLogo = bank.bankLogoUrl || '';
+
+    triggerContent.innerHTML = `
+      <div class="bank-trigger-selected">
+        <img src="${localLogo}" alt="${bank.shortName}" class="bank-trigger-logo" onerror="this.onerror=null; if('${fallbackLogo}') this.src='${fallbackLogo}';">
+        <div class="bank-trigger-info">
+          <div class="bank-trigger-name">
+            <span>${bank.shortName}</span>
+            <span class="bank-bin-badge">${bank.code} · ${bank.bin}</span>
+          </div>
+          <span class="bank-trigger-sub">${bank.name}</span>
+        </div>
+      </div>
+    `;
+  } else {
+    if (hiddenInput) hiddenInput.value = '';
+    triggerContent.innerHTML = `
+      <div class="bank-trigger-placeholder">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+          <line x1="2" y1="10" x2="22" y2="10"></line>
+        </svg>
+        <span>-- Chọn Ngân Hàng Nhận Tiền --</span>
+      </div>
+    `;
+  }
+
+  // Highlight trong dropdown nếu đang mở
+  document.querySelectorAll('.bank-option-item').forEach(el => {
+    const id = el.getAttribute('data-id');
+    const code = el.getAttribute('data-code');
+    if (bank && (id === bank.id || code === bank.code)) {
+      el.classList.add('selected');
+    } else {
+      el.classList.remove('selected');
+    }
+  });
+
+  if (isUserAction) {
+    markSettingsDirty();
+  }
 }
 
 /**
@@ -911,6 +1145,15 @@ async function saveSettings(event) {
 
   const anomalyCheck = document.getElementById('set-enableAnomalyPopup');
   if (anomalyCheck) appSettings.enableAnomalyPopup = anomalyCheck.checked;
+
+  const bankNameInput = document.getElementById('set-bankName');
+  if (bankNameInput) appSettings.bankName = bankNameInput.value.trim();
+
+  const bankAccountInput = document.getElementById('set-bankAccount');
+  if (bankAccountInput) appSettings.bankAccount = bankAccountInput.value.trim();
+
+  const bankOwnerInput = document.getElementById('set-bankOwner');
+  if (bankOwnerInput) appSettings.bankOwner = bankOwnerInput.value.trim();
 
   const ok = await saveSettingsFile();
 
@@ -3070,6 +3313,593 @@ async function executeDeleteResidents() {
   showToast(`Đã xóa vĩnh viễn ${deletedCount} người thuê khỏi hệ thống!`, 'success');
 }
 
+/**
+ * Nút "Gửi Zalo" trên tiêu đề Bảng nhập chỉ số (Phần 1: Nhập Dữ Liệu)
+ * Kích hoạt gửi phiếu thu qua Zalo cho tháng đang chọn
+ */
+function handleSendZaloMonthClick() {
+  const monthYearSelect = document.getElementById('month-year-select');
+  const monthYearText = monthYearSelect ? monthYearSelect.options[monthYearSelect.selectedIndex]?.text : '';
+  showToast(`[Giao diện] Sẵn sàng gửi phiếu thu Zalo cho ${monthYearText || 'tháng đang chọn'}.`, 'info');
+}
+
+/* ============================================================
+   TÍCH HỢP TÀI KHOẢN ZALO (ZCA-JS)
+   ============================================================ */
+let isZaloConnected = false;
+let currentZaloProfile = null;
+let isZaloLoginInProgress = false;
+let zaloCountdownInterval = null;
+let zaloCountdownSeconds = 120;
+
+/**
+ * Bắt đầu đếm ngược thời gian hiệu lực mã QR (2 phút = 120s)
+ */
+function startZaloCountdown(duration = 120) {
+  stopZaloCountdown();
+  zaloCountdownSeconds = duration;
+  const countdownEl = document.getElementById('zalo-qr-countdown');
+
+  if (countdownEl) {
+    countdownEl.className = 'zalo-qr-countdown';
+    countdownEl.style.display = 'inline-flex';
+  }
+  updateCountdownDisplay(zaloCountdownSeconds);
+
+  zaloCountdownInterval = setInterval(() => {
+    zaloCountdownSeconds--;
+    if (zaloCountdownSeconds <= 0) {
+      handleZaloQrTimeoutExpired();
+    } else {
+      updateCountdownDisplay(zaloCountdownSeconds);
+    }
+  }, 1000);
+}
+
+/**
+ * Cập nhật hiển thị số giây đếm ngược dạng mm:ss
+ */
+function updateCountdownDisplay(seconds) {
+  const timerEl = document.getElementById('zalo-countdown-timer');
+  const countdownEl = document.getElementById('zalo-qr-countdown');
+  if (!timerEl) return;
+
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+
+  if (countdownEl) {
+    if (seconds <= 15) {
+      countdownEl.className = 'zalo-qr-countdown danger';
+    } else if (seconds <= 40) {
+      countdownEl.className = 'zalo-qr-countdown warning';
+    } else {
+      countdownEl.className = 'zalo-qr-countdown';
+    }
+  }
+}
+
+/**
+ * Dừng đếm ngược và ẩn badge
+ */
+function stopZaloCountdown() {
+  if (zaloCountdownInterval) {
+    clearInterval(zaloCountdownInterval);
+    zaloCountdownInterval = null;
+  }
+  const countdownEl = document.getElementById('zalo-qr-countdown');
+  if (countdownEl) {
+    countdownEl.style.display = 'none';
+  }
+}
+
+/**
+ * Xóa sạch ảnh QR trong bộ nhớ và DOM khi thoát hoặc hoàn tất
+ */
+function clearZaloQrImage() {
+  const qrImgEl = document.getElementById('zalo-qr-image');
+  if (qrImgEl) {
+    qrImgEl.src = '';
+  }
+  const imgWrapEl = document.getElementById('zalo-qr-image-wrap');
+  if (imgWrapEl) {
+    imgWrapEl.style.display = 'none';
+  }
+}
+
+/**
+ * Xử lý khi hết hạn 2 phút đếm ngược
+ */
+async function handleZaloQrTimeoutExpired() {
+  stopZaloCountdown();
+  clearZaloQrImage();
+
+  if (window.api && typeof window.api.abortZaloQrLogin === 'function') {
+    try {
+      await window.api.abortZaloQrLogin();
+    } catch (e) {}
+  }
+  isZaloLoginInProgress = false;
+
+  const overlayEl = document.getElementById('zalo-qr-overlay');
+  const overlayContentEl = document.getElementById('zalo-overlay-content');
+  const statusTextEl = document.getElementById('zalo-qr-status-text');
+  const actionsEl = document.getElementById('zalo-qr-actions');
+
+  if (overlayEl) overlayEl.style.display = 'flex';
+  if (overlayContentEl) {
+    overlayContentEl.innerHTML = `
+      <div class="zalo-overlay-icon warning">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+      </div>
+      <h4 class="zalo-overlay-title">Mã QR Đã Hết Hạn</h4>
+      <p class="zalo-overlay-subtitle">Đã quá thời gian chờ quét mã (2 phút)</p>
+    `;
+  }
+  if (actionsEl) actionsEl.style.display = 'flex';
+  if (statusTextEl) statusTextEl.textContent = 'Mã QR đã hết hạn sau 2 phút. Vui lòng bấm "Tạo Mã QR Mới" để tiếp tục.';
+}
+
+/**
+ * Khởi tạo kiểm tra trạng thái Zalo và đăng ký lắng nghe sự kiện
+ */
+async function initZaloIntegration() {
+  if (!window.api) return;
+
+  // Lắng nghe sự kiện QR stream từ Main Process
+  if (typeof window.api.onZaloQrEvent === 'function') {
+    window.api.onZaloQrEvent((event) => {
+      handleZaloQrStreamEvent(event);
+    });
+  }
+
+  // Khôi phục trạng thái ngầm lúc mở app
+  if (typeof window.api.getZaloStatus === 'function') {
+    try {
+      const res = await window.api.getZaloStatus();
+      if (res && res.connected && res.profile) {
+        updateZaloProfileUI(true, res.profile);
+      } else {
+        updateZaloProfileUI(false, null);
+      }
+    } catch (e) {
+      console.warn('Lỗi khi lấy trạng thái Zalo ban đầu:', e);
+      updateZaloProfileUI(false, null);
+    }
+  }
+}
+
+/**
+ * Cập nhật giao diện Profile Card Zalo trong tab Cài Đặt Chung
+ */
+function updateZaloProfileUI(isConnected, profile) {
+  isZaloConnected = !!isConnected;
+  currentZaloProfile = profile || null;
+
+  const placeholderEl = document.getElementById('zalo-avatar-placeholder');
+  const avatarImgEl = document.getElementById('zalo-avatar-img');
+  const badgeEl = document.getElementById('zalo-status-badge');
+  const statusTextEl = document.getElementById('zalo-status-text');
+  const nameEl = document.getElementById('zalo-display-name');
+  const phoneEl = document.getElementById('zalo-display-phone');
+  const btnLogin = document.getElementById('btn-zalo-qr-login');
+  const btnSwitch = document.getElementById('btn-zalo-switch');
+  const btnLogout = document.getElementById('btn-zalo-logout');
+
+  if (isConnected && profile) {
+    if (badgeEl) {
+      badgeEl.className = 'zalo-status-badge connected';
+    }
+    if (statusTextEl) {
+      statusTextEl.textContent = 'Đã Kết Nối Zalo';
+    }
+    if (nameEl) {
+      nameEl.textContent = profile.displayName || 'Tài khoản Zalo';
+    }
+    if (phoneEl) {
+      if (profile.phoneNumber) {
+        phoneEl.textContent = `SĐT: ${profile.phoneNumber}`;
+      } else if (profile.userId) {
+        phoneEl.textContent = `ID Zalo: ${profile.userId}`;
+      } else {
+        phoneEl.textContent = 'Đang sẵn sàng gửi phiếu thu tự động';
+      }
+    }
+
+    if (avatarImgEl) {
+      if (profile.avatar) {
+        avatarImgEl.src = profile.avatar;
+        avatarImgEl.style.display = 'block';
+        if (placeholderEl) placeholderEl.style.display = 'none';
+        avatarImgEl.onerror = () => {
+          avatarImgEl.style.display = 'none';
+          if (placeholderEl) placeholderEl.style.display = 'flex';
+        };
+      } else {
+        avatarImgEl.style.display = 'none';
+        if (placeholderEl) placeholderEl.style.display = 'flex';
+      }
+    }
+
+    if (btnLogin) btnLogin.style.display = 'none';
+    if (btnSwitch) btnSwitch.style.display = 'inline-flex';
+    if (btnLogout) btnLogout.style.display = 'inline-flex';
+  } else {
+    if (badgeEl) {
+      badgeEl.className = 'zalo-status-badge disconnected';
+    }
+    if (statusTextEl) {
+      statusTextEl.textContent = 'Chưa kết nối Zalo';
+    }
+    if (nameEl) {
+      nameEl.textContent = 'Chưa Đăng Nhập';
+    }
+    if (phoneEl) {
+      phoneEl.textContent = 'Bấm "Đăng Nhập Bằng Mã QR" để quét mã kết nối';
+    }
+
+    if (avatarImgEl) {
+      avatarImgEl.style.display = 'none';
+      avatarImgEl.src = '';
+    }
+    if (placeholderEl) {
+      placeholderEl.style.display = 'flex';
+    }
+
+    if (btnLogin) btnLogin.style.display = 'inline-flex';
+    if (btnSwitch) btnSwitch.style.display = 'none';
+    if (btnLogout) btnLogout.style.display = 'none';
+  }
+}
+
+/**
+ * Nút "Đăng Nhập Bằng Mã QR"
+ */
+async function handleZaloQrLoginClick() {
+  if (isZaloLoginInProgress) {
+    showToast('Tiến trình quét mã QR đang diễn ra!', 'warning');
+    return;
+  }
+  openZaloQrModal(false);
+}
+
+/**
+ * Nút "Đổi Tài Khoản"
+ */
+async function handleZaloSwitchAccountClick() {
+  if (isZaloLoginInProgress) {
+    showToast('Tiến trình quét mã QR đang diễn ra!', 'warning');
+    return;
+  }
+  openZaloQrModal(true);
+}
+
+/**
+ * Mở modal quét mã QR Zalo và khởi chạy backend
+ */
+async function openZaloQrModal(isSwitchMode = false) {
+  if (!window.api || typeof window.api.startZaloQrLogin !== 'function') {
+    showToast('Chức năng Zalo chỉ khả dụng trên ứng dụng Electron!', 'error');
+    return;
+  }
+
+  isZaloLoginInProgress = true;
+  stopZaloCountdown();
+  clearZaloQrImage();
+
+  const modalEl = document.getElementById('zalo-qr-modal');
+  const titleEl = document.getElementById('zalo-qr-modal-title');
+  const subtitleEl = document.getElementById('zalo-qr-modal-subtitle');
+  const loadingEl = document.getElementById('zalo-qr-loading');
+  const loadingTextEl = document.getElementById('zalo-qr-loading-text');
+  const imgWrapEl = document.getElementById('zalo-qr-image-wrap');
+  const overlayEl = document.getElementById('zalo-qr-overlay');
+  const statusTextEl = document.getElementById('zalo-qr-status-text');
+  const actionsEl = document.getElementById('zalo-qr-actions');
+
+  if (titleEl) {
+    titleEl.textContent = isSwitchMode ? 'Đổi Tài Khoản Zalo' : 'Đăng Nhập Zalo Bằng Mã QR';
+  }
+  if (subtitleEl) {
+    subtitleEl.textContent = isSwitchMode
+      ? 'Dùng ứng dụng Zalo trên điện thoại quét mã bằng tài khoản mới'
+      : 'Dùng ứng dụng Zalo trên điện thoại để quét mã kết nối';
+  }
+
+  if (loadingEl) loadingEl.style.display = 'flex';
+  if (loadingTextEl) loadingTextEl.textContent = 'Đang tạo mã QR đăng nhập...';
+  if (imgWrapEl) imgWrapEl.style.display = 'none';
+  if (overlayEl) overlayEl.style.display = 'none';
+  if (actionsEl) actionsEl.style.display = 'none';
+  if (statusTextEl) statusTextEl.textContent = 'Mở Zalo trên điện thoại > Chọn biểu tượng Quét mã QR';
+
+  if (modalEl) modalEl.style.display = 'flex';
+
+  try {
+    const res = await window.api.startZaloQrLogin();
+    if (res && res.error && res.error !== 'TU_CHOI_DANG_NHAP' && res.error !== 'LOI_DANG_NHAP') {
+      console.warn('Kết quả startZaloQrLogin:', res);
+    }
+  } catch (err) {
+    console.error('Lỗi khi bắt đầu quét QR Zalo:', err);
+    showToast(`Lỗi kết nối Zalo: ${err.message}`, 'error');
+    isZaloLoginInProgress = false;
+    stopZaloCountdown();
+    clearZaloQrImage();
+  }
+}
+
+/**
+ * Xử lý các sự kiện thời gian thực từ luồng QR backend (zca-js)
+ */
+function handleZaloQrStreamEvent(event) {
+  if (!event) return;
+
+  const loadingEl = document.getElementById('zalo-qr-loading');
+  const loadingTextEl = document.getElementById('zalo-qr-loading-text');
+  const imgWrapEl = document.getElementById('zalo-qr-image-wrap');
+  const qrImgEl = document.getElementById('zalo-qr-image');
+  const overlayEl = document.getElementById('zalo-qr-overlay');
+  const overlayContentEl = document.getElementById('zalo-overlay-content');
+  const statusTextEl = document.getElementById('zalo-qr-status-text');
+  const actionsEl = document.getElementById('zalo-qr-actions');
+
+  switch (event.type) {
+    case 'generating': {
+      stopZaloCountdown();
+      clearZaloQrImage();
+      if (loadingEl) loadingEl.style.display = 'flex';
+      if (loadingTextEl) loadingTextEl.textContent = event.data?.message || 'Đang tạo mã QR...';
+      if (imgWrapEl) imgWrapEl.style.display = 'none';
+      if (overlayEl) overlayEl.style.display = 'none';
+      if (actionsEl) actionsEl.style.display = 'none';
+      if (statusTextEl) statusTextEl.textContent = 'Vui lòng chờ trong giây lát...';
+      break;
+    }
+
+    case 'qr_generated': {
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (imgWrapEl) imgWrapEl.style.display = 'flex';
+      if (qrImgEl && event.data && event.data.image) {
+        qrImgEl.src = event.data.image;
+      }
+      if (overlayEl) overlayEl.style.display = 'none';
+      if (actionsEl) actionsEl.style.display = 'none';
+      if (statusTextEl) statusTextEl.textContent = 'Mở Zalo trên điện thoại > Chọn biểu tượng Quét mã QR';
+
+      // Khởi động đồng hồ đếm ngược 2 phút (120s)
+      startZaloCountdown(120);
+      break;
+    }
+
+    case 'qr_scanned': {
+      if (overlayEl) overlayEl.style.display = 'flex';
+      if (overlayContentEl) {
+        let iconOrAvatar = '';
+        if (event.data && event.data.avatar) {
+          iconOrAvatar = `<img src="${event.data.avatar}" alt="Avatar" class="zalo-overlay-avatar">`;
+        } else {
+          iconOrAvatar = `
+            <div class="zalo-overlay-icon scanned">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+          `;
+        }
+        const name = event.data?.displayName ? event.data.displayName : 'Đã Quét Mã QR';
+        overlayContentEl.innerHTML = `
+          ${iconOrAvatar}
+          <h4 class="zalo-overlay-title">${name}</h4>
+          <p class="zalo-overlay-subtitle">Đang chờ bạn xác nhận Đăng nhập trên điện thoại...</p>
+        `;
+      }
+      if (actionsEl) actionsEl.style.display = 'none';
+      if (statusTextEl) statusTextEl.textContent = 'Vui lòng bấm "Đăng nhập" trên ứng dụng Zalo điện thoại';
+      break;
+    }
+
+    case 'qr_expired': {
+      stopZaloCountdown();
+      clearZaloQrImage();
+      if (overlayEl) overlayEl.style.display = 'flex';
+      if (overlayContentEl) {
+        overlayContentEl.innerHTML = `
+          <div class="zalo-overlay-icon warning">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <h4 class="zalo-overlay-title">Mã QR Đã Hết Hạn</h4>
+          <p class="zalo-overlay-subtitle">Mã QR đã quá thời gian hiệu lực</p>
+        `;
+      }
+      if (actionsEl) actionsEl.style.display = 'flex';
+      if (statusTextEl) statusTextEl.textContent = 'Mã QR đã hết hạn. Bấm "Tạo Mã QR Mới" để tiếp tục.';
+      break;
+    }
+
+    case 'qr_declined': {
+      stopZaloCountdown();
+      clearZaloQrImage();
+      if (overlayEl) overlayEl.style.display = 'flex';
+      if (overlayContentEl) {
+        overlayContentEl.innerHTML = `
+          <div class="zalo-overlay-icon danger">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+          </div>
+          <h4 class="zalo-overlay-title">Bị Từ Chối Đăng Nhập</h4>
+          <p class="zalo-overlay-subtitle">Bạn đã chọn từ chối trên điện thoại</p>
+        `;
+      }
+      if (actionsEl) actionsEl.style.display = 'flex';
+      if (statusTextEl) statusTextEl.textContent = 'Yêu cầu đăng nhập bị từ chối. Bấm nút bên dưới để thử lại.';
+      break;
+    }
+
+    case 'confirming': {
+      if (overlayEl) overlayEl.style.display = 'flex';
+      if (overlayContentEl) {
+        overlayContentEl.innerHTML = `
+          <div class="zalo-overlay-icon success">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+          <h4 class="zalo-overlay-title">Xác Nhận Thành Công!</h4>
+          <p class="zalo-overlay-subtitle">Đang lưu thông tin phiên đăng nhập...</p>
+        `;
+      }
+      if (actionsEl) actionsEl.style.display = 'none';
+      if (statusTextEl) statusTextEl.textContent = 'Đang thiết lập phiên làm việc Zalo...';
+      break;
+    }
+
+    case 'success': {
+      stopZaloCountdown();
+      clearZaloQrImage();
+      isZaloLoginInProgress = false;
+      const profile = event.data?.profile;
+      updateZaloProfileUI(true, profile);
+      setTimeout(() => {
+        const modalEl = document.getElementById('zalo-qr-modal');
+        if (modalEl) modalEl.style.display = 'none';
+      }, 500);
+      showToast(`Đăng nhập Zalo thành công: ${profile?.displayName || 'Tài khoản Zalo'}!`, 'success');
+      break;
+    }
+
+    case 'aborted': {
+      stopZaloCountdown();
+      clearZaloQrImage();
+      isZaloLoginInProgress = false;
+      const modalEl = document.getElementById('zalo-qr-modal');
+      if (modalEl) modalEl.style.display = 'none';
+      break;
+    }
+
+    case 'error': {
+      stopZaloCountdown();
+      clearZaloQrImage();
+      isZaloLoginInProgress = false;
+      if (overlayEl) overlayEl.style.display = 'flex';
+      const errMsg = event.data?.message || 'Không thể kết nối tới Zalo. Vui lòng kiểm tra lại mạng!';
+      if (overlayContentEl) {
+        overlayContentEl.innerHTML = `
+          <div class="zalo-overlay-icon danger">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          </div>
+          <h4 class="zalo-overlay-title">Lỗi Kết Nối</h4>
+          <p class="zalo-overlay-subtitle">${errMsg}</p>
+        `;
+      }
+      if (actionsEl) actionsEl.style.display = 'flex';
+      if (statusTextEl) statusTextEl.textContent = errMsg;
+      break;
+    }
+
+    default:
+      break;
+  }
+}
+
+/**
+ * Hủy bỏ tiến trình đăng nhập QR (nút X hoặc Hủy)
+ */
+async function cancelZaloQrLogin() {
+  stopZaloCountdown();
+  clearZaloQrImage();
+
+  const modalEl = document.getElementById('zalo-qr-modal');
+  if (modalEl) modalEl.style.display = 'none';
+
+  if (window.api && typeof window.api.abortZaloQrLogin === 'function') {
+    try {
+      await window.api.abortZaloQrLogin();
+    } catch (e) {
+      console.warn('Lỗi khi hủy phiên QR Zalo:', e);
+    }
+  }
+
+  isZaloLoginInProgress = false;
+}
+
+/**
+ * Thử lại / Tạo mã mới
+ */
+async function retryZaloQrLogin() {
+  stopZaloCountdown();
+  clearZaloQrImage();
+
+  const loadingEl = document.getElementById('zalo-qr-loading');
+  const loadingTextEl = document.getElementById('zalo-qr-loading-text');
+  const imgWrapEl = document.getElementById('zalo-qr-image-wrap');
+  const overlayEl = document.getElementById('zalo-qr-overlay');
+  const statusTextEl = document.getElementById('zalo-qr-status-text');
+  const actionsEl = document.getElementById('zalo-qr-actions');
+
+  if (loadingEl) loadingEl.style.display = 'flex';
+  if (loadingTextEl) loadingTextEl.textContent = 'Đang tạo lại mã QR mới...';
+  if (imgWrapEl) imgWrapEl.style.display = 'none';
+  if (overlayEl) overlayEl.style.display = 'none';
+  if (actionsEl) actionsEl.style.display = 'none';
+  if (statusTextEl) statusTextEl.textContent = 'Đang tải mã QR mới từ máy chủ Zalo...';
+
+  isZaloLoginInProgress = true;
+
+  if (window.api && typeof window.api.retryZaloQrLogin === 'function') {
+    try {
+      await window.api.retryZaloQrLogin();
+    } catch (err) {
+      console.error('Lỗi khi tạo lại mã QR Zalo:', err);
+      showToast(`Không thể tạo lại mã QR: ${err.message}`, 'error');
+      isZaloLoginInProgress = false;
+    }
+  }
+}
+
+/**
+ * Đăng xuất tài khoản Zalo
+ */
+async function handleZaloLogoutClick() {
+  if (!window.api || typeof window.api.logoutZalo !== 'function') {
+    showToast('Chức năng Đăng xuất Zalo chỉ khả dụng trên ứng dụng Electron!', 'error');
+    return;
+  }
+
+  try {
+    await window.api.logoutZalo();
+    updateZaloProfileUI(false, null);
+    showToast('Đã đăng xuất tài khoản Zalo thành công!', 'success');
+  } catch (err) {
+    console.error('Lỗi khi đăng xuất Zalo:', err);
+    showToast(`Lỗi khi đăng xuất: ${err.message}`, 'error');
+  }
+}
+
+/**
+ * Loại bỏ dấu tiếng Việt (chuyển thành chữ không dấu)
+ */
+function removeVietnameseTones(str) {
+  if (!str) return '';
+  str = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  str = str.replace(/[đĐ]/g, m => (m === 'đ' ? 'd' : 'D'));
+  return str;
+}
+
 // Gắn các hàm lên window để các thuộc tính onclick trong HTML gọi được trực tiếp
 window.switchTab = switchTab;
 window.openAddResidentModal = openAddResidentModal;
@@ -3095,6 +3925,14 @@ window.confirmDeleteSingleResident = confirmDeleteSingleResident;
 window.confirmDeleteSelectedResidents = confirmDeleteSelectedResidents;
 window.closeDeleteResidentModal = closeDeleteResidentModal;
 window.executeDeleteResidents = executeDeleteResidents;
+window.handleSendZaloMonthClick = handleSendZaloMonthClick;
+window.handleZaloQrLoginClick = handleZaloQrLoginClick;
+window.handleZaloSwitchAccountClick = handleZaloSwitchAccountClick;
+window.handleZaloLogoutClick = handleZaloLogoutClick;
+window.cancelZaloQrLogin = cancelZaloQrLogin;
+window.retryZaloQrLogin = retryZaloQrLogin;
+window.removeVietnameseTones = removeVietnameseTones;
+
 
 
 

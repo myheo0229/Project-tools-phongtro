@@ -803,8 +803,59 @@ ipcMain.handle('export:receipts', async (event, monthKey, roomDataList) => {
   }
 });
 
+// ============================================================
+// ZALO INTEGRATION IPC HANDLERS
+// ============================================================
+const zaloManager = require('./zalo-manager');
+
+ipcMain.handle('zalo:get-status', async () => {
+  const pointer = getPointer();
+  const baseFolder = pointer ? pointer.baseFolder : '';
+  const status = zaloManager.getStatus();
+  if (!status.connected) {
+    // Thử restore nếu chưa restore
+    return await zaloManager.restoreSession(baseFolder);
+  }
+  return status;
+});
+
+ipcMain.handle('zalo:start-qr-login', async (event) => {
+  const pointer = getPointer();
+  const baseFolder = pointer ? pointer.baseFolder : '';
+  return await zaloManager.startQrLogin(event.sender, baseFolder);
+});
+
+ipcMain.handle('zalo:abort-qr-login', async () => {
+  zaloManager.abortQrLogin();
+  return { success: true };
+});
+
+ipcMain.handle('zalo:retry-qr-login', async (event) => {
+  const pointer = getPointer();
+  const baseFolder = pointer ? pointer.baseFolder : '';
+  return await zaloManager.retryQrLogin(event.sender, baseFolder);
+});
+
+ipcMain.handle('zalo:logout', async () => {
+  const pointer = getPointer();
+  const baseFolder = pointer ? pointer.baseFolder : '';
+  zaloManager.clearSession(baseFolder);
+  return { success: true };
+});
+
 app.whenReady().then(() => {
   createWindow();
+
+  // Khôi phục phiên Zalo ngầm lúc khởi động
+  setTimeout(async () => {
+    try {
+      const pointer = getPointer();
+      const baseFolder = pointer ? pointer.baseFolder : '';
+      await zaloManager.restoreSession(baseFolder);
+    } catch (e) {
+      console.warn('Lỗi khi khôi phục session Zalo ngầm:', e);
+    }
+  }, 1000);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -814,3 +865,4 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+

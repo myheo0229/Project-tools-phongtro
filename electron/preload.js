@@ -55,5 +55,16 @@ contextBridge.exposeInMainWorld('api', {
   saveCccdImage: (payload) => ipcRenderer.invoke('cccd:save-image', payload),
   moveCccdFolder: (payload) => ipcRenderer.invoke('cccd:move-folder', payload),
   deleteCccdFolder: (payload) => ipcRenderer.invoke('cccd:delete-folder', payload),
-  readCccdImageAsDataUrl: (relativePath) => ipcRenderer.invoke('cccd:read-image', relativePath)
+  readCccdImageAsDataUrl: (relativePath) => ipcRenderer.invoke('cccd:read-image', relativePath),
+
+  // Tích hợp Zalo (zca-js)
+  getZaloStatus: () => ipcRenderer.invoke('zalo:get-status'),
+  startZaloQrLogin: () => ipcRenderer.invoke('zalo:start-qr-login'),
+  abortZaloQrLogin: () => ipcRenderer.invoke('zalo:abort-qr-login'),
+  retryZaloQrLogin: () => ipcRenderer.invoke('zalo:retry-qr-login'),
+  logoutZalo: () => ipcRenderer.invoke('zalo:logout'),
+  onZaloQrEvent: (callback) => {
+    ipcRenderer.removeAllListeners('zalo:qr-event');
+    ipcRenderer.on('zalo:qr-event', (event, data) => callback(data));
+  }
 });
