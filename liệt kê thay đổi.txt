@@ -47,3 +47,10 @@ v2.3.7
 
 v2.3.8
 - Kiểm tra thử nghiệm toàn diện luồng nâng cấp tự động hoàn tất (Final Auto Update Test Release)
+
+v3.0.0
+- Nâng cấp lớn phiên bản lên v3.0.0
+- Bổ sung màn hình quản lý "Thông Tin Người Ở" (Phần 3): Thêm/sửa/xóa hồ sơ người thuê trọ, upload và xem ảnh CCCD mặt trước/sau, tìm kiếm & lọc theo phòng, gán chủ phòng và danh sách thành viên trong phòng
+- Tích hợp tài khoản Zalo & Ngân hàng trong tab Cài Đặt Chung: Đăng nhập Zalo bằng mã QR an toàn qua zca-js, hiển thị avatar & tên tài khoản thật, khôi phục session tự động
+- Tích hợp tính năng Tự động Gửi Phiếu Thu Tiền Phòng qua Zalo: Chọn phòng cần gửi, gửi ảnh phiếu thu + ảnh mã VietQR ngân hàng + tin nhắn tóm tắt tiền phòng, cơ chế gửi tuần tự kèm độ trễ ngẫu nhiên chống spam an toàn
+- Bổ sung quy chuẩn kỹ thuật và Skill hướng dẫn nâng cấp phiên bản cho Agent (quy-trinh-nang-cap-phien-ban)
