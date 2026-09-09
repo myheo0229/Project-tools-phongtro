@@ -107,8 +107,6 @@ git commit -m "vX.Y.Z"
 
 # 3. Tạo Git Tag cho phiên bản (để GitHub Releases và Auto Updater nhận diện)
 git tag vX.Y.Z
-# hoặc tạo thêm tag không có v:
-git tag X.Y.Z
 
 # 4. Đẩy code và tags lên GitHub Remote (khi cần)
 git push origin main --tags
