@@ -1,5 +1,6 @@
 {
-  "baseFolder": "C:\\Users\\pc\\OneDrive\\Desktop\\test app",
+  "appId": "phong-tro-app",
+  "baseFolder": "",
   "dienThoai": "0982 141 407",
   "giaPhong": 2200000,
   "giaDien": 2900,
@@ -9,5 +10,7 @@
   "tienInternet": 24000,
   "internet": 24000,
   "tyLeHaoTai": 0.07,
-  "tileHaoTai": 0.07
+  "tileHaoTai": 0.07,
+  "enableRolloverPopup": true,
+  "enableAnomalyPopup": true
 }

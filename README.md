@@ -3,7 +3,7 @@
 > Phần mềm quản lý và xuất phiếu thu tiền nhà trọ — Xây dựng trên nền tảng Electron.
 
 **Tác giả:** Lê Công Bá Nhân  
-**Phiên bản:** 3.0.0  
+**Phiên bản:** 3.0.1  
 **Nền tảng:** Windows (NSIS Installer — Tự động cập nhật qua GitHub Releases)
 
 ---
@@ -87,7 +87,7 @@ Project-tools-phongtro/
 │
 ├── assets/                      # Icon ứng dụng (.ico, .png)
 ├── release/                     # Thư mục chứa file Setup .exe sau khi build
-├── package.json                 # Cấu hình npm + electron-builder (v3.0.0)
+├── package.json                 # Cấu hình npm + electron-builder (v3.0.1)
 └── README.md                    # File hướng dẫn này
 ```
 
@@ -126,7 +126,7 @@ Project-tools-phongtro/
 
 ### 1. Mở ứng dụng
 
-- Chạy file `Quản Lý Phòng Trọ_Setup_v3.0.0.exe` để cài đặt lần đầu.
+- Chạy file `Quản Lý Phòng Trọ_Setup_v3.0.1.exe` để cài đặt lần đầu.
 - Giao diện chính hiện ra với các tab chức năng: `Nhập Dữ Liệu`, `Cài Đặt Chung`, `Thông Tin Người Ở`.
 
 ### 2. Tự Động Cập Nhật (Auto Update)
@@ -169,7 +169,7 @@ npm run build
 
 > Lệnh này chạy `electron-builder --win` — tạo file `.exe` cài đặt trong thư mục `release/`.
 
-File output: `release/Quản Lý Phòng Trọ_Setup_v3.0.0.exe`
+File output: `release/Quản Lý Phòng Trọ_Setup_v3.0.1.exe`
 
 Để tự động phát hành bản mới lên GitHub Releases cho người nhà:
 ```bash

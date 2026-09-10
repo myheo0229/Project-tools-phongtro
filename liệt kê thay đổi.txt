@@ -54,3 +54,12 @@ v3.0.0
 - Tích hợp tài khoản Zalo & Ngân hàng trong tab Cài Đặt Chung: Đăng nhập Zalo bằng mã QR an toàn qua zca-js, hiển thị avatar & tên tài khoản thật, khôi phục session tự động
 - Tích hợp tính năng Tự động Gửi Phiếu Thu Tiền Phòng qua Zalo: Chọn phòng cần gửi, gửi ảnh phiếu thu + ảnh mã VietQR ngân hàng + tin nhắn tóm tắt tiền phòng, cơ chế gửi tuần tự kèm độ trễ ngẫu nhiên chống spam an toàn
 - Bổ sung quy chuẩn kỹ thuật và Skill hướng dẫn nâng cấp phiên bản cho Agent (quy-trinh-nang-cap-phien-ban)
+
+v3.0.1
+- Vá lỗi bảo mật và rò rỉ dữ liệu (Data Isolation & Privacy Protection Fix)
+- Tách biệt hoàn toàn dữ liệu người dùng (User Runtime Data) khỏi thư mục mã nguồn ứng dụng (App Bundle)
+- Xóa bỏ triệt để cơ chế tự động đồng bộ dữ liệu người dùng ngược về PROJECT_ROOT/data khi lưu phòng và người ở
+- Khởi tạo dữ liệu mặc định trắng an toàn (12 phòng trắng, danh sách cư dân rỗng), không copy dữ liệu từ môi trường phát triển khi chọn thư mục lần đầu
+- Bảo toàn tuyệt đối dữ liệu hiện có của người dùng trên các máy khác khi cập nhật phiên bản mới
+- Làm sạch toàn bộ dữ liệu mẫu trong thư mục data/ của mã nguồn về trạng thái trắng chuẩn
+- Bổ sung tài liệu quy chuẩn an-toan-du-lieu-va-dong-goi (SKILL.md) và cập nhật .gitignore chặn rò rỉ ảnh CCCD và session Zalo cá nhân

@@ -5,3 +5,9 @@ dist/
 release/
 out/
 rember.txt
+
+# Dữ liệu ảnh CCCD và session cá nhân
+data/Thông tin người ở/
+**/Thông tin người ở/**
+**/zalo_session.json
+pointer.json

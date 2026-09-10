@@ -289,15 +289,6 @@ ipcMain.handle('settings:save', async (event, data) => {
     if (oldBaseFolder) {
       oldDataDir = path.join(oldBaseFolder, oldDataFolderName);
       oldPhieuThuDir = path.join(oldBaseFolder, oldPhieuThuFolderName);
-    } else {
-      // Nếu chưa có pointer.json (lần đầu chọn folder), kiểm tra dữ liệu mặc định cũ (nếu có)
-      const legacyPortable = process.env.PORTABLE_EXECUTABLE_DIR ? path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'data') : null;
-      const legacyProject = path.join(PROJECT_ROOT, 'data');
-      if (legacyPortable && fs.existsSync(legacyPortable)) {
-        oldDataDir = legacyPortable;
-      } else if (fs.existsSync(legacyProject)) {
-        oldDataDir = legacyProject;
-      }
     }
 
     // Thư mục đích chuẩn
@@ -312,14 +303,24 @@ ipcMain.handle('settings:save', async (event, data) => {
       fs.mkdirSync(targetPTDir, { recursive: true });
     }
 
-    // Sao chép LẬP TỨC toàn bộ dữ liệu data (history, settings...) từ vị trí cũ sang folder mới
+    // Sao chép toàn bộ dữ liệu data từ vị trí cũ sang folder mới (chỉ khi có oldBaseFolder khác targetDataDir)
     if (oldDataDir && fs.existsSync(oldDataDir) && path.normalize(oldDataDir) !== path.normalize(targetDataDir)) {
       copyDirSync(oldDataDir, targetDataDir);
     }
 
-    // Sao chép LẬP TỨC toàn bộ ảnh/PDF phiếu thu đã xuất từ vị trí cũ sang folder mới
+    // Sao chép toàn bộ ảnh/PDF phiếu thu đã xuất từ vị trí cũ sang folder mới
     if (oldPhieuThuDir && fs.existsSync(oldPhieuThuDir) && path.normalize(oldPhieuThuDir) !== path.normalize(targetPTDir)) {
       copyDirSync(oldPhieuThuDir, targetPTDir);
+    }
+
+    // Khởi tạo các file mặc định nếu thư mục đích chưa có (không bao giờ ghi đè nếu đã có dữ liệu)
+    const targetRoomsFile = path.join(targetDataDir, 'rooms.json');
+    if (!fs.existsSync(targetRoomsFile)) {
+      fs.writeFileSync(targetRoomsFile, JSON.stringify(getDefaultRooms(), null, 2), 'utf8');
+    }
+    const targetResidentsFile = path.join(targetDataDir, 'residents.json');
+    if (!fs.existsSync(targetResidentsFile)) {
+      fs.writeFileSync(targetResidentsFile, JSON.stringify([], null, 2), 'utf8');
     }
 
     // Ghi pointer.json mới trỏ tới baseFolder vừa chọn
@@ -392,6 +393,18 @@ ipcMain.handle('month-data:load', async (event, monthKey) => {
   }
 });
 
+// Helper tạo danh sách 12 phòng mặc định trắng
+function getDefaultRooms() {
+  const defaultRoomNames = ['1A', '2A', '3A', '4A', '5A', '6A', '1B', '2B', '3B', '4B', '5B', '6B'];
+  return defaultRoomNames.map(phong => ({
+    phong,
+    tenKhach: '',
+    cmnd: '',
+    chuPhong: null,
+    thanhVien: []
+  }));
+}
+
 // Helper lấy thư mục data hiện hành
 function getActiveDataDir() {
   const pointer = getPointer();
@@ -402,7 +415,11 @@ function getActiveDataDir() {
     }
     return dir;
   }
-  return path.join(PROJECT_ROOT, 'data');
+  const defaultUserDataDir = path.join(app.getPath('userData'), 'data');
+  if (!fs.existsSync(defaultUserDataDir)) {
+    try { fs.mkdirSync(defaultUserDataDir, { recursive: true }); } catch (e) {}
+  }
+  return defaultUserDataDir;
 }
 
 // Xóa ký tự không hợp lệ trong tên thư mục
@@ -419,10 +436,6 @@ ipcMain.handle('residents:load', async () => {
     if (fs.existsSync(filePath)) {
       return JSON.parse(fs.readFileSync(filePath, 'utf8'));
     }
-    const fallbackPath = path.join(PROJECT_ROOT, 'data', 'residents.json');
-    if (fs.existsSync(fallbackPath)) {
-      return JSON.parse(fs.readFileSync(fallbackPath, 'utf8'));
-    }
     return [];
   } catch (err) {
     console.error('Lỗi khi đọc residents.json:', err);
@@ -430,19 +443,12 @@ ipcMain.handle('residents:load', async () => {
   }
 });
 
-// IPC: Lưu danh sách người ở (residents.json)
+// IPC: Lưu danh sách người ở (residents.json) - CHỈ LƯU VÀO THƯ MỤC DỮ LIỆU CỦA USER
 ipcMain.handle('residents:save', async (event, data) => {
   try {
     const dataDir = getActiveDataDir();
     const filePath = path.join(dataDir, 'residents.json');
     fs.writeFileSync(filePath, JSON.stringify(data || [], null, 2), 'utf8');
-
-    const projectFilePath = path.join(PROJECT_ROOT, 'data', 'residents.json');
-    if (path.normalize(filePath) !== path.normalize(projectFilePath)) {
-      try {
-        fs.writeFileSync(projectFilePath, JSON.stringify(data || [], null, 2), 'utf8');
-      } catch (e) {}
-    }
     return { success: true };
   } catch (err) {
     console.error('Lỗi khi lưu residents.json:', err);
@@ -456,32 +462,24 @@ ipcMain.handle('rooms:load', async () => {
     const dataDir = getActiveDataDir();
     const filePath = path.join(dataDir, 'rooms.json');
     if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const rooms = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (Array.isArray(rooms) && rooms.length > 0) {
+        return rooms;
+      }
     }
-    const fallbackPath = path.join(PROJECT_ROOT, 'data', 'rooms.json');
-    if (fs.existsSync(fallbackPath)) {
-      return JSON.parse(fs.readFileSync(fallbackPath, 'utf8'));
-    }
-    return [];
+    return getDefaultRooms();
   } catch (err) {
     console.error('Lỗi khi đọc rooms.json:', err);
-    return [];
+    return getDefaultRooms();
   }
 });
 
-// IPC: Lưu danh sách phòng (rooms.json)
+// IPC: Lưu danh sách phòng (rooms.json) - CHỈ LƯU VÀO THƯ MỤC DỮ LIỆU CỦA USER
 ipcMain.handle('rooms:save', async (event, data) => {
   try {
     const dataDir = getActiveDataDir();
     const filePath = path.join(dataDir, 'rooms.json');
     fs.writeFileSync(filePath, JSON.stringify(data || [], null, 2), 'utf8');
-
-    const projectFilePath = path.join(PROJECT_ROOT, 'data', 'rooms.json');
-    if (path.normalize(filePath) !== path.normalize(projectFilePath)) {
-      try {
-        fs.writeFileSync(projectFilePath, JSON.stringify(data || [], null, 2), 'utf8');
-      } catch (e) {}
-    }
     return { success: true };
   } catch (err) {
     console.error('Lỗi khi lưu rooms.json:', err);
@@ -635,12 +633,6 @@ ipcMain.handle('cccd:read-image', async (event, relativePath) => {
     const fullPath = path.isAbsolute(relativePath) ? relativePath : path.join(dataDir, normalizedRel);
 
     if (!fs.existsSync(fullPath)) {
-      const fallbackPath = path.join(PROJECT_ROOT, 'data', normalizedRel);
-      if (fs.existsSync(fallbackPath)) {
-        const ext = path.extname(fallbackPath).toLowerCase().replace('.', '') || 'jpeg';
-        const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-        return `data:${mime};base64,${fs.readFileSync(fallbackPath).toString('base64')}`;
-      }
       return null;
     }
 
