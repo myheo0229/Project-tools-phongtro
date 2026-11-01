@@ -2257,8 +2257,11 @@ mark.search-hl {
 
 #section-residents table {
   width: 100%;
+  min-width: 1220px;
   border-collapse: collapse;
   table-layout: auto;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 #section-residents thead th {
@@ -2266,18 +2269,110 @@ mark.search-hl {
   font-size: 0.88rem;
   font-weight: 600;
   color: var(--ink-muted);
-  padding: 14px 18px;
+  padding: 14px 12px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
   background: #ffffff;
 }
 
 #section-residents tbody td {
-  padding: 14px 18px;
+  padding: 14px 12px;
   font-size: 0.95rem;
   border-bottom: 1px solid var(--border);
   color: var(--ink);
   vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Phân bổ độ rộng cân đối & min-width chống vỡ/đè chữ khi co giãn cho 12 cột bảng người thuê */
+#residents-table th.col-res-check,
+#residents-table td:nth-child(1) {
+  width: 44px;
+  min-width: 44px;
+  text-align: center;
+  padding-left: 10px;
+  padding-right: 6px;
+}
+
+#residents-table th.col-res-stt,
+#residents-table td:nth-child(2) {
+  width: 50px;
+  min-width: 50px;
+  text-align: center;
+}
+
+#residents-table th.col-res-name,
+#residents-table td:nth-child(3) {
+  width: 19%;
+  min-width: 210px;
+  white-space: normal;
+}
+
+#residents-table th.col-res-phone,
+#residents-table td:nth-child(4),
+#residents-table td:nth-child(5) {
+  width: 10%;
+  min-width: 116px;
+}
+
+#residents-table th.col-res-cccd,
+#residents-table td:nth-child(6) {
+  width: 11.5%;
+  min-width: 134px;
+}
+
+#residents-table th.col-res-date,
+#residents-table td:nth-child(7),
+#residents-table td:nth-child(10) {
+  width: 9.5%;
+  min-width: 112px;
+}
+
+#residents-table th.col-res-gender,
+#residents-table td:nth-child(8) {
+  width: 7%;
+  min-width: 82px;
+  text-align: center;
+}
+
+#residents-table th.col-res-room,
+#residents-table td:nth-child(9) {
+  width: 8.5%;
+  min-width: 100px;
+  text-align: center;
+}
+
+#residents-table th.col-res-photo,
+#residents-table td:nth-child(11) {
+  width: 8%;
+  min-width: 96px;
+  text-align: center;
+}
+
+#residents-table th.col-res-action,
+#residents-table td:nth-child(12) {
+  width: 7.5%;
+  min-width: 98px;
+  text-align: center;
+}
+
+/* Font chữ & số có độ rộng từng chữ số bằng nhau tuyệt đối (Tabular Figures)
+   sáng rõ, không gạch chéo số 0 cho các cột: STT, SĐT Gọi, SĐT Zalo, Số CCCD, Ngày Sinh, Ngày Vào Ở */
+#section-residents tbody td.res-mono-cell {
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+#section-residents tbody td.res-mono-cell mark.search-hl {
+  padding: 0;
+  margin: 0;
+  font-weight: inherit;
 }
 
 #section-residents tbody tr:last-child td {

@@ -3242,7 +3242,7 @@ function renderResidentsTable() {
       <td style="text-align: center;">
         <input type="checkbox" class="resident-row-checkbox" value="${r.id}" ${isChecked ? 'checked' : ''} onchange="onResidentCheckboxChange('${r.id}', this.checked)">
       </td>
-      <td style="text-align: center; color: var(--ink-muted); font-weight: 500;">${idx + 1}</td>
+      <td class="res-mono-cell" style="text-align: center; color: var(--ink-muted); font-weight: 500;">${idx + 1}</td>
       <td>
         <div class="avatar-name">
           <div class="avatar">${escapeHtml(initial)}</div>
@@ -3252,17 +3252,17 @@ function renderResidentsTable() {
           </div>
         </div>
       </td>
-      <td>${sdtGoiHtml}</td>
-      <td>${sdtZaloHtml}</td>
-      <td>${cccdHtml}</td>
-      <td>${ngaySinhHtml}</td>
+      <td class="res-mono-cell">${sdtGoiHtml}</td>
+      <td class="res-mono-cell">${sdtZaloHtml}</td>
+      <td class="res-mono-cell">${cccdHtml}</td>
+      <td class="res-mono-cell">${ngaySinhHtml}</td>
       <td style="text-align: center;">${gioiTinhHtml}</td>
       <td style="text-align: center;">
         <span class="mini-badge ${r.phong ? '' : 'empty'}">
           ${roomBadgeHtml}
         </span>
       </td>
-      <td>${ngayVaoOHtml}</td>
+      <td class="res-mono-cell">${ngayVaoOHtml}</td>
       <td style="text-align: center;">
         <button type="button" class="btn-cccd-pill ${photoCount > 0 ? 'has-photo' : 'none'}" ${photoCount > 0 ? `onclick="viewCccdPhoto('${r.id}', 'mat_truoc')"` : ''} title="${photoCount > 0 ? 'Nhấp để xem ảnh CCCD' : 'Chưa có ảnh'}">
           ${photoCount}/2 ảnh
