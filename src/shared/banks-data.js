@@ -1,13 +1,16 @@
 /**
  * Danh sách ngân hàng Việt Nam (MoMo Bank Codes & VietQR)
  * Auto-generated from MoMo Developer Portal
+ * @param {any} root
+ * @param {any} factory
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
     module.exports = factory();
   } else {
-    root.VIETNAM_BANKS_MAP = factory();
-    root.VIETNAM_BANKS_LIST = Object.values(root.VIETNAM_BANKS_MAP);
+    const r = /** @type {any} */ (root);
+    r.VIETNAM_BANKS_MAP = factory();
+    r.VIETNAM_BANKS_LIST = Object.values(r.VIETNAM_BANKS_MAP);
   }
 }(typeof self !== 'undefined' ? self : this, function () {
   return {

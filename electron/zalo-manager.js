@@ -1,6 +1,7 @@
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
+/** @type {any} */
 const sharp = require('sharp');
 const { Zalo, LoginQRCallbackEventType, ZaloApiLoginQRAborted, ZaloApiLoginQRDeclined } = require('zca-js');
 
@@ -463,6 +464,7 @@ class ZaloManager {
           throw new Error('Chủ phòng chưa có Số điện thoại Zalo hợp lệ.');
         }
 
+        /** @type {any} */
         const user = await this.api.findUser(cleanPhone);
         if (!user || (!user.uid && !user.userId)) {
           throw new Error(`SĐT [${cleanPhone}] chưa đăng ký tài khoản Zalo hoặc không tìm thấy.`);

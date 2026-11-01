@@ -299,7 +299,7 @@ class DatePicker {
       this.monthSelect.innerHTML = '';
       monthNames.forEach((m, i) => {
         const o = document.createElement('option');
-        o.value = i;
+        o.value = String(i);
         o.textContent = m;
         this.monthSelect.appendChild(o);
       });
@@ -312,8 +312,8 @@ class DatePicker {
       this.yearSelect.innerHTML = '';
       for (let y = yEnd; y >= yStart; y--) {
         const o = document.createElement('option');
-        o.value = y;
-        o.textContent = y;
+        o.value = String(y);
+        o.textContent = String(y);
         this.yearSelect.appendChild(o);
       }
     }
@@ -406,7 +406,7 @@ class DatePicker {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'cal-day muted';
-      btn.textContent = daysInPrevMonth - startOffset + i + 1;
+      btn.textContent = String(daysInPrevMonth - startOffset + i + 1);
       btn.disabled = true;
       this.calDays.appendChild(btn);
     }
@@ -415,7 +415,7 @@ class DatePicker {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'cal-day';
-      btn.textContent = d;
+      btn.textContent = String(d);
       const isToday = d === this.today.getDate() && this.viewMonth === this.today.getMonth() && this.viewYear === this.today.getFullYear();
       const isSelected = this.selected && this.selected.day === d && this.selected.month === this.viewMonth + 1 && this.selected.year === this.viewYear;
       if (isToday) btn.classList.add('today');
@@ -442,7 +442,7 @@ class DatePicker {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'cal-day muted';
-      btn.textContent = i;
+      btn.textContent = String(i);
       btn.disabled = true;
       this.calDays.appendChild(btn);
     }

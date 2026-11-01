@@ -287,3 +287,14 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
 2. **Modal Tiến Trình Backup (`#backup-progress-modal`)**:
    - Hiển thị chính giữa màn hình với lớp nền làm mờ (`.backup-blur-overlay` với `backdrop-filter: blur(7px)`), khóa toàn bộ thao tác nhập liệu phía sau trong suốt quá trình nén ZIP và tải lên Google Drive.
    - Hiển thị thanh tiến độ phần trăm (`0% -> 100%`), danh sách 7 bước kiểm tra trực quan và hộp kết quả kèm nút mở nhanh thư mục sau khi hoàn tất.
+
+
+---
+
+## 10. Tìm Kiếm Tức Thì Kiểu Google Search & Căn Chuẩn Cột Chỉ Số Điện Nước
+
+1. **Ô nhập chỉ số Điện/Nước (`.table-input`, `.meter-input-wrap`, `.meter-alert-badge`)**:
+   - Sử dụng padding ngang đối xứng (`padding: 0 4px; text-align: center; font-variant-numeric: tabular-nums`) giúp chữ placeholder `"Nhập số mới"` luôn hiển thị trọn vẹn ở chính giữa và các chữ số thẳng hàng tuyệt đối theo trục dọc của cột.
+   - Nút cảnh báo `(!)` (`.meter-alert-badge`) định vị tuyệt đối (`right: 4px; top: 50%; margin-top: -9px; width: 18px; height: 18px`) không làm đẩy lệch con số khỏi trục giữa.
+2. **Ô tìm kiếm cư dân thông minh (`#resident-search-box`)**:
+   - Tích hợp badge đếm số lượng kết quả (`.search-result-badge`), nút xóa nhanh `✕` (`.search-clear-btn`), và tô sáng trực tiếp từ khóa trùng khớp bằng `mark.search-hl` trên bảng danh sách người thuê (không phân biệt chữ hoa/thường và có dấu/không dấu, không mark lên 12 thẻ phòng phía trên).

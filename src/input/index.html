@@ -1040,13 +1040,17 @@
             </div>
 
             <div class="table-tools">
-              <div class="search-box">
-                <svg viewBox="0 0 24 24" fill="none">
-                  <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6" />
-                  <path d="M20 20l-4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+              <div class="search-box" id="resident-search-box">
+                <svg class="search-box__icon" viewBox="0 0 24 24" fill="none">
+                  <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8" />
+                  <path d="M20 20l-4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
                 </svg>
-                <input type="text" id="resident-search-input" placeholder="Tìm theo họ tên, SĐT, CCCD..."
-                  oninput="filterResidentsTable()">
+                <input type="text" id="resident-search-input"
+                  placeholder="Tìm nhanh: họ tên, SĐT, CCCD, phòng, năm sinh..." autocomplete="off" spellcheck="false"
+                  oninput="filterResidentsTable()" onkeydown="handleResidentSearchKeyDown(event)">
+                <span id="resident-search-count" class="search-result-badge" style="display: none;">0 kết quả</span>
+                <button type="button" id="resident-search-clear" class="search-clear-btn" style="display: none;"
+                  onclick="clearResidentSearch()" title="Xóa tìm kiếm (Esc)">&times;</button>
               </div>
 
               <button type="button" class="btn-outline-danger" id="btn-delete-selected-residents" disabled

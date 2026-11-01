@@ -285,3 +285,16 @@
 - Hàm `checkDriveHealth()` kiểm tra: kết nối mạng Internet, tình trạng token (phát hiện đổi mật khẩu/thu hồi quyền), dung lượng trống thực tế trên Google Drive (`storageQuota`), và tình trạng thư mục đích (phát hiện nếu thư mục bị xóa vào Thùng rác hoặc mất quyền truy cập).
 - Hỗ trợ chọn thư mục đích bằng cách nhập tên thư mục muốn tạo mới trên Drive hoặc dán trực tiếp `Folder ID` / đường link thư mục Google Drive, tự động tạo/dùng lại thư mục con `BackupData/` bên trong.
 - **Upload-Only tuyệt đối**: Chỉ gọi `about.get`, `files.get`, `files.list`, `files.create`. Tuyệt đối không xóa, không sửa, không ghi đè bất kỳ file nào trên Google Drive.
+
+
+---
+
+## 9. Tìm Kiếm Cư Dân Tức Thì Thông Minh Kiểu Google Search (Phần 3)
+
+- **Vị trí**: Ô tìm kiếm `#resident-search-input` (`.search-box`) tại phân hệ **Phần 3: Quản Lý Phòng & Người Ở**.
+- **Cơ chế xử lý (`getFilteredAndRankedResidents`, `tokenizeSearchQuery`, `highlightSearchText`)**:
+  1. **Tách đa từ khóa (Multi-token AND matching)**: Tự động chuẩn hóa tiếng Việt không dấu (`NFC`), tách chuỗi nhập theo khoảng trắng thành các token độc lập. Một hồ sơ cư dân được tính là khớp khi thỏa mãn tất cả các token (cho phép gõ rời chữ hoặc kết hợp nhiều trường như `"nguyen anh 1a 090"`).
+  2. **Chỉ mục tìm kiếm toàn diện**: Hỗ trợ tìm theo Họ và tên (cả có dấu, không dấu, chữ cái đầu viết tắt), SĐT Gọi, SĐT Zalo, Số CCCD, Phòng ở (`"1A"`, `"Phòng 1A"`, `"P1A"`, `"Chưa xếp"`), Vai trò (`"Chủ phòng"`, `"Thành viên"`), Ngày/Năm sinh, Giới tính, Ngày vào ở, Quê quán và Email.
+  3. **Xếp hạng độ ưu tiên (Relevance Scoring)**: Chấm điểm ưu tiên đưa kết quả khớp chính xác Tên gọi, Số phòng hoặc đầu số SĐT/CCCD lên đầu danh sách.
+  4. **Tô sáng từ khóa trực tiếp (`<mark class="search-hl">`) trên bảng danh sách người thuê**: Tự động bôi vàng đúng đoạn ký tự/chữ số trùng khớp (không phân biệt chữ hoa/thường và có dấu/không dấu) chỉ trên bảng danh sách tất cả người thuê bên dưới (giữ nguyên hiển thị bình thường của 12 thẻ phòng phía trên).
+  5. **Tiện ích thao tác nhanh**: Hiển thị bộ đếm số kết quả (`#resident-search-count`), nút xóa nhanh `✕` (`#resident-search-clear`), phím `Esc` để xóa trắng từ khóa và phím tắt `Ctrl + F` để nhảy con trỏ vào ô tìm kiếm.

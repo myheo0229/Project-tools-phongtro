@@ -156,3 +156,14 @@ v4.0.0
 - Phát hành phiên bản chính thức v4.0.0 tích hợp Hệ thống Sao Lưu Dữ Liệu (Backup Data: Local ZIP + Google Drive API).
 - Tự động đổi tên thư mục trên Google Drive tại chỗ (giữ nguyên 100% Folder ID và các bản sao lưu cũ) kèm Popup xác nhận khi click chuột ra ngoài (blur) hoặc nhấn Enter.
 - Cách ly tuyệt đối dữ liệu cá nhân và bảo toàn 100% dữ liệu người dùng khi tự động cập nhật (Auto Update).
+
+
+================================================================================
+CẬP NHẬT TÌM KIẾM CƯ DÂN TỨC THÌ KIỂU GOOGLE SEARCH & TINH CHỈNH UI BẢNG CHỈ SỐ
+================================================================================
+- Tinh chỉnh giao diện cột Điện Cũ, Điện Mới, Nước Cũ, Nước Mới (`src/input/style.css`, `src/input/index.html`): hiển thị trọn vẹn chữ "Nhập số mới" chính giữa ô, căn thẳng hàng số theo trục dọc (`tabular-nums`) và cố định vị trí badge cảnh báo `(!)` không làm lệch chữ/số.
+- Nâng cấp chức năng tìm kiếm người thuê tại Phần 3 (`src/input/renderer.js`, `src/input/index.html`, `src/input/style.css`) theo chuẩn Google Search (Phương án 1):
+  + Hỗ trợ tìm kiếm đa từ khóa (Multi-token AND) kết hợp nhiều trường: Họ tên (có dấu, không dấu, viết tắt chữ cái đầu), SĐT Gọi, SĐT Zalo, CCCD, Phòng ở (`1A`, `Phòng 1A`, `P1A`, `Chưa xếp`), Vai trò (`Chủ phòng`, `Thành viên`), Ngày/Năm sinh, Giới tính, Ngày vào ở, Quê quán, Email.
+  + Tự động chấm điểm xếp hạng độ ưu tiên (Relevance Ranking) đưa người khớp chính xác lên đầu bảng.
+  + Tô sáng trực tiếp từ khóa khớp (`<mark class="search-hl">`) trên từng cột của bảng danh sách tất cả người thuê (không phân biệt chữ hoa/thường và có dấu/không dấu, giữ nguyên không mark trên 12 thẻ phòng phía trên).
+  + Bổ sung Badge đếm số kết quả, nút xóa nhanh `✕`, phím tắt `Esc` và `Ctrl + F`.

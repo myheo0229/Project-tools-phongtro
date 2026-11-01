@@ -1,3 +1,4 @@
+/// <reference path="./globals.d.ts" />
 /* ============================================================
    RENDERER.JS - LOGIC MÀN HÌNH NHẬP LIỆU
    ============================================================ */
@@ -544,8 +545,8 @@ function forceSwitchTab(tabName) {
   }
 
   // Thiết lập biến hướng --dir cho 2 section
-  oldSection.style.setProperty('--dir', dir);
-  newSection.style.setProperty('--dir', dir);
+  oldSection.style.setProperty('--dir', String(dir));
+  newSection.style.setProperty('--dir', String(dir));
 
   // Kích hoạt hiệu ứng chuyển trang nhòe mờ (page-out & page-in)
   oldSection.classList.add('page-out');
@@ -794,7 +795,7 @@ function initBankSelectDropdown() {
 
   // Đóng khi click ngoài
   document.addEventListener('click', (e) => {
-    if (!container.contains(e.target)) {
+    if (e.target instanceof Node && !container.contains(e.target)) {
       closeBankDropdown();
     }
   });
@@ -986,7 +987,7 @@ function renderInitialTable() {
 
   roomsData.forEach((room, index) => {
     const tr = document.createElement('tr');
-    tr.setAttribute('data-row-index', index);
+    tr.setAttribute('data-row-index', String(index));
 
     const dienCuVal = room.dienCu !== undefined && room.dienCu !== null ? room.dienCu : '';
     const nuocCuVal = room.nuocCu !== undefined && room.nuocCu !== null ? room.nuocCu : '';
@@ -1216,9 +1217,9 @@ function updateRowUI(index) {
       const surrogate = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
       const rCalc = typeof calcRoom === 'function' ? calcRoom(surrogate, appSettings) : null;
       const cK = rCalc ? rCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
-      const pDiff = prevK > 0 ? (((cK - prevK) / prevK) * 100).toFixed(1) : 0;
-      const sign = pDiff > 0 ? '+' : '';
-      badgeBtn.title = `Đã xác nhận: Tiêu thụ chênh lệch ${sign}${pDiff}% so với tháng trước. Nhấn để xem lại hoặc thay đổi.`;
+      const pDiffNum = prevK > 0 ? Number((((cK - prevK) / prevK) * 100).toFixed(1)) : 0;
+      const sign = pDiffNum > 0 ? '+' : '';
+      badgeBtn.title = `Đã xác nhận: Tiêu thụ chênh lệch ${sign}${pDiffNum}% so với tháng trước. Nhấn để xem lại hoặc thay đổi.`;
     } else {
       badgeBtn.style.display = 'none';
     }
@@ -2493,21 +2494,16 @@ function escapeHtml(str) {
 }
 
 /**
- * Chuyển chuỗi tiếng Việt có dấu thành không dấu để phục vụ tìm kiếm thông minh
+ * Chuyển chuỗi tiếng Việt có dấu (hoa hoặc thường) thành chữ thường không dấu để phục vụ tìm kiếm thông minh
  */
 function removeVietnameseTones(str) {
-  if (!str) return '';
-  str = String(str).toLowerCase();
-  str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, 'a');
-  str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, 'e');
-  str = str.replace(/ì|í|ị|ỉ|ĩ/g, 'i');
-  str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, 'o');
-  str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, 'u');
-  str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, 'y');
-  str = str.replace(/đ/g, 'd');
-  str = str.replace(/\u0300|\u0301|\u0303|\u0309|\u0323/g, '');
-  str = str.replace(/\u02C6|\u0306|\u031B/g, '');
-  return str.trim();
+  if (str === undefined || str === null) return '';
+  return String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .trim();
 }
 
 /**
@@ -2640,7 +2636,7 @@ function renderRoomCards() {
         <div class="room-card__top">
           <div class="room-card__name">
             <svg viewBox="0 0 24 24" fill="none"><path d="M3 11.5 12 4l9 7.5" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9v-5.5h6V20h2.5a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="1.7"/></svg>
-            Phòng ${phong}
+            Phòng ${escapeHtml(phong)}
           </div>
           <span class="badge occupied">Có Người</span>
         </div>
@@ -2652,7 +2648,7 @@ function renderRoomCards() {
         <div class="room-card__top">
           <div class="room-card__name">
             <svg viewBox="0 0 24 24" fill="none"><path d="M3 11.5 12 4l9 7.5" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9v-5.5h6V20h2.5a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="1.7"/></svg>
-            Phòng ${phong}
+            Phòng ${escapeHtml(phong)}
           </div>
           <span class="badge empty">Phòng Trống</span>
         </div>
@@ -2866,7 +2862,319 @@ async function saveRoomDetailAssignment() {
 }
 
 /**
- * Lọc bảng người thuê theo từ khóa tìm kiếm
+ * Chuẩn hóa 1 ký tự tiếng Việt (hoa hoặc thường) về chữ thường không dấu (bảo toàn 1-1 độ dài chuỗi NFC)
+ */
+function normalizeCharVi(ch) {
+  if (!ch) return '';
+  return String(ch)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase();
+}
+
+/**
+ * Tách chuỗi tìm kiếm thành mảng các từ khóa con (tokens) đã chuẩn hóa chữ thường không dấu
+ */
+function tokenizeSearchQuery(rawQuery) {
+  if (!rawQuery || typeof rawQuery !== 'string') return [];
+  const clean = removeVietnameseTones(rawQuery.normalize('NFC'));
+  if (!clean) return [];
+  return clean
+    .split(/[\s,;]+/)
+    .map(t => t.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/**
+ * Tô sáng (highlight <mark class="search-hl">) các đoạn khớp từ khóa (không phân biệt chữ hoa/thường và có dấu/không dấu)
+ */
+function highlightSearchText(rawText, tokens) {
+  if (rawText === undefined || rawText === null) return '';
+  const str = String(rawText).normalize('NFC');
+  if (!str) return '';
+  if (!Array.isArray(tokens) || tokens.length === 0) {
+    return escapeHtml(str);
+  }
+
+  let normStr = '';
+  for (let i = 0; i < str.length; i++) {
+    normStr += normalizeCharVi(str[i]);
+  }
+
+  const matchedMask = new Array(str.length).fill(false);
+  let anyMatch = false;
+
+  tokens.forEach(rawToken => {
+    const token = removeVietnameseTones(rawToken);
+    if (!token) return;
+    let startIndex = 0;
+    while (startIndex < normStr.length) {
+      const idx = normStr.indexOf(token, startIndex);
+      if (idx === -1) break;
+      for (let k = idx; k < idx + token.length && k < str.length; k++) {
+        matchedMask[k] = true;
+      }
+      anyMatch = true;
+      startIndex = idx + 1;
+    }
+  });
+
+  if (!anyMatch) {
+    return escapeHtml(str);
+  }
+
+  let html = '';
+  let i = 0;
+  while (i < str.length) {
+    const isHit = matchedMask[i];
+    let j = i + 1;
+    while (j < str.length && matchedMask[j] === isHit) {
+      j++;
+    }
+    const segment = escapeHtml(str.slice(i, j));
+    html += isHit ? `<mark class="search-hl">${segment}</mark>` : segment;
+    i = j;
+  }
+  return html;
+}
+
+/**
+ * Lấy nhãn vai trò của người thuê trong phòng ("Chủ phòng" hoặc "Thành viên")
+ */
+function getResidentRoleLabel(person) {
+  if (!person || !person.phong) return '';
+  const room = (roomsList || []).find(rm => rm.phong === person.phong);
+  if (room && room.chuPhong === person.id) {
+    return 'Chủ phòng';
+  }
+  return 'Thành viên';
+}
+
+/**
+ * Lọc và xếp hạng danh sách người thuê theo từ khóa kiểu Google Search (Multi-token AND + Relevance Score)
+ */
+function getFilteredAndRankedResidents(rawQuery) {
+  const tokens = tokenizeSearchQuery(rawQuery);
+  if (tokens.length === 0) {
+    return (residentsList || []).map((r, idx) => ({
+      resident: r,
+      score: 0,
+      idx,
+      matchedExtra: []
+    }));
+  }
+
+  const fullClean = tokens.join(' ');
+  const results = [];
+
+  (residentsList || []).forEach((r, idx) => {
+    const nameClean = removeVietnameseTones(r.hoTen || '');
+    const nameWords = nameClean.split(/\s+/).filter(Boolean);
+    const givenName = nameWords.length > 0 ? nameWords[nameWords.length - 1] : '';
+    const nameInitials = nameWords.map(w => w[0]).join('');
+
+    const sdtGoiClean = String(r.sdtGoi || '').replace(/[\s.-]/g, '').toLowerCase();
+    const sdtZaloClean = String(r.sdtZalo || '').replace(/[\s.-]/g, '').toLowerCase();
+    const cccdClean = String(r.cccd || '').replace(/\s+/g, '').toLowerCase();
+
+    const phongClean = removeVietnameseTones(r.phong || '');
+    const roomAliases = r.phong
+      ? `phong ${phongClean} p${phongClean} p.${phongClean}`
+      : 'chua xep phong trong';
+
+    const roleLabel = getResidentRoleLabel(r);
+    const roleClean = removeVietnameseTones(roleLabel);
+
+    const dobClean = removeVietnameseTones(r.ngaySinh || '');
+    const genderClean = removeVietnameseTones(r.gioiTinh || '');
+    const moveInClean = removeVietnameseTones(r.ngayVaoO || '');
+    const originClean = removeVietnameseTones(r.queQuan || '');
+    const emailClean = removeVietnameseTones(r.email || '');
+
+    let totalScore = 0;
+    let allTokensMatched = true;
+    let matchedOrigin = false;
+    let matchedEmail = false;
+    let matchedRole = false;
+
+    if (nameClean === fullClean) {
+      totalScore += 250;
+    } else if (nameClean.startsWith(fullClean)) {
+      totalScore += 140;
+    } else if (nameClean.includes(fullClean)) {
+      totalScore += 90;
+    }
+
+    for (const token of tokens) {
+      let tokenScore = 0;
+      const cleanDigitToken = token.replace(/[\s.-]/g, '');
+
+      // 1. Họ và tên + chữ cái đầu viết tắt
+      if (givenName && givenName === token) {
+        tokenScore = Math.max(tokenScore, 130);
+      } else if (givenName && givenName.startsWith(token)) {
+        tokenScore = Math.max(tokenScore, 100);
+      } else if (nameWords.some(w => w === token)) {
+        tokenScore = Math.max(tokenScore, 95);
+      } else if (nameWords.some(w => w.startsWith(token))) {
+        tokenScore = Math.max(tokenScore, 80);
+      } else if (nameClean.includes(token)) {
+        tokenScore = Math.max(tokenScore, 55);
+      } else if (nameInitials && nameInitials.includes(token)) {
+        tokenScore = Math.max(tokenScore, 50);
+      }
+
+      // 2. Phòng ở
+      if (phongClean && (phongClean === token || `p${phongClean}` === token || `p.${phongClean}` === token)) {
+        tokenScore = Math.max(tokenScore, 120);
+      } else if (roomAliases.includes(token)) {
+        tokenScore = Math.max(tokenScore, 60);
+      }
+
+      // 3. Số điện thoại Gọi / Zalo
+      if (cleanDigitToken) {
+        if (sdtGoiClean.startsWith(cleanDigitToken) || sdtZaloClean.startsWith(cleanDigitToken)) {
+          tokenScore = Math.max(tokenScore, 110);
+        } else if (sdtGoiClean.includes(cleanDigitToken) || sdtZaloClean.includes(cleanDigitToken)) {
+          tokenScore = Math.max(tokenScore, 75);
+        }
+
+        // 4. Số CCCD
+        if (cccdClean.startsWith(cleanDigitToken)) {
+          tokenScore = Math.max(tokenScore, 110);
+        } else if (cccdClean.includes(cleanDigitToken)) {
+          tokenScore = Math.max(tokenScore, 75);
+        }
+      }
+
+      // 5. Ngày sinh / Giới tính / Ngày vào ở
+      if (dobClean && dobClean.includes(token)) {
+        tokenScore = Math.max(tokenScore, 50);
+      }
+      if (genderClean && (genderClean === token || genderClean.startsWith(token))) {
+        tokenScore = Math.max(tokenScore, 45);
+      }
+      if (moveInClean && moveInClean.includes(token)) {
+        tokenScore = Math.max(tokenScore, 45);
+      }
+
+      // 6. Vai trò (Chủ phòng / Thành viên)
+      if (roleClean && roleClean.includes(token)) {
+        tokenScore = Math.max(tokenScore, 40);
+        matchedRole = true;
+      }
+
+      // 7. Quê quán & Email
+      if (originClean && originClean.includes(token)) {
+        tokenScore = Math.max(tokenScore, 40);
+        matchedOrigin = true;
+      }
+      if (emailClean && emailClean.includes(token)) {
+        tokenScore = Math.max(tokenScore, 40);
+        matchedEmail = true;
+      }
+
+      if (tokenScore === 0) {
+        allTokensMatched = false;
+        break;
+      }
+      totalScore += tokenScore;
+    }
+
+    if (allTokensMatched) {
+      const matchedExtra = [];
+      if (matchedRole && roleLabel) {
+        matchedExtra.push({ label: 'Vai trò', value: roleLabel });
+      }
+      if (matchedOrigin && r.queQuan) {
+        matchedExtra.push({ label: 'Quê quán', value: r.queQuan });
+      }
+      if (matchedEmail && r.email) {
+        matchedExtra.push({ label: 'Email', value: r.email });
+      }
+      results.push({
+        resident: r,
+        score: totalScore,
+        idx,
+        matchedExtra
+      });
+    }
+  });
+
+  results.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return a.idx - b.idx;
+  });
+
+  return results;
+}
+
+/**
+ * Cập nhật giao diện hộp tìm kiếm (Nút xóa ✕ & Badge đếm kết quả)
+ */
+function updateResidentSearchBoxUI(matchedCount, totalCount, hasQuery) {
+  const searchBox = document.getElementById('resident-search-box');
+  const countBadge = document.getElementById('resident-search-count');
+  const clearBtn = document.getElementById('resident-search-clear');
+
+  if (searchBox) {
+    searchBox.classList.toggle('has-query', !!hasQuery);
+  }
+  if (clearBtn) {
+    clearBtn.style.display = hasQuery ? 'inline-flex' : 'none';
+  }
+  if (countBadge) {
+    if (hasQuery) {
+      countBadge.style.display = 'inline-block';
+      countBadge.textContent = `${matchedCount} / ${totalCount} kết quả`;
+      countBadge.classList.toggle('empty', matchedCount === 0);
+    } else {
+      countBadge.style.display = 'none';
+    }
+  }
+}
+
+/**
+ * Xóa trắng ô tìm kiếm người thuê và khôi phục danh sách đầy đủ
+ */
+function clearResidentSearch() {
+  const input = document.getElementById('resident-search-input');
+  if (input) {
+    input.value = '';
+    input.focus();
+  }
+  residentSearchTerm = '';
+  renderResidentsTable();
+}
+
+/**
+ * Xử lý phím tắt trên ô tìm kiếm (Esc để xóa nhanh)
+ */
+function handleResidentSearchKeyDown(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    clearResidentSearch();
+  }
+}
+
+// Hỗ trợ phím tắt Ctrl+F khi đang ở Tab 3 (Quản lý phòng & người ở) để nhảy vào ô tìm kiếm
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+    const resSection = document.getElementById('section-residents');
+    if (resSection && resSection.classList.contains('active')) {
+      const searchInput = document.getElementById('resident-search-input');
+      if (searchInput) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      }
+    }
+  }
+});
+
+/**
+ * Lọc bảng người thuê tức thì khi gõ (không mark trên lưới 12 phòng)
  */
 function filterResidentsTable() {
   const input = document.getElementById('resident-search-input');
@@ -2875,7 +3183,7 @@ function filterResidentsTable() {
 }
 
 /**
- * Kết xuất bảng danh sách người thuê
+ * Kết xuất bảng danh sách người thuê (tích hợp xếp hạng & tô sáng từ khóa trực tiếp)
  */
 function renderResidentsTable() {
   const tbody = document.getElementById('residents-table-body');
@@ -2883,22 +3191,20 @@ function renderResidentsTable() {
 
   tbody.innerHTML = '';
 
-  const searchClean = removeVietnameseTones(residentSearchTerm);
-  const filtered = residentsList.filter(r => {
-    if (!searchClean) return true;
-    const nameMatch = removeVietnameseTones(r.hoTen).includes(searchClean);
-    const phoneMatch = (r.sdtGoi && r.sdtGoi.includes(searchClean)) || (r.sdtZalo && r.sdtZalo.includes(searchClean));
-    const cccdMatch = r.cccd && r.cccd.includes(searchClean);
-    const roomMatch = r.phong && removeVietnameseTones(r.phong).includes(searchClean);
-    const originMatch = r.queQuan && removeVietnameseTones(r.queQuan).includes(searchClean);
-    return nameMatch || phoneMatch || cccdMatch || roomMatch || originMatch;
-  });
+  const tokens = tokenizeSearchQuery(residentSearchTerm);
+  const hasQuery = tokens.length > 0;
+  const rankedResults = getFilteredAndRankedResidents(residentSearchTerm);
+  const totalCount = Array.isArray(residentsList) ? residentsList.length : 0;
 
-  if (filtered.length === 0) {
+  updateResidentSearchBoxUI(rankedResults.length, totalCount, hasQuery);
+
+  if (rankedResults.length === 0) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td colspan="12" class="empty-state">
-        ${residentSearchTerm ? 'Không tìm thấy người thuê nào phù hợp với từ khóa.' : 'Chưa có người thuê nào trong hệ thống. Nhấp "Thêm Người Mới" để tạo hồ sơ.'}
+        ${residentSearchTerm
+          ? `Không tìm thấy người thuê nào khớp với từ khóa <strong>"${escapeHtml(residentSearchTerm)}"</strong>.`
+          : 'Chưa có người thuê nào trong hệ thống. Nhấp "Thêm Người Mới" để tạo hồ sơ.'}
       </td>
     `;
     tbody.appendChild(tr);
@@ -2906,7 +3212,8 @@ function renderResidentsTable() {
     return;
   }
 
-  filtered.forEach((r, idx) => {
+  rankedResults.forEach((item, idx) => {
+    const r = item.resident;
     const tr = document.createElement('tr');
     const isChecked = selectedResidentIds.has(r.id);
     const initial = (r.hoTen || '?').trim().charAt(0).toUpperCase();
@@ -2914,6 +3221,22 @@ function renderResidentsTable() {
     const hasFrontPhoto = !!r.anhCccdMatTruoc;
     const hasBackPhoto = !!r.anhCccdMatSau;
     const photoCount = (hasFrontPhoto ? 1 : 0) + (hasBackPhoto ? 1 : 0);
+
+    const nameHtml = hasQuery ? highlightSearchText(r.hoTen || '', tokens) : escapeHtml(r.hoTen || '');
+    const sdtGoiHtml = r.sdtGoi ? (hasQuery ? highlightSearchText(r.sdtGoi, tokens) : escapeHtml(r.sdtGoi)) : '-';
+    const sdtZaloHtml = r.sdtZalo ? (hasQuery ? highlightSearchText(r.sdtZalo, tokens) : escapeHtml(r.sdtZalo)) : '-';
+    const cccdHtml = r.cccd ? (hasQuery ? highlightSearchText(r.cccd, tokens) : escapeHtml(r.cccd)) : '-';
+    const ngaySinhHtml = r.ngaySinh ? (hasQuery ? highlightSearchText(r.ngaySinh, tokens) : escapeHtml(r.ngaySinh)) : '-';
+    const gioiTinhHtml = r.gioiTinh ? (hasQuery ? highlightSearchText(r.gioiTinh, tokens) : escapeHtml(r.gioiTinh)) : '-';
+    const roomLabelRaw = r.phong ? `Phòng ${r.phong}` : 'Chưa xếp';
+    const roomBadgeHtml = hasQuery ? highlightSearchText(roomLabelRaw, tokens) : escapeHtml(roomLabelRaw);
+    const ngayVaoOHtml = r.ngayVaoO ? (hasQuery ? highlightSearchText(r.ngayVaoO, tokens) : escapeHtml(r.ngayVaoO)) : '-';
+
+    let extraMetaHtml = '';
+    if (hasQuery && item.matchedExtra && item.matchedExtra.length > 0) {
+      const parts = item.matchedExtra.map(ex => `<span>${escapeHtml(ex.label)}: ${highlightSearchText(ex.value, tokens)}</span>`);
+      extraMetaHtml = `<div class="resident-sub-meta">${parts.join(' · ')}</div>`;
+    }
 
     tr.innerHTML = `
       <td style="text-align: center;">
@@ -2923,20 +3246,23 @@ function renderResidentsTable() {
       <td>
         <div class="avatar-name">
           <div class="avatar">${escapeHtml(initial)}</div>
-          <span>${escapeHtml(r.hoTen)}</span>
+          <div class="resident-name-stack">
+            <span>${nameHtml}</span>
+            ${extraMetaHtml}
+          </div>
         </div>
       </td>
-      <td>${escapeHtml(r.sdtGoi || '-')}</td>
-      <td>${escapeHtml(r.sdtZalo || '-')}</td>
-      <td>${escapeHtml(r.cccd || '-')}</td>
-      <td>${escapeHtml(r.ngaySinh || '-')}</td>
-      <td style="text-align: center;">${escapeHtml(r.gioiTinh || '-')}</td>
+      <td>${sdtGoiHtml}</td>
+      <td>${sdtZaloHtml}</td>
+      <td>${cccdHtml}</td>
+      <td>${ngaySinhHtml}</td>
+      <td style="text-align: center;">${gioiTinhHtml}</td>
       <td style="text-align: center;">
         <span class="mini-badge ${r.phong ? '' : 'empty'}">
-          ${r.phong ? 'Phòng ' + escapeHtml(r.phong) : 'Chưa xếp'}
+          ${roomBadgeHtml}
         </span>
       </td>
-      <td>${escapeHtml(r.ngayVaoO || '-')}</td>
+      <td>${ngayVaoOHtml}</td>
       <td style="text-align: center;">
         <button type="button" class="btn-cccd-pill ${photoCount > 0 ? 'has-photo' : 'none'}" ${photoCount > 0 ? `onclick="viewCccdPhoto('${r.id}', 'mat_truoc')"` : ''} title="${photoCount > 0 ? 'Nhấp để xem ảnh CCCD' : 'Chưa có ảnh'}">
           ${photoCount}/2 ảnh
@@ -2951,7 +3277,7 @@ function renderResidentsTable() {
     tbody.appendChild(tr);
   });
 
-  updateResidentsBulkActionUI(filtered.length, selectedResidentIds.size);
+  updateResidentsBulkActionUI(rankedResults.length, selectedResidentIds.size);
 }
 
 /**
@@ -3957,8 +4283,8 @@ function updateZaloSelectRoomsUI() {
 
   const selectedCountEl = document.getElementById('zalo-selected-count');
   const eligibleCountEl = document.getElementById('zalo-eligible-count');
-  if (selectedCountEl) selectedCountEl.textContent = selectedCount;
-  if (eligibleCountEl) eligibleCountEl.textContent = eligibleCount;
+  if (selectedCountEl) selectedCountEl.textContent = String(selectedCount);
+  if (eligibleCountEl) eligibleCountEl.textContent = String(eligibleCount);
 
   // Cập nhật từng checkbox và class selected
   eligibleZaloRooms.forEach(phong => {
