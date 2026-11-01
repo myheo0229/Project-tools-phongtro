@@ -167,3 +167,15 @@ CẬP NHẬT TÌM KIẾM CƯ DÂN TỨC THÌ KIỂU GOOGLE SEARCH & TINH CHỈNH
   + Tự động chấm điểm xếp hạng độ ưu tiên (Relevance Ranking) đưa người khớp chính xác lên đầu bảng.
   + Tô sáng trực tiếp từ khóa khớp (`<mark class="search-hl">`) trên từng cột của bảng danh sách tất cả người thuê (không phân biệt chữ hoa/thường và có dấu/không dấu, giữ nguyên không mark trên 12 thẻ phòng phía trên).
   + Bổ sung Badge đếm số kết quả, nút xóa nhanh `✕`, phím tắt `Esc` và `Ctrl + F`.
+
+================================================================================
+TRIỂN KHAI CHỨC NĂNG XUẤT EXCEL DANH SÁCH NGƯỜI THUÊ (.XLSX)
+================================================================================
+1. File tạo mới:
+   - electron/excel-service.js: Module độc lập đóng gói chuẩn OpenXML SpreadsheetML (.xlsx) bằng Node.js built-ins (fs, path, zlib) không cần cài thêm thư viện ngoài.
+2. File cập nhật:
+   - electron/main.js, electron/preload.js: Bổ sung kênh IPC `residents:export-excel` và `residents:show-excel-in-folder`.
+   - src/input/index.html, src/input/style.css, src/input/renderer.js:
+     + Thêm nút "Xuất Excel" (`#btn-export-residents-excel`) nằm ngay bên trái ô tìm kiếm nhanh (`#resident-search-box`) tại khu vực Danh Sách Tất Cả Người Thuê.
+     + Thêm Modal kết quả xuất Excel (`#excel-export-result-modal`) hiển thị rõ trạng thái, số lượng người thuê đã xuất, tên file, đường dẫn lưu file và nút mở nhanh vị trí lưu file.
+   - Đảm bảo 9 cột chuẩn theo đúng thứ tự (`STT | Họ Và Tên | SĐT Gọi | SĐT Zalo | Số CCCD | Ngày Sinh | Giới Tính | Phòng Ở | Ngày Vào Ở`), ép kiểu Text (`@` / `inlineStr`) cho SĐT và CCCD giữ nguyên số 0 ở đầu, lưu trực tiếp vào `BaseFolder` với tên `DanhSachNguoiThue_YYYYMMDD_HHmmss.xlsx` (tự thêm hậu tố `_01`, `_02` nếu trùng giây, không ghi đè file cũ, không phụ thuộc bộ lọc tìm kiếm).

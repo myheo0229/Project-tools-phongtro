@@ -123,6 +123,14 @@ Project-tools-phongtro/
 - **Dependencies**: `./vendor/pdfjs/pdf.js`, `./vendor/pdfjs/pdf.worker.js`.
 - **Tác động nếu sửa**: Lỗi tại đây sẽ khiến quá trình xuất ảnh JPG bị treo hoặc sinh ra file ảnh rỗng 0 bytes.
 
+#### 📄 `electron/excel-service.js` (607 dòng)
+- **Nhiệm vụ**: Tạo và xuất báo cáo danh sách toàn bộ người thuê ra file Excel chuẩn OpenXML SpreadsheetML (`.xlsx`) độc lập, không phụ thuộc thư viện ngoài.
+- **Các hàm chính**:
+  - `exportResidentsToExcel({ baseFolder, dataFolderName })`: Kiểm tra `BaseFolder`, đọc `residents.json` và `rooms.json`, tạo file `.xlsx` và lưu trực tiếp vào `BaseFolder`.
+  - `buildResidentsExcelBuffer(residents, rooms)`: Ánh xạ 9 cột chuẩn (`STT`, `Họ Và Tên`, `SĐT Gọi`, `SĐT Zalo`, `Số CCCD`, `Ngày Sinh`, `Giới Tính`, `Phòng Ở`, `Ngày Vào Ở`), ép kiểu Text (`@` / `inlineStr`) cho SĐT và CCCD, định dạng viền, màu nền header và độ rộng cột.
+  - `generateUniqueExcelFileName(baseFolder, date)`: Sinh tên file `DanhSachNguoiThue_YYYYMMDD_HHmmss.xlsx` (kèm hậu tố `_01`, `_02` nếu trùng giây).
+- **Dependencies**: `fs`, `path`, `zlib` (Node.js built-ins).
+
 ---
 
 ### 2.2. Phân Hệ Giao Diện Người Dùng (`src/input/`)

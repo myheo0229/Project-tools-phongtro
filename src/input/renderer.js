@@ -3331,6 +3331,141 @@ function onResidentCheckboxChange(residentId, checked) {
   updateResidentsBulkActionUI(checkboxes.length, selectedResidentIds.size);
 }
 
+// Lưu đường dẫn file Excel vừa xuất gần nhất để mở nhanh vị trí lưu file nếu người dùng nhấn nút
+let lastExportedResidentsExcelPath = '';
+
+/**
+ * Hiển thị Modal kết quả xuất Excel danh sách người thuê
+ * @param {any} result
+ */
+function showExcelExportResultModal(result) {
+  const modal = document.getElementById('excel-export-result-modal');
+  if (!modal) return;
+
+  const badge = document.getElementById('excel-export-modal-badge');
+  const titleEl = document.getElementById('excel-export-modal-title');
+  const subtitleEl = document.getElementById('excel-export-modal-subtitle');
+  const successBox = document.getElementById('excel-export-success-box');
+  const errorBox = document.getElementById('excel-export-error-box');
+  const statusEl = document.getElementById('excel-export-status-text');
+  const countEl = document.getElementById('excel-export-count-text');
+  const fileNameEl = document.getElementById('excel-export-filename');
+  const filePathEl = document.getElementById('excel-export-filepath');
+  const btnOpenFolder = document.getElementById('btn-open-exported-excel-folder');
+
+  if (result && result.success) {
+    lastExportedResidentsExcelPath = result.filePath || '';
+    if (badge) {
+      badge.style.background = '#dcfce7';
+      badge.style.color = '#15803d';
+    }
+    if (titleEl) titleEl.textContent = 'Xuất Excel thành công';
+    if (subtitleEl) subtitleEl.textContent = 'Đã lưu danh sách người thuê trực tiếp vào thư mục gốc (BaseFolder)';
+    if (successBox) successBox.style.display = 'flex';
+    if (errorBox) errorBox.style.display = 'none';
+    if (statusEl) statusEl.textContent = 'Xuất Excel thành công';
+    if (countEl) countEl.textContent = `${result.totalExported || 0} người thuê`;
+    if (fileNameEl) fileNameEl.textContent = result.fileName || '-';
+    if (filePathEl) filePathEl.textContent = result.filePath || '-';
+    if (btnOpenFolder) btnOpenFolder.style.display = lastExportedResidentsExcelPath ? 'inline-flex' : 'none';
+  } else {
+    lastExportedResidentsExcelPath = '';
+    const isEmptyData = result && result.code === 'EMPTY_RESIDENTS';
+    if (badge) {
+      badge.style.background = isEmptyData ? '#fef3c7' : '#fee2e2';
+      badge.style.color = isEmptyData ? '#b45309' : '#b91c1c';
+    }
+    if (titleEl) {
+      titleEl.textContent = isEmptyData ? 'Chưa có dữ liệu để xuất' : 'Không thể xuất file Excel';
+    }
+    if (subtitleEl) {
+      subtitleEl.textContent = isEmptyData
+        ? 'Danh sách người thuê hiện đang trống'
+        : 'Vui lòng kiểm tra lại thư mục lưu dữ liệu (BaseFolder)';
+    }
+    if (successBox) successBox.style.display = 'none';
+    if (errorBox) {
+      errorBox.style.display = 'block';
+      errorBox.style.background = isEmptyData ? '#fffbeb' : '#fef2f2';
+      errorBox.style.borderColor = isEmptyData ? '#fde68a' : '#fecaca';
+      errorBox.style.color = isEmptyData ? '#92400e' : '#991b1b';
+      errorBox.textContent = (result && result.message) || 'Đã xảy ra lỗi khi xuất file Excel.';
+    }
+    if (btnOpenFolder) btnOpenFolder.style.display = 'none';
+  }
+
+  modal.style.display = 'flex';
+}
+
+/**
+ * Đóng Modal kết quả xuất Excel
+ */
+function closeExcelExportResultModal() {
+  const modal = document.getElementById('excel-export-result-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+/**
+ * Mở thư mục chứa file Excel vừa xuất và bôi đen file đó trong Explorer
+ */
+async function handleOpenExportedExcelFolder() {
+  if (!lastExportedResidentsExcelPath || !window.api || !window.api.showExcelInFolder) return;
+  try {
+    const res = await window.api.showExcelInFolder(lastExportedResidentsExcelPath);
+    if (res && !res.ok && res.message) {
+      showToast(res.message, 'error');
+    }
+  } catch (err) {
+    console.error('Lỗi khi mở thư mục chứa file Excel:', err);
+  }
+}
+
+/**
+ * Xử lý sự kiện nhấn nút "Xuất Excel" tại khu vực Danh Sách Tất Cả Người Thuê
+ * Xuất toàn bộ danh sách người thuê hiện có ra file .xlsx lưu trực tiếp tại BaseFolder
+ * Không phụ thuộc vào từ khóa tìm kiếm nhanh trên giao diện
+ */
+async function handleExportResidentsExcelClick() {
+  if (!window.api || typeof window.api.exportResidentsExcel !== 'function') {
+    showToast('Tính năng xuất Excel chỉ khả dụng trong môi trường ứng dụng Desktop!', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btn-export-residents-excel');
+  const btnText = document.getElementById('btn-export-residents-excel-text');
+  if (btn && btn.disabled) return;
+
+  try {
+    if (btn) btn.disabled = true;
+    if (btnText) btnText.textContent = 'Đang xuất...';
+
+    const baseFolder = appSettings && appSettings.baseFolder
+      ? appSettings.baseFolder
+      : '';
+
+    const result = await window.api.exportResidentsExcel({ baseFolder });
+
+    if (result && result.success) {
+      showToast(`Xuất Excel thành công: ${result.fileName}`, 'success');
+      showExcelExportResultModal(result);
+    } else {
+      const msg = (result && result.message) || 'Không thể xuất file Excel!';
+      showToast(msg, 'error');
+      showExcelExportResultModal(result || { success: false, message: msg });
+    }
+  } catch (err) {
+    console.error('Lỗi khi xuất Excel danh sách người thuê:', err);
+    const errMsg = `Lỗi khi xuất Excel: ${err && err.message ? err.message : String(err)}`;
+    showToast(errMsg, 'error');
+    showExcelExportResultModal({ success: false, message: errMsg });
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = 'Xuất Excel';
+  }
+}
+
 /**
  * Mở Modal tạo người thuê mới
  */

@@ -658,6 +658,40 @@ ipcMain.handle('cccd:read-image', async (event, relativePath) => {
   }
 });
 
+// IPC: Xuất Danh Sách Người Thuê ra file Excel (.xlsx) lưu trực tiếp vào BaseFolder
+const excelService = require('./excel-service');
+
+ipcMain.handle('residents:export-excel', async (event, payload = {}) => {
+  try {
+    const pointer = getPointer();
+    const baseFolder = (pointer && pointer.baseFolder) || (payload && payload.baseFolder) || '';
+    const dataFolderName = (pointer && pointer.dataFolderName) || 'data';
+    return await excelService.exportResidentsToExcel({
+      baseFolder,
+      dataFolderName
+    });
+  } catch (err) {
+    console.error('Lỗi khi xuất Excel danh sách người thuê:', err);
+    return {
+      success: false,
+      code: 'UNEXPECTED_ERROR',
+      message: `Lỗi hệ thống khi xuất Excel: ${err && err.message ? err.message : String(err)}`
+    };
+  }
+});
+
+ipcMain.handle('residents:show-excel-in-folder', async (event, filePath) => {
+  try {
+    if (!filePath || typeof filePath !== 'string' || !fs.existsSync(filePath)) {
+      return { ok: false, message: 'Không tìm thấy file Excel trên ổ đĩa.' };
+    }
+    shell.showItemInFolder(path.normalize(filePath));
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, message: err && err.message ? err.message : String(err) };
+  }
+});
+
 // IPC: Xuất Ảnh JPG (12 file) & PDF (1 file gộp) qua printToPDF + pdfjs-dist rasterizer
 ipcMain.handle('export:receipts', async (event, monthKey, roomDataList) => {
   let receiptWin = null;

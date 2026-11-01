@@ -298,3 +298,16 @@
   3. **Xếp hạng độ ưu tiên (Relevance Scoring)**: Chấm điểm ưu tiên đưa kết quả khớp chính xác Tên gọi, Số phòng hoặc đầu số SĐT/CCCD lên đầu danh sách.
   4. **Tô sáng từ khóa trực tiếp (`<mark class="search-hl">`) trên bảng danh sách người thuê**: Tự động bôi vàng đúng đoạn ký tự/chữ số trùng khớp (không phân biệt chữ hoa/thường và có dấu/không dấu) chỉ trên bảng danh sách tất cả người thuê bên dưới (giữ nguyên hiển thị bình thường của 12 thẻ phòng phía trên).
   5. **Tiện ích thao tác nhanh**: Hiển thị bộ đếm số kết quả (`#resident-search-count`), nút xóa nhanh `✕` (`#resident-search-clear`), phím `Esc` để xóa trắng từ khóa và phím tắt `Ctrl + F` để nhảy con trỏ vào ô tìm kiếm.
+
+---
+
+## 10. Xuất Excel Danh Sách Người Thuê (`.xlsx`) (Phần 3)
+
+- **Vị trí**: Nút **Xuất Excel** (`#btn-export-residents-excel`) nằm ngay bên trái ô tìm kiếm nhanh trong khu vực **Danh Sách Tất Cả Người Thuê** (`#section-residents`).
+- **Module xử lý**: `electron/excel-service.js` (`exportResidentsToExcel`, `buildResidentsExcelBuffer`, `generateUniqueExcelFileName`, `formatExcelDateStr`).
+- **Đặc tả dữ liệu & Định dạng**:
+  1. **9 cột bắt buộc theo đúng thứ tự**: `STT | Họ Và Tên | SĐT Gọi | SĐT Zalo | Số CCCD | Ngày Sinh | Giới Tính | Phòng Ở | Ngày Vào Ở`.
+  2. **Kiểu dữ liệu Text (`@` / `inlineStr`)**: Các cột `SĐT Gọi`, `SĐT Zalo`, `Số CCCD` được lưu dưới dạng Text (`t="inlineStr"` kết hợp `numFmtId="49"`) để bảo toàn 100% chữ số `0` ở đầu và không bao giờ bị Excel chuyển thành số khoa học.
+  3. **Phạm vi dữ liệu độc lập bộ lọc**: Đọc trực tiếp toàn bộ danh sách người thuê hiện có từ `<BaseFolder>/data/residents.json` (kèm đối chiếu phòng từ `rooms.json`), hoàn toàn không phụ thuộc vào từ khóa đang nhập trong ô tìm kiếm nhanh.
+  4. **Định dạng bảng chuẩn**: 1 sheet duy nhất (`Danh Sach Nguoi Thue`), dòng tiêu đề in đậm nền xanh nhạt (`#E2EFDA`), có kẻ viền mảnh toàn bảng, căn giữa `STT`, `Giới Tính`, `Phòng Ở`, căn trái các cột còn lại và tự động co giãn độ rộng cột (`<cols>`).
+  5. **Vị trí lưu & Chống ghi đè**: Lưu trực tiếp tại `<BaseFolder>/DanhSachNguoiThue_YYYYMMDD_HHmmss.xlsx` theo giờ máy tính local (không tạo thư mục con, không gọi Backup hay Google Drive). Nếu xuất nhiều lần trong cùng một giây sẽ tự động thêm hậu tố `_01`, `_02`... để không ghi đè file cũ. Nếu danh sách trống sẽ thông báo chưa có dữ liệu và không tạo file rỗng.

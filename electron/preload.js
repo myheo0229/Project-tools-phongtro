@@ -56,6 +56,8 @@ contextBridge.exposeInMainWorld('api', {
   moveCccdFolder: (payload) => ipcRenderer.invoke('cccd:move-folder', payload),
   deleteCccdFolder: (payload) => ipcRenderer.invoke('cccd:delete-folder', payload),
   readCccdImageAsDataUrl: (relativePath) => ipcRenderer.invoke('cccd:read-image', relativePath),
+  exportResidentsExcel: (payload) => ipcRenderer.invoke('residents:export-excel', payload),
+  showExcelInFolder: (filePath) => ipcRenderer.invoke('residents:show-excel-in-folder', filePath),
 
   // Tích hợp Zalo (zca-js)
   getZaloStatus: () => ipcRenderer.invoke('zalo:get-status'),

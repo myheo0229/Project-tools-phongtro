@@ -1040,6 +1040,20 @@
             </div>
 
             <div class="table-tools">
+              <button type="button" class="btn-export-excel" id="btn-export-residents-excel"
+                onclick="handleExportResidentsExcelClick()"
+                title="Xuất toàn bộ danh sách người thuê hiện có ra file Excel (.xlsx)">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor"
+                    stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M14 2v6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                  <path d="M9.5 12.5l5 5M14.5 12.5l-5 5" stroke="currentColor" stroke-width="1.9"
+                    stroke-linecap="round" />
+                </svg>
+                <span id="btn-export-residents-excel-text">Xuất Excel</span>
+              </button>
+
               <div class="search-box" id="resident-search-box">
                 <svg class="search-box__icon" viewBox="0 0 24 24" fill="none">
                   <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8" />
@@ -2034,6 +2048,63 @@
       <div class="modal-footer" style="justify-content: flex-end; gap: 10px;">
         <button type="button" class="btn btn-secondary" onclick="closeOAuthClientModal()">Hủy</button>
         <button type="button" class="btn btn-primary" onclick="handleSaveOAuthClientManual()">Lưu Cấu Hình OAuth</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL KẾT QUẢ XUẤT EXCEL DANH SÁCH NGƯỜI THUÊ -->
+  <div id="excel-export-result-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card modal-box" style="max-width: 540px; width: 92%;">
+      <div class="modal-header">
+        <div class="modal-icon-badge" id="excel-export-modal-badge" style="background: #dcfce7; color: #15803d;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <path d="M9 15l2 2 4-4"></path>
+          </svg>
+        </div>
+        <div class="modal-title-group">
+          <h3 id="excel-export-modal-title">Xuất Excel thành công</h3>
+          <p class="modal-subtitle" id="excel-export-modal-subtitle">Đã lưu danh sách người thuê vào thư mục gốc (BaseFolder)</p>
+        </div>
+        <button type="button" class="zalo-qr-close-btn" onclick="closeExcelExportResultModal()" title="Đóng">&times;</button>
+      </div>
+
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
+        <div id="excel-export-success-box"
+          style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; font-size: 13.5px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+            <span style="color: #64748b; flex-shrink: 0;">Trạng thái:</span>
+            <strong id="excel-export-status-text" style="color: #15803d;">Xuất Excel thành công</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+            <span style="color: #64748b; flex-shrink: 0;">Số lượng xuất:</span>
+            <strong id="excel-export-count-text" style="color: #0f172a;">0 người thuê</strong>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; border-top: 1px dashed #e2e8f0; padding-top: 8px;">
+            <span style="color: #64748b;">Tên file:</span>
+            <code id="excel-export-filename"
+              style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; color: #0f172a; font-weight: 700; font-size: 13px; word-break: break-all;">-</code>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="color: #64748b;">Đường dẫn lưu file:</span>
+            <code id="excel-export-filepath"
+              style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; color: #334155; font-size: 12.5px; word-break: break-all;">-</code>
+          </div>
+        </div>
+
+        <div id="excel-export-error-box"
+          style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 14px 16px; color: #991b1b; font-size: 13.5px; line-height: 1.55; white-space: pre-line;">
+        </div>
+      </div>
+
+      <div class="modal-footer" style="justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn btn-secondary" id="btn-open-exported-excel-folder"
+          onclick="handleOpenExportedExcelFolder()">
+          📂 Mở vị trí lưu file
+        </button>
+        <button type="button" class="btn btn-primary" onclick="closeExcelExportResultModal()">Đóng</button>
       </div>
     </div>
   </div>

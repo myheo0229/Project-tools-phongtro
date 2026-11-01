@@ -232,7 +232,7 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
      - Thẻ phòng: Tên phòng (VD: `Phòng 1A`), Badge trạng thái ("Đang ở" xanh lá / "Phòng trống" xám).
      - Thông tin: Tên chủ phòng (đại diện) và số lượng người ở (`X người`).
      - Nút "Chi Tiết": Mở `#room-detail-modal` để phân bổ chủ phòng và chọn thành viên.
-  3. *Thanh công cụ danh sách cư dân*: Ô tìm kiếm tức thì theo tên/CCCD/SĐT, Dropdown lọc theo phòng (`Tất cả các phòng`, `1A` đến `6B`), Nút "Thêm Người Thuê", Nút "Xóa Đã Chọn".
+  3. *Thanh công cụ danh sách cư dân*: Nút **"Xuất Excel"** (`#btn-export-residents-excel`, màu xanh lá đặc trưng Excel nằm bên trái ô tìm kiếm), Ô tìm kiếm tức thì kiểu Google Search theo tên/CCCD/SĐT/phòng/năm sinh (`#resident-search-box`), Nút "Xóa Đã Chọn", Nút "Thêm Người Mới".
   4. *Bảng danh sách cư dân*: Cột Checkbox chọn nhiều, STT, Họ và tên, Phòng, CCCD/CMND, Số điện thoại, Ngày sinh, Ngày vào ở, Trạng thái ảnh CCCD (icon ảnh có thể bấm xem), Cột Thao tác (Nút Sửa, Nút Xóa).
 
 ---
