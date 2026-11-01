@@ -86,25 +86,37 @@
 
 ---
 
-### 2.2. Xử Lý Công Tơ Điện Quay Vòng (Rollover Modal)
-- **Kích hoạt khi**: Người dùng nhập xong ô `Điện Mới` và rời khỏi ô (`blur`), nếu `dienMoi < dienCu` và tính năng được bật trong cài đặt (`enableRolloverPopup === true`).
+### 2.2. Xử Lý Công Tơ Điện Quay Vòng (Rollover Modal) & Cơ Chế Xác Nhận 1 Lần
+- **Kích hoạt khi**: Người dùng nhập xong ô `Điện Mới` và rời khỏi ô (`blur`), nếu `dienMoi < dienCu`, tính năng được bật (`enableRolloverPopup === true`) và phòng chưa từng được xác nhận (`!room.confirmedRollover`).
 - **Giao diện Modal 1.5x (`#rollover-modal`)**:
   - Tiêu đề: *Xác Nhận Công Tơ Điện Quay Vòng*.
   - Nội dung: Hiển thị rõ số phòng, số cũ, số mới và công thức áp dụng: `(10.000 + Mới) - Cũ = [Số điện tiêu thụ] kWh`.
 - **Hành vi lựa chọn**:
-  - Bấm **"Đồng ý (Áp dụng công thức)"**: Lưu cờ `room._rolloverConfirmed = true`, áp dụng công thức quay vòng và tính toán lại tiền.
-  - Bấm **"Hủy bỏ (Nhập lại)"**: Reset giá trị ô `Điện Mới` về rỗng, focus lại vào ô để người dùng gõ lại số đúng.
+  - Bấm **"Đồng ý (Áp dụng công thức)"**:
+    * Gán `room.confirmedRollover = true`.
+    * Lưu ngay lập tức vào `settings.json` (`confirmedAlerts[monthKey][room] = { rollover: true, dienMoi }`) và tự động lưu file lịch sử tháng (`history/YYYY-MM.json`).
+    * Hiển thị biểu tượng badge tròn `(!)` màu cam (`.badge-rollover`) kế bên ô Điện Mới.
+    * Sau khi xác nhận quay vòng, nếu số điện tiêu thụ sau công thức tiếp tục chênh lệch $\ge 40\%$, hệ thống sẽ tự động hiển thị tiếp Anomaly Modal.
+  - Bấm **"Hủy bỏ (Nhập lại)"**: Reset giá trị ô `Điện Mới` về rỗng, xóa cờ khỏi `settings.json` và history, focus lại vào ô để người dùng gõ lại số đúng.
 
 ---
 
-### 2.3. Cảnh Báo Tiêu Thụ Điện Bất Thường $\ge 40\%$ (Anomaly Modal)
-- **Kích hoạt khi**: Người dùng nhập xong ô `Điện Mới` (`blur`), số điện tiêu thụ tháng này chênh lệch tăng hoặc giảm $\ge 40\%$ so với số điện tiêu thụ của chính phòng đó trong tháng liền trước, và cờ `enableAnomalyPopup === true`.
+### 2.3. Cảnh Báo Tiêu Thụ Điện Bất Thường $\ge 40\%$ (Anomaly Modal) & Biểu Tượng Cảnh Báo (!)
+- **Kích hoạt khi**: Người dùng nhập xong ô `Điện Mới` (`blur`), số điện tiêu thụ tháng này chênh lệch tăng hoặc giảm $\ge 40\%$ so với số điện tiêu thụ của chính phòng đó trong tháng liền trước, cờ `enableAnomalyPopup === true`, và phòng chưa từng được xác nhận (`!room.confirmedAnomaly`).
 - **Giao diện Modal 1.5x (`#anomaly-modal`)**:
   - Tiêu đề: *Cảnh Báo Tiêu Thụ Điện Bất Thường*.
-  - Thể hiện: Số điện tiêu thụ tháng trước ($A$ kWh), tháng này ($B$ kWh), tỷ lệ chênh lệch $\%$ kèm màu sắc cảnh báo (màu cam/đỏ).
+  - Thể hiện: Số điện tiêu thụ tháng trước ($A$ kWh), tháng này ($B$ kWh), tỷ lệ chênh lệch $%$ kèm màu sắc cảnh báo (màu cam/đỏ).
 - **Hành vi lựa chọn**:
-  - Bấm **"Xác nhận số liệu đúng"**: Đánh dấu đã xác nhận cho phòng này trong phiên làm việc, giữ nguyên số liệu.
-  - Bấm **"Kiểm tra lại"**: Focus lại ô `Điện Mới` để người dùng rà soát lại chỉ số thực tế trên đồng hồ.
+  - Bấm **"Xác nhận số liệu đúng"**:
+    * Gán `room.confirmedAnomaly = true`.
+    * Lưu ngay lập tức vào `settings.json` (`confirmedAlerts[monthKey][room] = { anomaly: true, dienMoi }`) và tự động lưu file lịch sử tháng.
+    * Hiển thị biểu tượng badge tròn `(!)` màu hổ phách (`.badge-anomaly`) hoặc màu đỏ (`.badge-both` nếu phòng đồng thời có cả 2 cảnh báo).
+  - Bấm **"Kiểm tra lại / Hủy"**: Reset ô `Điện Mới` về rỗng, xóa cờ cảnh báo khỏi `settings.json` và history, focus lại vào ô.
+- **Tính năng Duy Trì Bền Vững & Xem Lại Bất Cứ Lúc Nào**:
+  - **Lưu trữ đa tầng**: Trạng thái xác nhận được lưu đồng thời trong `settings.json` (`confirmedAlerts`) và file history tháng (`history/YYYY-MM.json`). Khi chuyển tháng qua lại hoặc đóng mở lại ứng dụng, trạng thái xác nhận và biểu tượng `(!)` được phục hồi nguyên vẹn mà không hỏi lại.
+  - **Tự động lưu khi chuyển tháng / chuyển tab**: Khi người dùng đổi tháng trên dropdown hoặc bấm chuyển sang Phần 2/3, dữ liệu tháng hiện tại và các xác nhận được tự động lưu ngay lập tức (`autoSaveCurrentMonthData`).
+  - **Click vào biểu tượng `(!)` để xem lại hoặc đổi ý**: Người dùng có thể click vào icon `(!)` bất cứ lúc nào để mở lại Modal xem chi tiết số liệu hoặc bấm Hủy để nhập lại.
+  - **Tự động gỡ bỏ thông minh**: Khi người dùng tự tay sửa số mới thành số bình thường (không còn nhỏ hơn số cũ và chênh lệch $< 40\%$), hệ thống tự động gỡ trạng thái và ẩn biểu tượng `(!)`.
 
 ---
 
@@ -169,7 +181,7 @@
    - **Gửi tuần tự từng phòng (`for...of`)**, tuyệt đối không gửi song song.
    - **Nội dung gửi cho mỗi phòng**:
      1. Gửi file ảnh phiếu thu: `Phong-XX.jpg`.
-     2. Gửi file ảnh thanh toán VietQR động (chứa sẵn số tiền chính xác và cú pháp chuyển khoản: `[Tên chủ phòng] phong [XX] thang [MM/YYYY]`).
+     2. Gửi file ảnh thanh toán VietQR động (chứa sẵn số tiền chính xác và cú pháp chuyển khoản: `[Tên chủ phòng] phong [XX] thang [MM/YYYY]`), tự động biên dịch dữ liệu vector SVG từ máy chủ VietQR thành ảnh bitmap PNG chuẩn 150 DPI qua sharp, bảo đảm Zalo client hiển thị ảnh sắc nét ngay lập tức, loại bỏ hoàn toàn lỗi màn hình đen tải ảnh.
      3. Gửi tin nhắn text chi tiết tóm tắt số tiền và thông tin tài khoản ngân hàng.
    - **Cơ chế an toàn (Anti-Ban & Timeout)**:
      - Nghỉ ngẫu nhiên giữa các phòng từ **3.0s đến 4.5s** (`Math.random()`).

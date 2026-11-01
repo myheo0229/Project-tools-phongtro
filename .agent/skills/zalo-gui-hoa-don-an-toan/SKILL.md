@@ -175,7 +175,9 @@ Khi người dùng bấm nút **"Gửi Zalo"** (`#btn-send-zalo-month`):
 - **Timeout bảo vệ**: Tối đa **15 giây cho mỗi phòng**. Quá 15s tự động ghi nhận lỗi timeout phòng đó và chuyển sang phòng tiếp theo.
 
 ### 5.3. Xử lý VietQR & Thông tin ngân hàng
-- Nếu `settings.bankName`, `bankAccount`, `bankOwner` trong Cài Đặt Chung đầy đủ: Tự động tạo ảnh VietQR chuyển khoản.
+- Nếu `settings.bankName`, `bankAccount`, `bankOwner` trong Cài Đặt Chung đầy đủ: Tự động tải và chuyển đổi mã VietQR chuyển khoản:
+  * Máy chủ `img.vietqr.io` luôn chuyển hướng sang định dạng SVG (`HTTP 301`).
+  * Hàm `downloadVietQrImage` bắt buộc phải gom toàn bộ buffer và sử dụng thư viện `sharp(rawBuffer, { density: 150 }).png().toFile(...)` để tạo ảnh PNG bitmap thật sự trước khi đưa vào `api.sendMessage`, tránh lỗi Zalo không đọc được SVG dẫn đến hiển thị ô đen có mũi tên tải xuống.
 - Nếu thiếu bất kỳ trường ngân hàng nào: **KHÔNG tạo VietQR**, chuyển sang gửi tin nhắn văn bản / ảnh phiếu thu không kèm VietQR.
 
 ---

@@ -12,5 +12,13 @@
   "tyLeHaoTai": 0.07,
   "tileHaoTai": 0.07,
   "enableRolloverPopup": true,
-  "enableAnomalyPopup": true
+  "enableAnomalyPopup": true,
+  "bankName": "",
+  "bankAccount": "",
+  "bankOwner": "",
+  "zaloSendReceiptImage": true,
+  "zaloSendPaymentQr": true,
+  "zaloSendMessageText": true,
+  "zaloMessageTemplate": "",
+  "confirmedAlerts": {}
 }

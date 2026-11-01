@@ -139,6 +139,10 @@ Toàn bộ mã màu được khai báo tại `:root` trong [`src/input/style.css
    - Định dạng hiển thị mặt nạ tự động: `dd/mm/yyyy`.
    - Tự động nhảy ô qua dấu gạch chéo `/`, chặn ký tự không phải số.
    - Nút icon lịch nhỏ bên phải mở Popup chọn lịch 100+ năm.
+4. **Loại bỏ Hoàn Toàn Nút Tăng/Giảm (Spinners/Steppers) Trên Ô Số**:
+   - Ẩn hoàn toàn 2 nút mũi tên tăng/giảm 1 đơn vị trên tất cả ô số (`input[type="number"]`) ở Phần 1 (bảng điện nước) và Phần 2 (cài đặt giá) bằng `::-webkit-inner-spin-button { -webkit-appearance: none; }` và `appearance: textfield`.
+   - Chặn sự kiện cuộn con lăn chuột (`wheel`) khi trỏ vào ô số để tránh vô tình làm nhảy số.
+   - Chặn phím mũi tên Lên/Xuống (`ArrowUp`/`ArrowDown`) làm thay đổi số trong ô; riêng ở bảng nhập liệu Phần 1, phím mũi tên Lên/Xuống được chuyển thành phím điều hướng di chuyển giữa các hàng phòng như Excel.
 
 ### 6.3. Bảng Chọn Ngân Hàng Tùy Biến (Custom Searchable Bank Select)
 - Vị trí: Tab Cài Đặt Chung.
@@ -199,6 +203,8 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
      - Cụm Nước: Nước Cũ (khóa), Nước Mới, Nước Tiêu Thụ.
      - Cụm Tiền dịch vụ: Tiền Điện, Tiền Nước, Tiền Phòng, Rác, Internet, Hao Tải (kWh), Tiền Hao Tải.
      - Cột Tổng Cộng: Chữ đậm, to rõ, nền nổi bật.
+     - **Biểu tượng cảnh báo bất thường (`!`)**: Badge tròn `.meter-alert-badge` nằm gọn phía góc phải của ô Điện Mới khi người dùng đã xác nhận đồng hồ quay vòng (màu cam `.badge-rollover`), tiêu thụ $\ge 40\%$ (màu hổ phách `.badge-anomaly`), hoặc cả hai (màu đỏ `.badge-both`). Click vào badge mở lại modal để xem thông số so sánh hoặc hủy bỏ. Trạng thái được lưu vĩnh viễn vào `settings.json` (`confirmedAlerts`).
+     - **Vô hiệu hóa bộ tăng/giảm đơn vị (Steppers)**: Ẩn nút mũi tên và chặn cuộn chuột/phím mũi tên Lên/Xuống trên tất cả các ô điền số.
   4. *Hàng tính tổng chân bảng (`tfoot`)*: Hiển thị tổng số điện tiêu thụ, tổng số nước và tổng doanh thu toàn bộ dãy trọ.
 
 ### 7.2. Màn Hình 2: Phần 2 — Cài Đặt Chung (`#section-settings`)
@@ -244,6 +250,7 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
     - Tab mới xuất hiện: `.page-in` (`animation: blur-in 700ms cubic-bezier(.65, 0, .35, 1) both; z-index: 2;`).
     - Biến hướng CSS `--dir`: `1` (khi chuyển tiến: Phần 1 $\rightarrow$ 2 $\rightarrow$ 3) hoặc `-1` (khi chuyển lùi).
     - Cấu trúc xếp chồng CSS Grid: `.app-main` sử dụng `display: grid; grid-template-columns: 100%;` kết hợp `.tab-content { grid-area: 1 / 1 / 2 / 2; }` cho phép hai trang hiển thị đè khớp nhau trong suốt 700ms mà không bị đẩy lệch layout hay giật chiều cao.
+- **Cơ chế Khóa Chuyển Tab (Navigation Lock - `.nav-locked`)**: Trong suốt 700ms hiệu ứng đang diễn ra, thanh `.nav-tabs` được gán class `.nav-locked` (`pointer-events: none !important; cursor: default;`) và biến cờ `isTabTransitioning = true` chặn toàn bộ thao tác click tiếp theo cho đến khi trang mới chuyển cảnh hoàn tất 100%, ngăn ngừa triệt để lỗi click nhanh gây đè chồng các phân hệ lên nhau.
 
 ---
 

@@ -92,3 +92,40 @@ v3.1.0
   + Xử lý logic forceSwitchTab chống xung đột khi người dùng click liên tục: tự động dọn dẹp timeout và các class animation dở dang trước khi chạy chuyển tiếp mới.
   + Cập nhật tài liệu kỹ thuật UI_GUIDE.md và SOURCE_CODE_MAP.md.
   + Tinh chỉnh trải nghiệm cuộn khi chuyển tab: Loại bỏ hoàn toàn hiệu ứng cuộn mượt kéo lên, đưa màn hình về đầu trang tức thời (window.scrollTo(0, 0)) để trang mới hiển thị ngay từ trên cùng, đồng thời ghim vị trí khung nhìn của trang cũ (marginTop âm) trong 700ms nhòe mờ, chỉ xuất hiện duy nhất hiệu ứng mờ nhòe cinematic mà không có cảm giác bị kéo giật.
+  + Triển khai cơ chế Khóa Chuyển Tab (Navigation Lock - Lớp 1) khi chuyển cảnh: Bật cờ isTabTransitioning = true và gán class .nav-locked (pointer-events: none) lên thanh Header trong suốt 700ms hiệu ứng nhòe mờ. Chặn đứng hoàn toàn việc click liên tiếp khi trang chưa chuyển xong, đồng thời áp dụng cơ chế dọn dẹp phòng thủ (Defensive Cleanup) bảo đảm chỉ duy nhất 1 phân hệ mang class .active, loại bỏ vĩnh viễn lỗi các phân hệ đè chồng lên nhau khi bấm nhanh.
+
+- Nâng cấp trải nghiệm xác nhận cảnh báo bất thường ở Phần 1 (Xác nhận 1 lần duy nhất & Biểu tượng (!) tương tác):
+  + Chỉ hỏi xác nhận pop-up (Đồng hồ quay vòng hoặc Tiêu thụ >= 40%) ĐÚNG 1 LẦN DUY NHẤT. Sau khi bấm "Xác nhận", hệ thống ghi nhớ trạng thái và không tự động bật lại pop-up khi blur hay click vào ô nữa.
+  + Hiển thị biểu tượng (!) nổi bật dạng badge tròn (.meter-alert-badge) kế bên trong ô Điện Mới:
+    * Màu cam (.badge-rollover): Đã xác nhận đồng hồ quay vòng.
+    * Màu hổ phách (.badge-anomaly): Đã xác nhận tiêu thụ chênh lệch >= 40% so với tháng trước.
+    * Màu đỏ (.badge-both): Cả 2 loại bất thường.
+  + Cho phép xem lại hoặc đổi ý: Người dùng có thể click trực tiếp vào biểu tượng (!) bất cứ lúc nào để mở lại Modal xem thông số so sánh chi tiết hoặc bấm "Hủy" để sửa lại số khác.
+  + Cơ chế gỡ bỏ thông minh: Nếu người dùng tự gõ số mới đã hết bất thường (không còn nhỏ hơn điện cũ và chênh lệch < 40%), icon (!) sẽ tự động biến mất và trả ô về trạng thái bình thường.
+  + Đồng bộ lưu trữ toàn diện:
+    * Bổ sung đầy đủ tất cả các trường cấu hình vào data/settings.json (bankName, bankAccount, bankOwner, zaloSendReceiptImage, zaloSendPaymentQr, zaloSendMessageText, zaloMessageTemplate).
+    * Lưu và khôi phục cờ confirmedRollover và confirmedAnomaly vào file lịch sử tháng (data/<month>.json) để không bị mất khi chuyển tháng hoặc mở lại ứng dụng.
+  + Cập nhật toàn bộ tài liệu tri thức: DATABASE_AND_API.md, FEATURES_AND_LOGIC.md, UI_GUIDE.md, SOURCE_CODE_MAP.md.
+  + Vô hiệu hóa chức năng tăng/giảm 1 đơn vị (Steppers/Spinners) trên tất cả các ô điền số (input type="number") ở Phần 1 và Phần 2:
+    * Ẩn hoàn toàn 2 nút mũi tên tăng/giảm trên giao diện bằng CSS (-webkit-appearance: none, appearance: textfield).
+    * Chặn sự kiện cuộn con lăn chuột (wheel) vô tình làm nhảy số khi đang trỏ chuột vào ô số.
+    * Chặn phím mũi tên Lên/Xuống (ArrowUp/ArrowDown) làm thay đổi giá trị trong ô; riêng ở bảng nhập liệu Phần 1, phím mũi tên Lên/Xuống được chuyển đổi thành phím điều hướng di chuyển giữa các hàng phòng tiện lợi như Excel.
+- Sửa triệt để lỗi mất trạng thái xác nhận cảnh báo (!) khi chuyển đổi giữa các tháng:
+  + Lưu trữ vĩnh viễn cấu hình cảnh báo vào file settings.json dưới khóa "confirmedAlerts":
+    * Cấu trúc: { "YYYY-MM": { "<TênPhòng>": { "rollover": true, "anomaly": true, "dienMoi": <giá trị> } } }
+    * Mỗi khi bấm "Xác nhận" trên Modal Quay Vòng hoặc Modal Bất Thường, hệ thống ghi ngay lập tức vào settings.json qua IPC settings:save và tự động lưu file history tháng hiện tại.
+    * Khi bấm "Hủy" hoặc gõ số mới về mức bình thường, hệ thống tự động gỡ bỏ cờ cảnh báo tương ứng khỏi settings.json và ẩn icon (!).
+  + Cơ chế Tự Động Lưu (Auto-save) khi chuyển tháng và chuyển tab:
+    * Thêm hàm autoSaveCurrentMonthData: tự động lưu lại toàn bộ chỉ số điện/nước và cờ xác nhận của tháng đang mở vào history/YYYY-MM.json trước khi tải tháng mới trong onMonthYearChange.
+    * Khi chuyển tab từ Phần 1 sang Phần 2 hoặc Phần 3, tự động lưu dữ liệu tháng hiện tại để tránh thất thoát dữ liệu vừa gõ.
+  + Phục hồi nguyên vẹn khi chuyển tháng hoặc khởi động lại:
+    * Trong hàm loadRoomsForMonth, kết hợp đọc cả file history tháng và settings.json (appSettings.confirmedAlerts). Khôi phục chính xác confirmedRollover, confirmedAnomaly và chỉ số dienMoi đã xác nhận.
+    * Biểu tượng (!) hiển thị ngay lập tức đúng màu sắc (.badge-rollover, .badge-anomaly, .badge-both), không hỏi lại pop-up và không chặn tính toán tiền.
+  + Cải tiến ipcMain.handle('settings:save') trong electron/main.js: tự động fallback lấy baseFolder từ pointer.json nếu không được truyền vào, đồng thời merge với settings cũ trước khi ghi để bảo đảm không bao giờ mất các trường dữ liệu khác.
+  + Cập nhật toàn bộ 5 tài liệu tri thức dự án: DATABASE_AND_API.md, FEATURES_AND_LOGIC.md, SOURCE_CODE_MAP.md, UI_GUIDE.md và liệt kê thay đổi.txt theo đúng chuẩn kỹ năng quy-trinh-them-tinh-nang-moi.
+
+- Khắc phục triệt để lỗi gửi mã QR VietQR qua Zalo hiển thị màn hình đen kèm biểu tượng mũi tên tải xuống:
+  + Phát hiện nguyên nhân: Máy chủ VietQR (img.vietqr.io) tự động chuyển hướng 301 sang định dạng vector SVG. Khi tải về lưu đuôi .png, file thực chất vẫn là text XML/SVG nên ứng dụng Zalo trên điện thoại/máy tính không thể giải mã hiển thị như một bức ảnh thông thường, dẫn tới lỗi đen hình.
+  + Cải tiến hàm downloadVietQrImage trong electron/zalo-manager.js: Tích hợp thư viện sharp để tự động chuyển đổi toàn bộ dữ liệu vector SVG sang ảnh PNG bitmap chuẩn nét cao (150 DPI) trước khi lưu vào file tạm.
+  + Trì hoãn việc dọn dẹp file tạm tempQrPath (delay an toàn 3 giây) sau khi gửi để bảo đảm tiến trình ngầm của zca-js đã giải phóng hoàn toàn file handle, tránh xung đột I/O trên Windows.
+  + Cập nhật tài liệu dự án: FEATURES_AND_LOGIC.md, SOURCE_CODE_MAP.md, SKILL zalo-gui-hoa-don-an-toan và liệt kê thay đổi.txt.

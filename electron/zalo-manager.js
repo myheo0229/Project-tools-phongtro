@@ -367,39 +367,41 @@ class ZaloManager {
   }
 
   /**
-   * Tải ảnh VietQR về file tạm
+   * Tải ảnh VietQR về file tạm và luôn chuyển đổi sang định dạng PNG bitmap chuẩn nét cao qua sharp
    */
   async downloadVietQrImage(url, destPath) {
     const https = require('https');
     const http = require('http');
-    return new Promise((resolve, reject) => {
-      const file = fs.createWriteStream(destPath);
-      const client = url.startsWith('https') ? https : http;
-      const req = client.get(url, (response) => {
-        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-          file.close();
-          if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
-          return this.downloadVietQrImage(response.headers.location, destPath).then(resolve).catch(reject);
-        }
-        if (response.statusCode !== 200) {
-          file.close();
-          if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
-          return reject(new Error(`Tải mã VietQR thất bại (HTTP ${response.statusCode})`));
-        }
-        response.pipe(file);
-        file.on('finish', () => {
-          file.close(() => resolve(destPath));
+
+    const downloadBuffer = (targetUrl) => {
+      return new Promise((resolve, reject) => {
+        const client = targetUrl.startsWith('https') ? https : http;
+        const req = client.get(targetUrl, (response) => {
+          if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+            return downloadBuffer(response.headers.location).then(resolve).catch(reject);
+          }
+          if (response.statusCode !== 200) {
+            return reject(new Error(`Tải mã VietQR thất bại (HTTP ${response.statusCode})`));
+          }
+          const chunks = [];
+          response.on('data', (chunk) => chunks.push(chunk));
+          response.on('end', () => resolve(Buffer.concat(chunks)));
+        });
+        req.on('error', reject);
+        req.setTimeout(12000, () => {
+          req.destroy(new Error('Timeout khi tải ảnh VietQR (quá 12s)'));
         });
       });
-      req.on('error', (err) => {
-        file.close();
-        if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
-        reject(err);
-      });
-      req.setTimeout(10000, () => {
-        req.destroy(new Error('Timeout khi tải ảnh VietQR (quá 10s)'));
-      });
-    });
+    };
+
+    const rawBuffer = await downloadBuffer(url);
+
+    // Chuyển đổi mọi định dạng nhận được (SVG vector / WebP / JPEG) sang file ảnh PNG bitmap chuẩn 150 DPI
+    await sharp(rawBuffer, { density: 150 })
+      .png({ compressionLevel: 9, quality: 100 })
+      .toFile(destPath);
+
+    return destPath;
   }
 
   /**
@@ -502,7 +504,10 @@ class ZaloManager {
             // Tiếp tục gửi tin nhắn text dù VietQR gặp lỗi tải
           } finally {
             if (tempQrPath && fs.existsSync(tempQrPath)) {
-              try { fs.unlinkSync(tempQrPath); } catch (e) { }
+              // Trì hoãn dọn dẹp file tạm 3 giây để bảo đảm tiến trình upload của zca-js đã giải phóng file handle
+              setTimeout(() => {
+                try { if (fs.existsSync(tempQrPath)) fs.unlinkSync(tempQrPath); } catch (e) { }
+              }, 3000);
             }
           }
 

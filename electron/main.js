@@ -269,7 +269,12 @@ ipcMain.handle('settings:load', async () => {
 // IPC: Lưu Cài đặt (Tự động sao chép toàn bộ dữ liệu cũ sang folder mới ngay khi bấm Lưu Cài Đặt)
 ipcMain.handle('settings:save', async (event, data) => {
   try {
-    const newBaseFolder = data ? data.baseFolder : null;
+    const oldPointer = getPointer();
+    const oldBaseFolder = oldPointer ? oldPointer.baseFolder : null;
+    let newBaseFolder = data ? data.baseFolder : null;
+    if (!newBaseFolder || typeof newBaseFolder !== 'string' || newBaseFolder.trim() === '') {
+      newBaseFolder = oldBaseFolder;
+    }
     if (!newBaseFolder || typeof newBaseFolder !== 'string' || newBaseFolder.trim() === '') {
       return { error: 'Vui lòng chọn thư mục lưu!' };
     }
@@ -277,8 +282,6 @@ ipcMain.handle('settings:save', async (event, data) => {
     const cleanNewBaseFolder = path.normalize(newBaseFolder.trim());
 
     // Đọc pointer.json cũ (nếu có) để tìm đường dẫn dữ liệu hiện tại
-    const oldPointer = getPointer();
-    const oldBaseFolder = oldPointer ? oldPointer.baseFolder : null;
     const oldDataFolderName = oldPointer ? (oldPointer.dataFolderName || 'data') : 'data';
     const oldPhieuThuFolderName = oldPointer ? (oldPointer.phieuThuFolderName || 'PhieuThu') : 'PhieuThu';
 
@@ -333,8 +336,17 @@ ipcMain.handle('settings:save', async (event, data) => {
 
     // Ghi file settings.json mới (kèm appId) vào <newBaseFolder>/data/settings.json
     const settingsFile = path.join(targetDataDir, 'settings.json');
+    let existingSettings = {};
+    if (fs.existsSync(settingsFile)) {
+      try {
+        existingSettings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+      } catch (e) {
+        console.error('Lỗi khi đọc settings cũ:', e);
+      }
+    }
     const settingsToSave = {
       appId: 'phong-tro-app',
+      ...existingSettings,
       ...data,
       baseFolder: cleanNewBaseFolder
     };

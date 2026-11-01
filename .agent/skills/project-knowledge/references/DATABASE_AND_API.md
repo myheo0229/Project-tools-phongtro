@@ -83,10 +83,17 @@
   "zaloSendReceiptImage": true,
   "zaloSendPaymentQr": true,
   "zaloSendMessageText": true,
-  "zaloMessageTemplate": ""
+  "zaloMessageTemplate": "",
+  "confirmedAlerts": {
+    "2026-07": {
+      "1A": { "rollover": true, "dienMoi": 5200 },
+      "2A": { "anomaly": true, "dienMoi": 20599 }
+    }
+  }
 }
 ```
 *Lưu ý:*
+- `confirmedAlerts`: Lưu trữ vĩnh viễn các trạng thái xác nhận cảnh báo công tơ quay vòng (`rollover: true`) hoặc tiêu thụ bất thường (\ge 40%, `anomaly: true`) cho từng phòng theo từng chu kỳ tháng (`YYYY-MM`). Nhờ đó, khi chuyển đổi qua lại giữa các tháng hoặc khởi động lại ứng dụng, hệ thống không bao giờ bị quên trạng thái xác nhận và giữ nguyên biểu tượng badge `(!)`.
 - `rac`, `internet`, `tileHaoTai` được lưu đồng thời để tương thích ngược với các phiên bản cũ.
 - Các trường tùy chọn gửi Zalo (`zaloSendReceiptImage`, `zaloSendPaymentQr`, `zaloSendMessageText`) mặc định là `true` nếu chưa từng lưu.
 - Trường `zaloMessageTemplate` lưu chuỗi mẫu tin nhắn tùy biến; nếu chuỗi rỗng (`""`), hệ thống tự động sử dụng mẫu tin nhắn mặc định ban đầu.
@@ -150,7 +157,9 @@
     "dienCu": 5302,
     "dienMoi": 5379,
     "nuocCu": 577,
-    "nuocMoi": 583
+    "nuocMoi": 583,
+    "confirmedRollover": false,
+    "confirmedAnomaly": true
   },
   {
     "phong": "2A",

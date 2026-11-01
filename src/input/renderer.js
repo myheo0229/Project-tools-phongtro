@@ -16,8 +16,11 @@ let appSettings = {
   enableAnomalyPopup: true,
   bankName: "",
   bankAccount: "",
-  bankOwner: ""
+  bankOwner: "",
+  confirmedAlerts: {}
 };
+
+let currentLoadedMonth = "";
 
 // Dữ liệu ban đầu mặc định cho Tháng 07/2026
 const INITIAL_JULY_2026_DATA = [
@@ -178,7 +181,8 @@ async function loadSettingsFile() {
             zaloSendReceiptImage: data.zaloSendReceiptImage !== undefined ? data.zaloSendReceiptImage : true,
             zaloSendPaymentQr: data.zaloSendPaymentQr !== undefined ? data.zaloSendPaymentQr : true,
             zaloSendMessageText: data.zaloSendMessageText !== undefined ? data.zaloSendMessageText : true,
-            zaloMessageTemplate: data.zaloMessageTemplate !== undefined ? data.zaloMessageTemplate : ""
+            zaloMessageTemplate: data.zaloMessageTemplate !== undefined ? data.zaloMessageTemplate : "",
+            confirmedAlerts: data.confirmedAlerts || {}
           };
           return;
         }
@@ -195,6 +199,7 @@ async function loadSettingsFile() {
     if (local) {
       const data = JSON.parse(local);
       appSettings = { ...appSettings, ...data };
+      if (!appSettings.confirmedAlerts) appSettings.confirmedAlerts = {};
     }
   } catch (e) { }
 }
@@ -202,7 +207,7 @@ async function loadSettingsFile() {
 /**
  * Ghi file settings qua IPC (window.api.saveSettingsData hoặc saveSettings)
  */
-async function saveSettingsFile() {
+async function saveSettingsFile(isSilent = false) {
   const saveData = {
     baseFolder: appSettings.baseFolder,
     dienThoai: appSettings.dienThoai,
@@ -219,7 +224,12 @@ async function saveSettingsFile() {
     enableAnomalyPopup: appSettings.enableAnomalyPopup !== false,
     bankName: appSettings.bankName || "",
     bankAccount: appSettings.bankAccount || "",
-    bankOwner: appSettings.bankOwner || ""
+    bankOwner: appSettings.bankOwner || "",
+    zaloSendReceiptImage: appSettings.zaloSendReceiptImage !== undefined ? appSettings.zaloSendReceiptImage : true,
+    zaloSendPaymentQr: appSettings.zaloSendPaymentQr !== undefined ? appSettings.zaloSendPaymentQr : true,
+    zaloSendMessageText: appSettings.zaloSendMessageText !== undefined ? appSettings.zaloSendMessageText : true,
+    zaloMessageTemplate: appSettings.zaloMessageTemplate || "",
+    confirmedAlerts: appSettings.confirmedAlerts || {}
   };
 
   if (window.api) {
@@ -228,7 +238,7 @@ async function saveSettingsFile() {
       try {
         const res = await saveFn(saveData);
         if (res && res.error) {
-          showToast(`Lỗi: ${res.error}`, 'error');
+          if (!isSilent) showToast(`Lỗi: ${res.error}`, 'error');
           return false;
         }
         if (res && res.baseFolder) {
@@ -308,6 +318,30 @@ async function writeHistoryFile(monthYearStr, data) {
   } catch (e) { }
 
   return true;
+}
+
+/**
+ * Tự động lưu dữ liệu tháng hiện tại vào file history/YYYY-MM.json
+ */
+async function autoSaveCurrentMonthData(monthKey) {
+  const targetMonth = monthKey || currentLoadedMonth || document.getElementById('month-year-select')?.value;
+  if (!targetMonth || !roomsData || roomsData.length === 0) return;
+
+  const saveDataArray = roomsData.map(r => ({
+    phong: r.phong,
+    dienCu: isNotEmpty(r.dienCu) ? Number(r.dienCu) : '',
+    dienMoi: isNotEmpty(r.dienMoi) ? Number(r.dienMoi) : '',
+    nuocCu: isNotEmpty(r.nuocCu) ? Number(r.nuocCu) : '',
+    nuocMoi: isNotEmpty(r.nuocMoi) ? Number(r.nuocMoi) : '',
+    confirmedRollover: r.confirmedRollover || false,
+    confirmedAnomaly: r.confirmedAnomaly || false
+  }));
+
+  try {
+    await writeHistoryFile(targetMonth, saveDataArray);
+  } catch (err) {
+    console.warn(`Lỗi khi tự động lưu tháng ${targetMonth}:`, err);
+  }
 }
 
 // Khởi tạo ứng dụng
@@ -407,7 +441,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 /**
  * Đổi tab giữa Nhập Dữ Liệu, Cài Đặt Chung và Quản Lý Phòng & Người Ở
  */
+let isTabTransitioning = false;
+const TAB_KEYS = ['data', 'settings', 'residents'];
+let tabTransitionTimeout = null;
+
 function switchTab(tabName) {
+  // KHÓA LỚP 1: Nếu đang trong 700ms chuyển cảnh thì chặn hoàn toàn mọi lệnh chuyển tab mới
+  if (isTabTransitioning) return;
+
   const sectionSettings = document.getElementById('section-settings');
   const isCurrentSettings = sectionSettings && sectionSettings.classList.contains('active');
 
@@ -423,42 +464,56 @@ function switchTab(tabName) {
   forceSwitchTab(tabName);
 }
 
-const TAB_KEYS = ['data', 'settings', 'residents'];
-let tabTransitionTimeout = null;
-
 function forceSwitchTab(tabName) {
+  // KHÓA LỚP 1: Chặn tuyệt đối khi animation chuyển cảnh đang chạy
+  if (isTabTransitioning) return;
+
   const newSection = document.getElementById(`section-${tabName}`);
   if (!newSection) return;
+
+  // Tìm section đang hiển thị hiện tại (duy nhất)
+  const oldSection = document.querySelector('.tab-content.active');
+
+  // Nếu chuyển vào đúng tab đang hiển thị thì không cần chạy lại hiệu ứng
+  if (oldSection === newSection) return;
+
+  // Tự động lưu dữ liệu Phần 1 nếu đang rời khỏi màn hình nhập liệu
+  if (oldSection && oldSection.id === 'section-input' && currentLoadedMonth) {
+    autoSaveCurrentMonthData(currentLoadedMonth);
+  }
+
+  // Nếu chưa có tab active nào (khi mở ứng dụng lần đầu)
+  if (!oldSection) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    const targetBtn = document.getElementById(`tab-btn-${tabName}`);
+    if (targetBtn) targetBtn.classList.add('active');
+
+    document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active', 'page-out', 'page-in'));
+    newSection.classList.add('active');
+    if (tabName === 'residents') initResidentsSection();
+    return;
+  }
+
+  // =========================================================================
+  // KÍCH HOẠT KHÓA CHUYỂN TAB (LỚP 1)
+  // =========================================================================
+  isTabTransitioning = true;
+  const navTabs = document.querySelector('.nav-tabs');
+  if (navTabs) navTabs.classList.add('nav-locked');
 
   // Cập nhật trạng thái active của các nút trên Header ngay lập tức
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
   const targetBtn = document.getElementById(`tab-btn-${tabName}`);
   if (targetBtn) targetBtn.classList.add('active');
 
-  // Tìm section đang hiển thị hiện tại
-  const oldSection = document.querySelector('.tab-content.active');
-
-  // Nếu chuyển vào đúng tab đang hiển thị thì không cần chạy lại hiệu ứng
-  if (oldSection === newSection) return;
-
-  // Nếu đang có hiệu ứng chuyển tab dở dang thì dọn dẹp sạch sẽ ngay
-  if (tabTransitionTimeout) {
-    clearTimeout(tabTransitionTimeout);
-    tabTransitionTimeout = null;
-  }
+  // Dọn dẹp phòng thủ: đảm bảo các section khác ngoài oldSection & newSection không bị kẹt active
   document.querySelectorAll('.tab-content').forEach(s => {
-    s.classList.remove('page-out', 'page-in');
-    s.style.removeProperty('--dir');
-    s.style.removeProperty('margin-top');
+    if (s !== oldSection && s !== newSection) {
+      s.classList.remove('active', 'page-out', 'page-in');
+      s.style.removeProperty('--dir');
+      s.style.removeProperty('margin-top');
+    }
   });
-
-  // Nếu chưa có tab active nào (khi mở ứng dụng lần đầu)
-  if (!oldSection) {
-    document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
-    newSection.classList.add('active');
-    if (tabName === 'residents') initResidentsSection();
-    return;
-  }
 
   // Xác định hướng di chuyển: 1 (tiến) hoặc -1 (lùi)
   const oldTabKey = oldSection.id.replace('section-', '');
@@ -490,15 +545,23 @@ function forceSwitchTab(tabName) {
   oldSection.classList.add('page-out');
   newSection.classList.add('active', 'page-in');
 
-  // Sau khi kết thúc thời gian hiệu ứng 700ms, dọn dẹp class và biến CSS
+  // Sau khi kết thúc thời gian hiệu ứng 700ms, dọn dẹp class, biến CSS và MỞ LẠI KHÓA
   tabTransitionTimeout = setTimeout(() => {
-    oldSection.classList.remove('active', 'page-out');
-    oldSection.style.removeProperty('--dir');
-    oldSection.style.removeProperty('margin-top');
+    // Cưỡng chế ẩn sạch sẽ toàn bộ các section khác, CHỈ DUY NHẤT newSection mang class active
+    document.querySelectorAll('.tab-content').forEach(s => {
+      if (s !== newSection) {
+        s.classList.remove('active', 'page-out', 'page-in');
+        s.style.removeProperty('--dir');
+        s.style.removeProperty('margin-top');
+      }
+    });
 
     newSection.classList.remove('page-in');
     newSection.style.removeProperty('--dir');
 
+    // MỞ KHÓA THANH ĐIỀU HƯỚNG HEADER (hoàn thành chuyển cảnh 100%)
+    if (navTabs) navTabs.classList.remove('nav-locked');
+    isTabTransitioning = false;
     tabTransitionTimeout = null;
   }, 700);
 }
@@ -830,9 +893,12 @@ async function pickBaseFolder() {
  * Tải và tính toán tự động khóa/điền dữ liệu phòng cho tháng/năm được chọn
  */
 async function loadRoomsForMonth(currentMonthYearStr) {
+  currentLoadedMonth = currentMonthYearStr;
   const currentMonthData = await readHistoryFile(currentMonthYearStr);
   const prevMonthStr = getPreviousMonthStr(currentMonthYearStr);
   const prevMonthData = await readHistoryFile(prevMonthStr);
+
+  const monthAlerts = (appSettings.confirmedAlerts && appSettings.confirmedAlerts[currentMonthYearStr]) || {};
 
   roomsData = DEFAULT_ROOM_NAMES.map(phongName => {
     const currRoom = currentMonthData
@@ -875,8 +941,17 @@ async function loadRoomsForMonth(currentMonthYearStr) {
       }
     }
 
-    const dienMoi = currRoom && isNotEmpty(currRoom.dienMoi) ? Number(currRoom.dienMoi) : '';
+    let dienMoi = currRoom && isNotEmpty(currRoom.dienMoi) ? Number(currRoom.dienMoi) : '';
     const nuocMoi = currRoom && isNotEmpty(currRoom.nuocMoi) ? Number(currRoom.nuocMoi) : '';
+
+    const alertConfig = monthAlerts[phongName] || {};
+    // Khôi phục số điện mới đã xác nhận nếu chưa có trong history
+    if (dienMoi === '' && isNotEmpty(alertConfig.dienMoi)) {
+      dienMoi = Number(alertConfig.dienMoi);
+    }
+
+    const isConfirmedRollover = (alertConfig.rollover === true) || (currRoom && currRoom.confirmedRollover === true) || false;
+    const isConfirmedAnomaly = (alertConfig.anomaly === true) || (currRoom && currRoom.confirmedAnomaly === true) || false;
 
     return {
       phong: phongName,
@@ -887,7 +962,9 @@ async function loadRoomsForMonth(currentMonthYearStr) {
       prevDienKwh: prevDienKwh,
       tienPhong: appSettings.giaPhong,
       isDienCuLocked,
-      isNuocCuLocked
+      isNuocCuLocked,
+      confirmedRollover: isConfirmedRollover,
+      confirmedAnomaly: isConfirmedAnomaly
     };
   });
 
@@ -928,15 +1005,25 @@ function renderInitialTable() {
 
       <!-- Điện Mới (Luôn mở khóa cho người dùng nhập tay, mặc định rỗng) -->
       <td class="col-meter">
-        <input type="number" 
-               class="table-input editable-meter" 
-               data-row="${index}" 
-               data-field="dienMoi" 
-               placeholder="Nhập số mới"
-               value="${dienMoiVal}" 
-               oninput="handleInputChange(${index}, 'dienMoi', this.value)" 
-               onblur="handleDienMoiBlur(${index})"
-               onfocus="this.select()">
+        <div class="meter-input-wrap">
+          <input type="number" 
+                 class="table-input editable-meter" 
+                 data-row="${index}" 
+                 data-field="dienMoi" 
+                 placeholder="Nhập số mới"
+                 value="${dienMoiVal}" 
+                 oninput="handleInputChange(${index}, 'dienMoi', this.value)" 
+                 onblur="handleDienMoiBlur(${index})"
+                 onfocus="this.select()">
+          <button type="button" 
+                  class="meter-alert-badge" 
+                  id="alert-badge-${index}" 
+                  onclick="handleAlertBadgeClick(${index})" 
+                  style="display: none;" 
+                  title="Xem lại cảnh báo bất thường">
+            !
+          </button>
+        </div>
       </td>
       <!-- Số Điện Tiêu Thụ -->
       <td class="col-kwh val-calc cell-dien-kwh">-</td>
@@ -992,18 +1079,59 @@ function renderInitialTable() {
  */
 function handleInputChange(index, field, value) {
   const numVal = isNotEmpty(value) ? Number(value) : '';
-  const oldVal = roomsData[index][field];
   roomsData[index][field] = numVal;
 
   if (field === 'dienMoi') {
     const dienCuNum = isNotEmpty(roomsData[index].dienCu) ? Number(roomsData[index].dienCu) : 0;
-    if (numVal === '' || (typeof numVal === 'number' && numVal >= dienCuNum)) {
+    const targetMonth = currentLoadedMonth || document.getElementById('month-year-select')?.value;
+    let shouldSaveSettings = false;
+
+    // Nếu ô bị xóa trống: xóa sạch trạng thái xác nhận
+    if (numVal === '') {
       roomsData[index].confirmedRollover = false;
-    } else if (oldVal !== numVal) {
-      roomsData[index].confirmedRollover = false;
-    }
-    if (oldVal !== numVal) {
       roomsData[index].confirmedAnomaly = false;
+      if (targetMonth && appSettings.confirmedAlerts && appSettings.confirmedAlerts[targetMonth] && appSettings.confirmedAlerts[targetMonth][roomsData[index].phong]) {
+        delete appSettings.confirmedAlerts[targetMonth][roomsData[index].phong];
+        shouldSaveSettings = true;
+      }
+    } else {
+      // Nếu số mới không còn nhỏ hơn số cũ: tự động gỡ trạng thái quay vòng
+      if (numVal >= dienCuNum) {
+        if (roomsData[index].confirmedRollover) {
+          roomsData[index].confirmedRollover = false;
+          if (targetMonth && appSettings.confirmedAlerts && appSettings.confirmedAlerts[targetMonth] && appSettings.confirmedAlerts[targetMonth][roomsData[index].phong]) {
+            delete appSettings.confirmedAlerts[targetMonth][roomsData[index].phong].rollover;
+            if (!appSettings.confirmedAlerts[targetMonth][roomsData[index].phong].anomaly) {
+              delete appSettings.confirmedAlerts[targetMonth][roomsData[index].phong];
+            }
+            shouldSaveSettings = true;
+          }
+        }
+      }
+
+      // Kiểm tra tiêu thụ mới: nếu chênh lệch < 40%, tự động gỡ trạng thái bất thường
+      const prevKwh = Number(roomsData[index].prevDienKwh) || 0;
+      if (prevKwh > 0) {
+        const surrogate = { ...roomsData[index], dienCu: dienCuNum, dienMoi: numVal };
+        const roomCalc = typeof calcRoom === 'function' ? calcRoom(surrogate, appSettings) : null;
+        const currKwh = roomCalc ? roomCalc.dienKwh : Math.max(0, numVal - dienCuNum);
+        const diff = currKwh - prevKwh;
+        const percentChange = (diff / prevKwh) * 100;
+        if (Math.abs(percentChange) < 40 && roomsData[index].confirmedAnomaly) {
+          roomsData[index].confirmedAnomaly = false;
+          if (targetMonth && appSettings.confirmedAlerts && appSettings.confirmedAlerts[targetMonth] && appSettings.confirmedAlerts[targetMonth][roomsData[index].phong]) {
+            delete appSettings.confirmedAlerts[targetMonth][roomsData[index].phong].anomaly;
+            if (!appSettings.confirmedAlerts[targetMonth][roomsData[index].phong].rollover) {
+              delete appSettings.confirmedAlerts[targetMonth][roomsData[index].phong];
+            }
+            shouldSaveSettings = true;
+          }
+        }
+      }
+    }
+
+    if (shouldSaveSettings) {
+      saveSettingsFile(true);
     }
   }
 
@@ -1063,6 +1191,32 @@ function updateRowUI(index) {
       rac: appSettings.tienRac, internet: appSettings.tienInternet,
       haoTaiKwh: 0, tienHaoTai: 0, tongCong: 0
     };
+
+  // Cập nhật biểu tượng cảnh báo (!) kế bên ô Điện Mới nếu đã xác nhận bất thường
+  const badgeBtn = tr.querySelector(`#alert-badge-${index}`);
+  if (badgeBtn) {
+    if (room.confirmedRollover && room.confirmedAnomaly) {
+      badgeBtn.className = 'meter-alert-badge badge-both';
+      badgeBtn.style.display = 'inline-flex';
+      badgeBtn.title = 'Đã xác nhận: Đồng hồ quay vòng & Tiêu thụ chênh lệch ≥ 40%. Nhấn để xem lại hoặc thay đổi.';
+    } else if (room.confirmedRollover) {
+      badgeBtn.className = 'meter-alert-badge badge-rollover';
+      badgeBtn.style.display = 'inline-flex';
+      badgeBtn.title = `Đã xác nhận: Đồng hồ quay vòng (${room.dienMoi} < ${dienCuNum}). Nhấn để xem lại hoặc thay đổi.`;
+    } else if (room.confirmedAnomaly) {
+      badgeBtn.className = 'meter-alert-badge badge-anomaly';
+      badgeBtn.style.display = 'inline-flex';
+      const prevK = Number(room.prevDienKwh) || 0;
+      const surrogate = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
+      const rCalc = typeof calcRoom === 'function' ? calcRoom(surrogate, appSettings) : null;
+      const cK = rCalc ? rCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
+      const pDiff = prevK > 0 ? (((cK - prevK) / prevK) * 100).toFixed(1) : 0;
+      const sign = pDiff > 0 ? '+' : '';
+      badgeBtn.title = `Đã xác nhận: Tiêu thụ chênh lệch ${sign}${pDiff}% so với tháng trước. Nhấn để xem lại hoặc thay đổi.`;
+    } else {
+      badgeBtn.style.display = 'none';
+    }
+  }
 
   // Cột Điện (chỉ hiển thị khi đã nhập dienMoi hợp lệ)
   tr.querySelector('.cell-dien-kwh').textContent = hasDienMoi ? (formatNumber(roomCalc.dienKwh) + ' kWh') : '-';
@@ -1233,6 +1387,10 @@ function getNextField(currentField) {
  * Sự kiện chọn Tháng - Năm
  */
 async function onMonthYearChange() {
+  const oldMonth = currentLoadedMonth;
+  if (oldMonth && roomsData && roomsData.length > 0) {
+    await autoSaveCurrentMonthData(oldMonth);
+  }
   const monthYear = document.getElementById('month-year-select').value;
   await loadRoomsForMonth(monthYear);
   showToast(`Đã chuyển sang ${monthYear}`, 'success');
@@ -1348,7 +1506,9 @@ async function saveAndExport() {
       dienCu: isNotEmpty(r.dienCu) ? Number(r.dienCu) : '',
       dienMoi: isNotEmpty(r.dienMoi) ? Number(r.dienMoi) : '',
       nuocCu: isNotEmpty(r.nuocCu) ? Number(r.nuocCu) : '',
-      nuocMoi: isNotEmpty(r.nuocMoi) ? Number(r.nuocMoi) : ''
+      nuocMoi: isNotEmpty(r.nuocMoi) ? Number(r.nuocMoi) : '',
+      confirmedRollover: r.confirmedRollover || false,
+      confirmedAnomaly: r.confirmedAnomaly || false
     }));
 
     const saveSuccess = await writeHistoryFile(currentMonthYear, saveDataArray);
@@ -1493,15 +1653,17 @@ function handleDienMoiBlur(index) {
   const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
   const dienMoiNum = Number(room.dienMoi);
 
-  // 1. Kiểm tra đồng hồ quay vòng (Điện Mới < Điện Cũ) - Chỉ chạy khi BẬT toggle
-  if (appSettings.enableRolloverPopup !== false && dienMoiNum < dienCuNum && !room.confirmedRollover) {
-    showRolloverModal(index);
+  // 1. Kiểm tra đồng hồ quay vòng (Điện Mới < Điện Cũ): CHỈ hỏi 1 lần duy nhất nếu chưa xác nhận
+  if (appSettings.enableRolloverPopup !== false && dienMoiNum < dienCuNum) {
+    if (!room.confirmedRollover) {
+      showRolloverModal(index);
+    }
     return;
   }
 
-  // 2. Kiểm tra bất thường >= 40% so với tháng trước - Chỉ chạy khi BẬT toggle
+  // 2. Kiểm tra bất thường >= 40% so với tháng trước: CHỈ hỏi 1 lần duy nhất nếu chưa xác nhận
   const prevKwh = Number(room.prevDienKwh) || 0;
-  if (appSettings.enableAnomalyPopup !== false && prevKwh > 0 && (dienMoiNum >= dienCuNum || room.confirmedRollover)) {
+  if (appSettings.enableAnomalyPopup !== false && prevKwh > 0 && dienMoiNum >= dienCuNum) {
     const surrogate = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
     const roomCalc = typeof calcRoom === 'function' ? calcRoom(surrogate, appSettings) : null;
     const currKwh = roomCalc ? roomCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
@@ -1556,6 +1718,21 @@ function confirmRolloverModal() {
     updateFooterTotals();
     showToast(`Đã áp dụng phương pháp đồng hồ quay vòng cho phòng ${roomsData[idx].phong}`, 'success');
 
+    // Lưu vào settings.json và file history ngay lập tức
+    const targetMonth = currentLoadedMonth || document.getElementById('month-year-select')?.value;
+    if (targetMonth) {
+      if (!appSettings.confirmedAlerts) appSettings.confirmedAlerts = {};
+      if (!appSettings.confirmedAlerts[targetMonth]) appSettings.confirmedAlerts[targetMonth] = {};
+      const roomKey = roomsData[idx].phong;
+      appSettings.confirmedAlerts[targetMonth][roomKey] = {
+        ...(appSettings.confirmedAlerts[targetMonth][roomKey] || {}),
+        rollover: true,
+        dienMoi: roomsData[idx].dienMoi
+      };
+      saveSettingsFile(true);
+      autoSaveCurrentMonthData(targetMonth);
+    }
+
     // Sau khi xác nhận quay vòng, kiểm tra tiếp xem có bị bất thường >= 40% không
     closeRolloverModal();
 
@@ -1587,6 +1764,17 @@ function cancelRolloverModal() {
     const idx = currentRolloverIndex;
     roomsData[idx].dienMoi = '';
     roomsData[idx].confirmedRollover = false;
+
+    // Xóa khỏi settings.json và file history
+    const targetMonth = currentLoadedMonth || document.getElementById('month-year-select')?.value;
+    if (targetMonth && appSettings.confirmedAlerts && appSettings.confirmedAlerts[targetMonth] && appSettings.confirmedAlerts[targetMonth][roomsData[idx].phong]) {
+      delete appSettings.confirmedAlerts[targetMonth][roomsData[idx].phong].rollover;
+      if (!appSettings.confirmedAlerts[targetMonth][roomsData[idx].phong].anomaly) {
+        delete appSettings.confirmedAlerts[targetMonth][roomsData[idx].phong];
+      }
+      saveSettingsFile(true);
+      autoSaveCurrentMonthData(targetMonth);
+    }
 
     const inputEl = document.querySelector(`input[data-row="${idx}"][data-field="dienMoi"]`);
     if (inputEl) {
@@ -1666,10 +1854,26 @@ function showAnomalyModal(index) {
  */
 function confirmAnomalyModal() {
   if (currentAnomalyIndex !== null && roomsData[currentAnomalyIndex]) {
-    roomsData[currentAnomalyIndex].confirmedAnomaly = true;
-    updateRowUI(currentAnomalyIndex);
+    const idx = currentAnomalyIndex;
+    roomsData[idx].confirmedAnomaly = true;
+    updateRowUI(idx);
     updateFooterTotals();
-    showToast(`Đã xác nhận số điện phòng ${roomsData[currentAnomalyIndex].phong} bình thường`, 'success');
+    showToast(`Đã xác nhận số điện phòng ${roomsData[idx].phong} bình thường`, 'success');
+
+    // Lưu vào settings.json và file history ngay lập tức
+    const targetMonth = currentLoadedMonth || document.getElementById('month-year-select')?.value;
+    if (targetMonth) {
+      if (!appSettings.confirmedAlerts) appSettings.confirmedAlerts = {};
+      if (!appSettings.confirmedAlerts[targetMonth]) appSettings.confirmedAlerts[targetMonth] = {};
+      const roomKey = roomsData[idx].phong;
+      appSettings.confirmedAlerts[targetMonth][roomKey] = {
+        ...(appSettings.confirmedAlerts[targetMonth][roomKey] || {}),
+        anomaly: true,
+        dienMoi: roomsData[idx].dienMoi
+      };
+      saveSettingsFile(true);
+      autoSaveCurrentMonthData(targetMonth);
+    }
   }
   closeAnomalyModal();
 }
@@ -1682,6 +1886,17 @@ function cancelAnomalyModal() {
     const idx = currentAnomalyIndex;
     roomsData[idx].dienMoi = '';
     roomsData[idx].confirmedAnomaly = false;
+
+    // Xóa khỏi settings.json và file history
+    const targetMonth = currentLoadedMonth || document.getElementById('month-year-select')?.value;
+    if (targetMonth && appSettings.confirmedAlerts && appSettings.confirmedAlerts[targetMonth] && appSettings.confirmedAlerts[targetMonth][roomsData[idx].phong]) {
+      delete appSettings.confirmedAlerts[targetMonth][roomsData[idx].phong].anomaly;
+      if (!appSettings.confirmedAlerts[targetMonth][roomsData[idx].phong].rollover) {
+        delete appSettings.confirmedAlerts[targetMonth][roomsData[idx].phong];
+      }
+      saveSettingsFile(true);
+      autoSaveCurrentMonthData(targetMonth);
+    }
 
     const inputEl = document.querySelector(`input[data-row="${idx}"][data-field="dienMoi"]`);
     if (inputEl) {
@@ -4599,6 +4814,22 @@ window.cancelZaloQrLogin = cancelZaloQrLogin;
 window.retryZaloQrLogin = retryZaloQrLogin;
 window.removeVietnameseTones = removeVietnameseTones;
 window.saveBankSettings = saveBankSettings;
+window.handleAlertBadgeClick = handleAlertBadgeClick;
+/**
+ * Khi click vào biểu tượng (!) kế bên ô Điện Mới:
+ * Mở lại Modal tương ứng để người dùng xem lại thông số hoặc đổi ý
+ */
+function handleAlertBadgeClick(index) {
+  const room = roomsData[index];
+  if (!room) return;
+
+  if (room.confirmedRollover) {
+    showRolloverModal(index);
+  } else if (room.confirmedAnomaly) {
+    showAnomalyModal(index);
+  }
+}
+
 window.toggleZaloSendOption = toggleZaloSendOption;
 window.onZaloOptionCheckboxChange = onZaloOptionCheckboxChange;
 window.onZaloOptionChange = onZaloOptionChange;
@@ -4936,3 +5167,33 @@ function updateZaloLivePreview() {
 
 
 
+
+
+/**
+ * Chặn hoàn toàn tính năng tự động tăng/giảm 1 đơn vị trên input type="number":
+ * 1. Chặn con lăn chuột (wheel) khi đang trỏ/focus vào ô số
+ * 2. Chặn phím mũi tên Lên/Xuống (ArrowUp / ArrowDown) làm nhảy số (chuyển thành phím điều hướng Excel trong bảng)
+ */
+window.addEventListener('wheel', (e) => {
+  if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'number') {
+    e.target.blur();
+  }
+}, { passive: true });
+
+window.addEventListener('keydown', (e) => {
+  if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.target && e.target.tagName === 'INPUT' && e.target.type === 'number') {
+    if (e.target.classList.contains('table-input')) {
+      e.preventDefault();
+      const rowIndex = parseInt(e.target.getAttribute('data-row'), 10);
+      const field = e.target.getAttribute('data-field');
+      const targetRowIndex = e.key === 'ArrowUp' ? rowIndex - 1 : rowIndex + 1;
+      const targetInput = document.querySelector(`.table-input[data-row="${targetRowIndex}"][data-field="${field}"]`);
+      if (targetInput) {
+        targetInput.focus();
+        targetInput.select();
+      }
+    } else {
+      e.preventDefault();
+    }
+  }
+});

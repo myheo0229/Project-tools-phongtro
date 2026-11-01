@@ -169,6 +169,19 @@ body {
   padding: 5px;
   border-radius: var(--radius-md, 10px);
   gap: 6px;
+  position: relative;
+}
+
+/* KHÓA CHUYỂN TAB TRONG SUỐT 700MS CHUYỂN CẢNH (CHỐNG CLICK NHANH GÂY ĐÈ CHỒNG TRANG) */
+.nav-tabs.nav-locked {
+  pointer-events: none !important;
+  user-select: none;
+  cursor: default !important;
+}
+
+.nav-tabs.nav-locked .tab-btn {
+  pointer-events: none !important;
+  cursor: default !important;
 }
 
 .tab-btn {
@@ -4090,4 +4103,81 @@ body {
   margin-top: 8px;
   border-top: 1px dashed #f1f5f9;
   padding-top: 4px;
+}
+
+/* BADGE CẢNH BÁO (!) CHO ĐỒNG HỒ QUAY VÒNG & TIÊU THỤ BẤT THƯỜNG */
+.meter-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.meter-input-wrap .table-input {
+  width: 100%;
+  padding-right: 28px; /* Chừa khoảng trống bên phải cho icon (!) */
+}
+
+.meter-alert-badge {
+  position: absolute;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  font-family: inherit;
+  color: #ffffff;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+  z-index: 2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  animation: pulseBadge 2.2s infinite ease-in-out;
+}
+
+.meter-alert-badge:hover {
+  transform: scale(1.22);
+  filter: brightness(1.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.meter-alert-badge:active {
+  transform: scale(1.05);
+}
+
+.meter-alert-badge.badge-rollover {
+  background: #ea580c; /* Màu cam đậm cho Đồng hồ quay vòng */
+}
+
+.meter-alert-badge.badge-anomaly {
+  background: #d97706; /* Màu hổ phách cho Biến động tiêu thụ >= 40% */
+}
+
+.meter-alert-badge.badge-both {
+  background: #dc2626; /* Màu đỏ cho cả hai loại */
+}
+
+@keyframes pulseBadge {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* ============================================================
+   ẨN HOÀN TOÀN NÚT TĂNG/GIẢM (SPINNERS) TRÊN TẤT CẢ Ô NHẬP SỐ
+   ============================================================ */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
 }

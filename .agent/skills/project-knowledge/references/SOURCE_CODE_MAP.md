@@ -13,14 +13,14 @@ Project-tools-phongtro/
 ├── electron/                         # Tiến trình chính & dịch vụ nền (Main Process)
 │   ├── main.js                       # ⭐ Entry point chính: Quản lý vòng đời, IPC Handlers, AutoUpdater & Xuất file
 │   ├── preload.js                    # ⭐ Context Bridge an toàn: Phơi bày window.api cho Renderer
-│   ├── zalo-manager.js               # ⭐ Quản lý kết nối Zalo qua zca-js: QR login, session, gửi tin & VietQR
+│   ├── zalo-manager.js               # ⭐ Quản lý kết nối Zalo qua zca-js: QR login, session, convert VietQR SVG sang PNG bitmap & gửi tin
 │   ├── rasterizer.html               # Cửa sổ ẩn chuyển đổi trang PDF sang JPEG qua pdfjs-dist (3x scale)
 │   └── vendor/pdfjs/                 # Thư viện PDF.js offline (pdf.js, pdf.worker.js)
 │
 ├── src/
 │   ├── input/                        # Phân hệ giao diện chính (Main Renderer Process)
 │   │   ├── index.html                # Cấu trúc DOM chính: 3 Tab + 10 Pop-up Modals + Stats Grid + Data Table
-│   │   ├── renderer.js               # ⭐ Não bộ UI: State management, tính toán realtime, CRUD cư dân, AutoUpdater
+│   │   ├── renderer.js               # ⭐ Não bộ UI: State management, tính toán realtime, CRUD cư dân, auto-save & lưu confirmedAlerts
 │   │   └── style.css                 # ⭐ Toàn bộ Design System, tokens, biến CSS, responsive & animation
 │   │
 │   ├── receipt/                      # Phân hệ mẫu phiếu thu (Dùng để in ấn & kết xuất tự động)
@@ -154,7 +154,7 @@ Project-tools-phongtro/
   - **Điều hướng Phân hệ & Chuyển cảnh (Blur Transition)**: `switchTab(tabName)`, `forceSwitchTab(tabName)` điều phối hiệu ứng nhòe mờ 700ms (`.page-out`, `.page-in`), tính toán hướng chuyển cảnh (`--dir = 1` tiến hoặc `-1` lùi) và dọn dẹp timeout chống xung đột.
   - **Quản lý Tháng & Khởi tạo**: `computeMaxSelectableMonth()`, `populateMonthSelect()`, `onMonthYearChange()`, `loadRoomsForMonth()`.
   - **Nhập liệu & Điều hướng Excel**: `renderInitialTable()`, `handleInputChange()`, `updateRowUI()`, `updateFooterTotals()`, `handleTableKeyDown()`, `getNextField()`.
-  - **Pop-up Cảnh báo Nghiệp vụ**: `handleDienMoiBlur()`, `showRolloverModal()`, `showAnomalyModal()`, `showUnsavedSettingsModal()`.
+  - **Pop-up Cảnh báo Nghiệp vụ & Badge (!)**: `handleDienMoiBlur()`, `showRolloverModal()`, `showAnomalyModal()`, `handleAlertBadgeClick()`, `showUnsavedSettingsModal()`. Quản lý cờ `confirmedRollover`, `confirmedAnomaly` và lưu trữ trạng thái vào file lịch sử tháng.
   - **Lưu & Xuất Phiếu Thu**: `saveAndExport()`, `saveSettings()`.
   - **Quản lý Phòng & Cư dân (Phần 3)**: `loadResidentsData()`, `loadRoomsData()`, `renderResidentsStats()`, `renderRoomCards()`, `openRoomDetailModal()`, `saveRoomDetailAssignment()`, `filterResidentsTable()`, `renderResidentsTable()`, `openAddResidentModal()`, `openEditResidentModal()`, `submitResidentForm()`, `executeDeleteResidents()`.
   - **Xử lý Ảnh CCCD**: `onCccdAreaClick()`, `pickCccdImage()`, `removeCccdImage()`, `viewCccdPhoto()`, `closeCccdLightbox()`.
