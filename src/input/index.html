@@ -36,7 +36,7 @@
       <!-- TAB NAVIGATION -->
       <nav class="nav-tabs">
         <button type="button" class="tab-btn active" id="tab-btn-data" onclick="switchTab('data')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect width="18" height="18" x="3" y="3" rx="2"></rect>
             <path d="M3 9h18"></path>
             <path d="M9 21V9"></path>
@@ -44,7 +44,7 @@
           Phần 1: Nhập Dữ Liệu
         </button>
         <button type="button" class="tab-btn" id="tab-btn-settings" onclick="switchTab('settings')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path
               d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z">
             </path>
@@ -53,7 +53,7 @@
           Phần 2: Cài Đặt Chung
         </button>
         <button type="button" class="tab-btn" id="tab-btn-residents" onclick="switchTab('residents')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
             <circle cx="9" cy="7" r="4"></circle>
             <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -151,7 +151,7 @@
             <div class="table-card-header-actions">
               <button type="button" class="btn btn-zalo-send" id="btn-send-zalo-month"
                 onclick="handleSendZaloMonthClick()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M22 2L11 13"></path>
                   <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
                 </svg>
@@ -343,14 +343,255 @@
                 </div>
               </div>
 
+              <!-- CẤU HÌNH GỬI THÔNG BÁO QUA ZALO & TÙY CHỈNH MẪU TIN NHẮN -->
+              <div class="settings-divider"></div>
+              <div class="settings-subsection-title">
+                <h3>CẤU HÌNH GỬI THÔNG BÁO QUA ZALO</h3>
+                <p>Tùy chọn các thành phần muốn gửi cho khách thuê và tùy chỉnh nội dung tin nhắn tự động</p>
+              </div>
+
+              <!-- 3 Tùy chọn thành phần muốn gửi (Thiết kế đồng bộ 100% theo ảnh tham khảo) -->
+              <div class="zalo-send-options-card">
+                <!-- Tùy chọn 1: Hình phiếu tiền -->
+                <div class="zalo-option-row" id="opt-row-receipt" onclick="toggleZaloSendOption('receipt')">
+                  <div class="zalo-option-left">
+                    <div class="zalo-option-icon green">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="8" cy="7" r="2.5"></circle>
+                        <path d="M3 18l5-5a1.5 1.5 0 0 1 2.2 0l3.8 4a1.5 1.5 0 0 0 2.2 0l1.8-1.8a1.5 1.5 0 0 1 2.2 0L21 16.5"></path>
+                      </svg>
+                    </div>
+                    <div class="zalo-option-text">
+                      <span class="zalo-option-title">Hình phiếu tiền</span>
+                      <span class="zalo-option-desc">Phiếu thu chi tiết của từng phòng</span>
+                    </div>
+                  </div>
+                  <div class="zalo-option-check">
+                    <input type="checkbox" id="set-zaloSendReceiptImage" class="zalo-custom-checkbox" checked
+                      onclick="event.stopPropagation(); onZaloOptionCheckboxChange('receipt')">
+                    <span class="custom-check-circle">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Tùy chọn 2: Mã QR thanh toán -->
+                <div class="zalo-option-row" id="opt-row-qr" onclick="toggleZaloSendOption('qr')">
+                  <div class="zalo-option-left">
+                    <div class="zalo-option-icon green">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                        <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                        <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                        <path d="M14 14h2v2h-2z"></path>
+                        <path d="M18 14h3v3h-3z"></path>
+                        <path d="M14 18h3v3h-3z"></path>
+                        <path d="M18 18h3v3h-3z"></path>
+                      </svg>
+                    </div>
+                    <div class="zalo-option-text">
+                      <span class="zalo-option-title">Mã QR thanh toán</span>
+                      <span class="zalo-option-desc">Hình mã QR chuyển khoản</span>
+                    </div>
+                  </div>
+                  <div class="zalo-option-check">
+                    <input type="checkbox" id="set-zaloSendPaymentQr" class="zalo-custom-checkbox" checked
+                      onclick="event.stopPropagation(); onZaloOptionCheckboxChange('qr')">
+                    <span class="custom-check-circle">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Tùy chọn 3: Tin nhắn Zalo -->
+                <div class="zalo-option-row" id="opt-row-text" onclick="toggleZaloSendOption('text')">
+                  <div class="zalo-option-left">
+                    <div class="zalo-option-icon green">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                      </svg>
+                    </div>
+                    <div class="zalo-option-text">
+                      <span class="zalo-option-title">Tin nhắn Zalo</span>
+                      <span class="zalo-option-desc">Nội dung thông báo có thể chỉnh sửa</span>
+                    </div>
+                  </div>
+                  <div class="zalo-option-check">
+                    <input type="checkbox" id="set-zaloSendMessageText" class="zalo-custom-checkbox" checked
+                      onclick="event.stopPropagation(); onZaloOptionCheckboxChange('text')">
+                    <span class="custom-check-circle">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- KHU VỰC TÙY CHỈNH MẪU TIN NHẮN & PREVIEW (CHỈ HIỆN KHI BẬT TIN NHẮN ZALO) -->
+              <div id="zalo-template-customizer" class="zalo-template-customizer">
+                <div class="template-section-header">
+                  <div class="template-section-title">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 20h9"></path>
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                    </svg>
+                    <span>Trình Chỉnh Sửa Mẫu Tin Nhắn</span>
+                  </div>
+                  <button type="button" class="btn-text-action" onclick="resetZaloTemplateToDefault()"
+                    title="Khôi phục lại chính xác mẫu tin nhắn mặc định của hệ thống">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                      <path d="M3 3v5h5"></path>
+                    </svg>
+                    <span>Khôi phục mẫu gốc</span>
+                  </button>
+                </div>
+
+                <!-- Bảng danh sách các biến tự động (Chips) -->
+                <div class="template-variables-container">
+                  <div class="variable-help-label">
+                    <span>Nhấn vào các biến bên dưới để chèn vào vị trí con trỏ:</span>
+                  </div>
+                  <div class="variable-chips-groups">
+                    <!-- Nhóm 1: Cơ bản -->
+                    <div class="variable-group">
+                      <span class="group-label">Cơ bản:</span>
+                      <div class="group-chips">
+                        <button type="button" class="var-chip chip-blue" onclick="insertVariableIntoTemplate('phong')"
+                          title="Số phòng (Ví dụ: 1A)">{phong}</button>
+                        <button type="button" class="var-chip chip-blue" onclick="insertVariableIntoTemplate('tenChuPhong')"
+                          title="Họ và tên chủ phòng">{tenChuPhong}</button>
+                        <button type="button" class="var-chip chip-blue" onclick="insertVariableIntoTemplate('thang')"
+                          title="Tháng (Ví dụ: 07)">{thang}</button>
+                        <button type="button" class="var-chip chip-blue" onclick="insertVariableIntoTemplate('nam')"
+                          title="Năm (Ví dụ: 2026)">{nam}</button>
+                        <button type="button" class="var-chip chip-green" onclick="insertVariableIntoTemplate('tongCong')"
+                          title="Tổng tiền thanh toán (Ví dụ: 2.575.000)">{tongCong}</button>
+                        <button type="button" class="var-chip chip-gray" onclick="insertVariableIntoTemplate('sdt')"
+                          title="Số điện thoại khách">{sdt}</button>
+                      </div>
+                    </div>
+
+                    <!-- Nhóm 2: Ngân hàng -->
+                    <div class="variable-group">
+                      <span class="group-label">Ngân hàng:</span>
+                      <div class="group-chips">
+                        <button type="button" class="var-chip chip-indigo" onclick="insertVariableIntoTemplate('bankName')"
+                          title="Tên viết tắt ngân hàng">{bankName}</button>
+                        <button type="button" class="var-chip chip-indigo" onclick="insertVariableIntoTemplate('bankAccount')"
+                          title="Số tài khoản ngân hàng">{bankAccount}</button>
+                        <button type="button" class="var-chip chip-indigo" onclick="insertVariableIntoTemplate('bankOwner')"
+                          title="Tên chủ tài khoản">{bankOwner}</button>
+                        <button type="button" class="var-chip chip-indigo" onclick="insertVariableIntoTemplate('noiDungCK')"
+                          title="Nội dung chuyển khoản chuẩn">{noiDungCK}</button>
+                      </div>
+                    </div>
+
+                    <!-- Nhóm 3: Điện / Nước -->
+                    <div class="variable-group">
+                      <span class="group-label">Điện / Nước:</span>
+                      <div class="group-chips">
+                        <button type="button" class="var-chip chip-amber" onclick="insertVariableIntoTemplate('dienKwh')"
+                          title="Số điện tiêu thụ (kWh)">{dienKwh}</button>
+                        <button type="button" class="var-chip chip-amber" onclick="insertVariableIntoTemplate('tienDien')"
+                          title="Tiền điện">{tienDien}</button>
+                        <button type="button" class="var-chip chip-amber" onclick="insertVariableIntoTemplate('tienHaoTai')"
+                          title="Tiền điện hao tải">{tienHaoTai}</button>
+                        <button type="button" class="var-chip chip-cyan" onclick="insertVariableIntoTemplate('nuocKhoi')"
+                          title="Số khối nước tiêu thụ (m³)">{nuocKhoi}</button>
+                        <button type="button" class="var-chip chip-cyan" onclick="insertVariableIntoTemplate('tienNuoc')"
+                          title="Tiền nước">{tienNuoc}</button>
+                      </div>
+                    </div>
+
+                    <!-- Nhóm 4: Phí dịch vụ khác -->
+                    <div class="variable-group">
+                      <span class="group-label">Phí khác:</span>
+                      <div class="group-chips">
+                        <button type="button" class="var-chip chip-purple" onclick="insertVariableIntoTemplate('tienPhong')"
+                          title="Tiền phòng">{tienPhong}</button>
+                        <button type="button" class="var-chip chip-purple" onclick="insertVariableIntoTemplate('tienRac')"
+                          title="Tiền rác">{tienRac}</button>
+                        <button type="button" class="var-chip chip-purple" onclick="insertVariableIntoTemplate('tienInternet')"
+                          title="Tiền internet">{tienInternet}</button>
+                        <button type="button" class="var-chip chip-gray" onclick="insertVariableIntoTemplate('dienCu')"
+                          title="Chỉ số điện cũ">{dienCu}</button>
+                        <button type="button" class="var-chip chip-gray" onclick="insertVariableIntoTemplate('dienMoi')"
+                          title="Chỉ số điện mới">{dienMoi}</button>
+                        <button type="button" class="var-chip chip-gray" onclick="insertVariableIntoTemplate('nuocCu')"
+                          title="Chỉ số nước cũ">{nuocCu}</button>
+                        <button type="button" class="var-chip chip-gray" onclick="insertVariableIntoTemplate('nuocMoi')"
+                          title="Chỉ số nước mới">{nuocMoi}</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Khung Soạn thảo tin nhắn (Overlaid Highlight Editor) -->
+                <div class="zalo-editor-wrapper">
+                  <div class="zalo-editor-backdrop" id="zalo-editor-backdrop" aria-hidden="true"></div>
+                  <textarea id="zalo-template-input" class="zalo-editor-textarea" rows="11"
+                    placeholder="Soạn thảo mẫu tin nhắn Zalo..." spellcheck="false"
+                    oninput="onZaloTemplateInput(this)" onscroll="syncZaloEditorScroll(this)"></textarea>
+                </div>
+
+                <!-- Banner Cảnh báo biến không hợp lệ -->
+                <div id="zalo-var-warning-banner" class="zalo-var-warning" style="display: none;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                  </svg>
+                  <span id="zalo-var-warning-text">Phát hiện biến không tồn tại trong hệ thống.</span>
+                </div>
+
+                <!-- Khung Xem trước tin nhắn trực quan (Live Preview) -->
+                <div class="zalo-preview-section">
+                  <div class="preview-header-bar">
+                    <div class="preview-title">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                      <span>Xem trước tin nhắn Zalo thực tế</span>
+                    </div>
+                    <div class="preview-controls">
+                      <div class="preview-select-wrap">
+                        <label for="preview-room-select">Phòng:</label>
+                        <select id="preview-room-select" class="preview-select" onchange="updateZaloLivePreview()">
+                          <!-- Render 12 phòng từ 1A đến 6B -->
+                        </select>
+                      </div>
+                      <div class="preview-select-wrap">
+                        <label for="preview-month-select">Tháng:</label>
+                        <select id="preview-month-select" class="preview-select" onchange="updateZaloLivePreview()">
+                          <!-- Render tháng -->
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Khung Giả lập Bong bóng Tin nhắn Zalo -->
+                  <div class="zalo-phone-mockup">
+                    <div class="zalo-message-bubble-wrap">
+                      <div class="zalo-preview-bubble" id="zalo-preview-bubble">
+                        <!-- Nội dung xem trước được render động -->
+                      </div>
+                      <div class="zalo-preview-footer">
+                        <span id="zalo-preview-time">12:00 • Đã gửi qua Zalo</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div class="form-actions">
-                <button type="submit" class="btn btn-primary btn-lg">
+                <button type="submit" class="btn btn-primary btn-lg" id="btn-save-settings">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                     <polyline points="17 21 17 13 7 13 7 21"></polyline>
                     <polyline points="7 3 7 8 15 8"></polyline>
                   </svg>
-                  Lưu Cài Đặt Giá
+                  <span id="btn-save-settings-text">Lưu Cài Đặt</span>
                 </button>
               </div>
 

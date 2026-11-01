@@ -467,22 +467,27 @@ class ZaloManager {
         }
         const targetUid = String(user.uid || user.userId);
 
-        // 2. Kiểm tra file ảnh phiếu thu đã xuất
-        const receiptImgPath = path.join(phieuThuDir, `Phong-${task.phong}.jpg`);
-        if (!fs.existsSync(receiptImgPath)) {
-          throw new Error(`Chưa tìm thấy file ảnh phiếu thu (Phong-${task.phong}.jpg). Vui lòng bấm 'Lưu & Xuất' trước khi gửi Zalo.`);
+        const shouldSendReceipt = appSettings ? (appSettings.zaloSendReceiptImage !== false) : true;
+        const shouldSendQr = appSettings ? (appSettings.zaloSendPaymentQr !== false) : true;
+        const shouldSendMessage = appSettings ? (appSettings.zaloSendMessageText !== false) : true;
+
+        // Bước 1: Gửi ảnh phiếu thu (nếu bật tùy chọn)
+        if (shouldSendReceipt) {
+          const receiptImgPath = path.join(phieuThuDir, `Phong-${task.phong}.jpg`);
+          if (!fs.existsSync(receiptImgPath)) {
+            throw new Error(`Chưa tìm thấy file ảnh phiếu thu (Phong-${task.phong}.jpg). Vui lòng bấm 'Lưu & Xuất' trước khi gửi Zalo.`);
+          }
+
+          console.log(`[Zalo Send] Phòng ${task.phong}: Gửi ảnh phiếu thu...`);
+          await this.api.sendMessage({ msg: "", attachments: [receiptImgPath] }, targetUid);
+
+          // Delay nhỏ giữa các bước (0.2s - 1.0s)
+          const intraDelay1 = Math.floor(Math.random() * 800) + 200;
+          await new Promise(r => setTimeout(r, intraDelay1));
         }
 
-        // Bước 1: Gửi ảnh phiếu thu
-        console.log(`[Zalo Send] Phòng ${task.phong}: Gửi ảnh phiếu thu...`);
-        await this.api.sendMessage({ msg: "", attachments: [receiptImgPath] }, targetUid);
-
-        // Delay nhỏ giữa các bước (0.2s - 1.0s)
-        const intraDelay1 = Math.floor(Math.random() * 800) + 200;
-        await new Promise(r => setTimeout(r, intraDelay1));
-
-        // Bước 2: Gửi ảnh mã VietQR (nếu có cấu hình ngân hàng)
-        if (hasBankConfig && task.tongCong > 0) {
+        // Bước 2: Gửi ảnh mã VietQR (nếu bật tùy chọn VÀ có cấu hình ngân hàng)
+        if (shouldSendQr && hasBankConfig && task.tongCong > 0) {
           let tempQrPath = null;
           try {
             const noiDungCK = `${task.tenChuPhong || ''} phong ${task.phong} thang ${mm}/${yyyy}`;
@@ -506,12 +511,20 @@ class ZaloManager {
           await new Promise(r => setTimeout(r, intraDelay2));
         }
 
-        // Bước 3: Gửi tin nhắn text theo đúng mẫu
-        const formatMoney = (val) => new Intl.NumberFormat('vi-VN').format(val || 0);
-        let textMsg = "";
+        // Bước 3: Gửi tin nhắn text (nếu bật tùy chọn)
+        if (shouldSendMessage) {
+          const formatMoney = (val) => new Intl.NumberFormat('vi-VN').format(Number(val) || 0);
+          let textMsg = "";
 
-        if (hasBankConfig) {
-          textMsg = `📋 HÓA ĐƠN PHÒNG ${task.phong} - THÁNG ${mm}/${yyyy}
+          // Sử dụng mẫu tùy chỉnh nếu có, ngược lại giữ nguyên 100% mẫu mặc định hiện tại
+          if (appSettings && appSettings.zaloMessageTemplate && appSettings.zaloMessageTemplate.trim() !== "") {
+            textMsg = this.renderZaloTemplate(appSettings.zaloMessageTemplate, task, {
+              mm, yyyy, bankShortName, bankAccount, bankOwner
+            });
+          } else {
+            // MẪU MẶC ĐỊNH HIỆN TẠI (GIỮ NGUYÊN 100% CÂU CHỮ VÀ CẤU TRÚC)
+            if (hasBankConfig) {
+              textMsg = `📋 HÓA ĐƠN PHÒNG ${task.phong} - THÁNG ${mm}/${yyyy}
 
 💰 TỔNG: ${formatMoney(task.tongCong)} đ
 
@@ -522,16 +535,18 @@ class ZaloManager {
 - ND CK: ${task.tenChuPhong || ''} phòng ${task.phong} tháng ${mm}/${yyyy}
 
 (Chi tiết xem ảnh phiếu thu đính kèm)`;
-        } else {
-          textMsg = `📋 HÓA ĐƠN PHÒNG ${task.phong} - THÁNG ${mm}/${yyyy}
+            } else {
+              textMsg = `📋 HÓA ĐƠN PHÒNG ${task.phong} - THÁNG ${mm}/${yyyy}
 
 💰 TỔNG: ${formatMoney(task.tongCong)} đ
 
 (Chi tiết xem ảnh phiếu thu đính kèm)`;
-        }
+            }
+          }
 
-        console.log(`[Zalo Send] Phòng ${task.phong}: Gửi tin nhắn text...`);
-        await this.api.sendMessage({ msg: textMsg }, targetUid);
+          console.log(`[Zalo Send] Phòng ${task.phong}: Gửi tin nhắn text...`);
+          await this.api.sendMessage({ msg: textMsg }, targetUid);
+        }
       };
 
       // Bảo vệ timeout 15 giây cho mỗi phòng
@@ -579,6 +594,58 @@ class ZaloManager {
       results
     };
   }
+  /**
+   * Render mẫu tin nhắn tùy chỉnh với các biến dữ liệu thực tế
+   */
+  renderZaloTemplate(template, task, context) {
+    if (!template || typeof template !== 'string') return '';
+    const formatMoney = (val) => new Intl.NumberFormat('vi-VN').format(Number(val) || 0);
+    const formatNumber = (val) => new Intl.NumberFormat('vi-VN').format(Number(val) || 0);
+
+    const mm = context.mm || '';
+    const yyyy = context.yyyy || '';
+    const bankShortName = context.bankShortName || '';
+    const bankAccount = context.bankAccount || '';
+    const bankOwner = context.bankOwner || '';
+    const noiDungCK = `${task.tenChuPhong || ''} phong ${task.phong || ''} thang ${mm}/${yyyy}`.trim();
+
+    const values = {
+      phong: task.phong || '',
+      tenChuPhong: task.tenChuPhong || '',
+      sdt: task.sdtZalo || task.sdtGoi || '',
+      sdtZalo: task.sdtZalo || task.sdtGoi || '',
+      thang: mm,
+      nam: yyyy,
+      tongCong: formatMoney(task.tongCong),
+      tienPhong: formatMoney(task.tienPhong),
+      tienRac: formatMoney(task.tienRac),
+      tienInternet: formatMoney(task.tienInternet),
+      dienCu: formatNumber(task.dienCu),
+      dienMoi: formatNumber(task.dienMoi),
+      dienKwh: formatNumber(task.dienKwh),
+      giaDien: formatMoney(task.giaDien),
+      tienDien: formatMoney(task.tienDien),
+      nuocCu: formatNumber(task.nuocCu),
+      nuocMoi: formatNumber(task.nuocMoi),
+      nuocKhoi: formatNumber(task.nuocKhoi),
+      giaNuoc: formatMoney(task.giaNuoc),
+      tienNuoc: formatMoney(task.tienNuoc),
+      haoTaiKwh: task.haoTaiKwh !== undefined ? String(task.haoTaiKwh).replace('.', ',') : '0,0',
+      tienHaoTai: formatMoney(task.tienHaoTai),
+      bankName: bankShortName,
+      bankAccount: bankAccount,
+      bankOwner: bankOwner,
+      noiDungCK: noiDungCK
+    };
+
+    return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) => {
+      if (Object.prototype.hasOwnProperty.call(values, key)) {
+        return values[key];
+      }
+      return match;
+    });
+  }
+
 }
 
 module.exports = new ZaloManager();

@@ -62,4 +62,33 @@ v3.0.1
 - Khởi tạo dữ liệu mặc định trắng an toàn (12 phòng trắng, danh sách cư dân rỗng), không copy dữ liệu từ môi trường phát triển khi chọn thư mục lần đầu
 - Bảo toàn tuyệt đối dữ liệu hiện có của người dùng trên các máy khác khi cập nhật phiên bản mới
 - Làm sạch toàn bộ dữ liệu mẫu trong thư mục data/ của mã nguồn về trạng thái trắng chuẩn
-- Bổ sung tài liệu quy chuẩn an-toan-du-lieu-va-dong-goi (SKILL.md) và cập nhật .gitignore chặn rò rỉ ảnh CCCD và session Zalo cá nhân
+- Bổ sung tài liệu quy chuẩn an-toan-du-lieu-va-dong-goi (SKILL.md) và cập nhật .gitignore chặn rò rỉ ảnh CCCD và session Zalo cá nhân
+
+v3.1.0
+- Nâng cấp tính năng gửi thông báo Zalo trong tab Cài Đặt Chung (Settings - Khối bên trái):
+  + Tùy chọn độc lập 3 thành phần gửi Zalo bằng checkbox độc lập (Hình phiếu tiền, Mã QR thanh toán, Tin nhắn Zalo), giao diện bo góc với icon trực quan và checkmark hình tròn xanh lá đồng bộ theo mẫu thiết kế.
+  + Trình chỉnh sửa nội dung mẫu tin nhắn Zalo tương tác cao (Interactive Template Editor):
+    * Giữ nguyên 100% mẫu tin nhắn gốc mặc định của hệ thống khi chưa tùy biến.
+    * Thanh công cụ chèn biến tự động (Auto-insert Variables) phân loại theo nhóm màu sắc (Cơ bản, Ngân hàng, Phí & Dịch vụ, Điện & Nước), click để chèn tại vị trí con trỏ mà không cần gõ tay cú pháp.
+    * Hiển thị biến phân biệt màu sắc dạng thẻ tag chip bằng kiến trúc Backdrop 2 lớp, bảo đảm 100% trải nghiệm gõ tiếng Việt (Unikey/EVKey) không bị giật, lag hay nhảy con trỏ.
+    * Tự động phát hiện và cảnh báo các biến không hợp lệ bằng banner cảnh báo màu hổ phách.
+    * Xem trước trực tiếp (Live Preview) mô phỏng bong bóng chat Zalo trên điện thoại, đồng bộ thời gian thực theo từng phòng (1A–6B) và tháng cụ thể với số liệu tính toán thực tế.
+    * Nút "Khôi phục mẫu gốc" đặt lại mẫu tin nhắn chuẩn hệ thống chỉ với một cú click.
+  + Lưu trữ cấu hình 3 tùy chọn gửi và mẫu tin nhắn tùy biến vào data/settings.json.
+  + Kiểm tra an toàn trước khi gửi: nếu người dùng tắt cả 3 thành phần sẽ hiện cảnh báo Toast nhắc nhở bật lại ít nhất 1 thành phần.
+  + Tích hợp đầy đủ vào tiến trình gửi Zalo (zalo-manager.js): hỗ trợ gửi từng thành phần độc lập, render mẫu tin nhắn tùy biến với toàn bộ 27 biến số hoặc fallback về mẫu tin nhắn mặc định nguyên bản.
+- Bổ sung Agent Skill mới: .agent/skills/quy-trinh-them-tinh-nang-moi/SKILL.md (Tự động cập nhật tài liệu dự án mỗi khi thêm/sửa tính năng).
+- Cập nhật toàn bộ tài liệu tri thức dự án: FEATURES_AND_LOGIC.md, SOURCE_CODE_MAP.md, DATABASE_AND_API.md, UI_GUIDE.md.
+- Tinh chỉnh giao diện & Sửa lỗi hiển thị theo phản hồi thực tế:
+  + Khắc phục triệt để lỗi lệch chữ ở các ô nhận dạng biến màu xanh trong ô soạn thảo: Xóa bỏ hoàn toàn padding ngang và border ngang của thẻ span trong backdrop (chuyển sang padding: 0; margin: 0; border: none; box-shadow: 0 0 0 1px #93c5fd), bảo đảm độ rộng ký tự trong backdrop khớp 100% với textarea, các biến liền kề như {thang}/{nam} không còn bị đè hay đẩy lệch chữ.
+  + Căn giữa hoàn toàn khung xem trước tin nhắn Zalo (Live Preview): Đặt margin: 0 auto cho khung bong bóng tin nhắn, margin 2 bên viền trái và viền phải đều nhau cân đối.
+  + Nâng kích thước chữ các nút chuyển đổi phân hệ ở Header (.tab-btn) lên tối thiểu 16px (font-size: 16px, icon: 20x20px, padding: 10px 20px) giúp dễ nhìn, dễ đọc và thao tác chuẩn xác.
+  + Tăng kích thước chữ nút Gửi Zalo ở Phần 1 (.btn-zalo-send) lên 15.5px (icon 20x20px, padding 10px 22px).
+  + Cập nhật quy chuẩn thiết kế font-size tối thiểu 16px cho thanh điều hướng Header và quy chuẩn ô soạn thảo 2 lớp vào tài liệu Agent Skill: .agent/skills/ui-guidelines/SKILL.md, quy-trinh-them-tinh-nang-moi/SKILL.md và UI_GUIDE.md.
+- Bổ sung hiệu ứng chuyển đổi giữa các phân hệ (Page Transition - Nhòe mờ Cinematic):
+  + Tích hợp animation blur-out (700ms cubic-bezier(.65, 0, .35, 1)) cho tab cũ rời đi và blur-in (700ms) cho tab mới xuất hiện.
+  + Hỗ trợ biến hướng CSS --dir: = 1 (khi chuyển tiến: Phần 1 -> 2 -> 3) hoặc = -1 (khi chuyển lùi: Phần 3 -> 2 -> 1) giúp trang trôi nhẹ theo đúng chiều chuyển hướng.
+  + Ứng dụng kỹ thuật CSS Grid Stacking (grid-area: 1 / 1 / 2 / 2) trên container .app-main, cho phép 2 phân hệ hiển thị chồng khớp lên nhau trong 700ms chuyển tiếp mà không bị nhảy layout hay vỡ chiều cao.
+  + Xử lý logic forceSwitchTab chống xung đột khi người dùng click liên tục: tự động dọn dẹp timeout và các class animation dở dang trước khi chạy chuyển tiếp mới.
+  + Cập nhật tài liệu kỹ thuật UI_GUIDE.md và SOURCE_CODE_MAP.md.
+  + Tinh chỉnh trải nghiệm cuộn khi chuyển tab: Loại bỏ hoàn toàn hiệu ứng cuộn mượt kéo lên, đưa màn hình về đầu trang tức thời (window.scrollTo(0, 0)) để trang mới hiển thị ngay từ trên cùng, đồng thời ghim vị trí khung nhìn của trang cũ (marginTop âm) trong 700ms nhòe mờ, chỉ xuất hiện duy nhất hiệu ứng mờ nhòe cinematic mà không có cảm giác bị kéo giật.

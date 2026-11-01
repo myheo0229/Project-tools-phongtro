@@ -166,35 +166,43 @@ body {
 .nav-tabs {
   display: flex;
   background: #f1f5f9;
-  padding: 4px;
-  border-radius: var(--radius-md);
-  gap: 4px;
+  padding: 5px;
+  border-radius: var(--radius-md, 10px);
+  gap: 6px;
 }
 
 .tab-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: 9px;
+  padding: 10px 20px;
   border: none;
   background: transparent;
   color: var(--text-muted);
   font-weight: 600;
-  font-size: 13px;
-  border-radius: var(--radius-sm);
+  font-size: 16px;
+  /* Bắt buộc tối thiểu 16px để dễ nhìn, dễ thao tác */
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
+.tab-btn svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
 .tab-btn:hover {
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .tab-btn.active {
   background: var(--bg-card);
   color: var(--primary-dark);
   box-shadow: var(--shadow-sm);
+  font-weight: 700;
 }
 
 /* CONTROL ACTIONS */
@@ -300,45 +308,59 @@ body {
   padding: 20px 24px;
   overflow-x: hidden;
   position: relative;
+  display: grid;
+  grid-template-columns: 100%;
+  align-items: start;
 }
 
 .tab-content {
   display: none;
+  grid-area: 1 / 1 / 2 / 2;
+  width: 100%;
 }
 
 .tab-content.active {
   display: block;
 }
 
-/* TAB TRANSITION ANIMATIONS (PUSH LEFT / PUSH RIGHT) */
-.tab-content.push-left {
-  animation: pushLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* ============================================================
+   HIỆU ỨNG CHUYỂN PHẦN (PAGE TRANSITION)
+   Nhòe mờ | --dir = 1 (tiến) hoặc -1 (lùi)
+   ============================================================ */
+.page-out {
+  animation: blur-out 700ms cubic-bezier(.65, 0, .35, 1) both;
+  z-index: 1;
+  pointer-events: none;
+  display: block !important;
+  grid-area: 1 / 1 / 2 / 2;
+  will-change: opacity, filter, transform;
 }
 
-.tab-content.push-right {
-  animation: pushRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.page-in {
+  animation: blur-in 700ms cubic-bezier(.65, 0, .35, 1) both;
+  z-index: 2;
+  display: block !important;
+  grid-area: 1 / 1 / 2 / 2;
+  will-change: opacity, filter, transform;
 }
 
-@keyframes pushLeft {
+@keyframes blur-out {
+  to {
+    opacity: 0;
+    filter: blur(24px);
+    transform: translateX(calc(var(--dir, 1) * -20px));
+  }
+}
+
+@keyframes blur-in {
   from {
     opacity: 0;
-    transform: translateX(45px);
+    filter: blur(24px);
+    transform: translateX(calc(var(--dir, 1) * 20px));
   }
-
   to {
     opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes pushRight {
-  from {
-    opacity: 0;
-    transform: translateX(-45px);
-  }
-
-  to {
-    opacity: 1;
+    filter: blur(0);
     transform: translateX(0);
   }
 }
@@ -469,16 +491,23 @@ body {
   background: linear-gradient(135deg, #0068FF, #0052CC);
   color: #ffffff;
   border: none;
-  box-shadow: 0 2px 6px rgba(0, 104, 255, 0.25);
-  font-size: 13.5px;
+  box-shadow: 0 2px 8px rgba(0, 104, 255, 0.28);
+  font-size: 15.5px;
+  /* Tăng font-size cho nổi bật, dễ nhìn */
   font-weight: 600;
-  padding: 8px 18px;
-  border-radius: var(--radius-sm, 7px);
+  padding: 10px 22px;
+  border-radius: 8px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-zalo-send svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .btn-zalo-send:hover:not(:disabled) {
@@ -1014,7 +1043,7 @@ body {
   background: #ffffff;
   padding: 2px;
   border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
 }
 
@@ -1068,7 +1097,7 @@ body {
   background: #ffffff;
   border: 1.5px solid #cbd5e1;
   border-radius: var(--radius-lg, 12px);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18), 0 2px 6px rgba(0,0,0,0.05);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18), 0 2px 6px rgba(0, 0, 0, 0.05);
   z-index: 1050;
   overflow: hidden;
   animation: bankDropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1081,6 +1110,7 @@ body {
     opacity: 0;
     transform: translateY(-6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1176,7 +1206,7 @@ body {
   background: #ffffff;
   padding: 2px;
   border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   flex-shrink: 0;
 }
 
@@ -1460,6 +1490,7 @@ body {
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -1559,14 +1590,14 @@ body {
   border: 6px solid white;
 }
 
-.toggle-checkbox:checked + .toggleSwitch::after {
+.toggle-checkbox:checked+.toggleSwitch::after {
   transform: translateX(26px);
   transition-duration: .2s;
   background-color: white;
 }
 
 /* Switch background change */
-.toggle-checkbox:checked + .toggleSwitch {
+.toggle-checkbox:checked+.toggleSwitch {
   background-color: var(--primary);
   transition-duration: .2s;
 }
@@ -2277,6 +2308,7 @@ body {
   #section-residents .stat-row {
     grid-template-columns: repeat(2, 1fr);
   }
+
   #section-residents .room-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -2785,18 +2817,23 @@ body {
   #resident-form-modal .form-grid {
     grid-template-columns: 1fr;
   }
+
   #resident-form-modal .upload-grid {
     grid-template-columns: 1fr;
   }
+
   #resident-form-modal .modal__head {
     padding: 18px 20px 14px;
   }
+
   #resident-form-modal .tabs {
     padding: 0 20px;
   }
+
   #resident-form-modal .modal__body {
     padding: 18px 20px 6px;
   }
+
   #resident-form-modal .modal__foot {
     padding: 14px 20px;
   }
@@ -3064,6 +3101,7 @@ body {
     opacity: 0;
     transform: scale(0.96);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -3248,6 +3286,7 @@ body {
   from {
     transform: scale(1);
   }
+
   to {
     transform: scale(1.04);
   }
@@ -3567,4 +3606,488 @@ body {
 }
 
 
-
+
+
+/* ============================================================
+   TÙY CHỌN GỬI THÀNH PHẦN & TÙY CHỈNH MẪU TIN NHẮN ZALO (SETTINGS)
+   Thiết kế 3 options theo ảnh tham khảo + Editor & Live Preview
+   ============================================================ */
+.zalo-send-options-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  margin-top: 14px;
+}
+
+.zalo-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  user-select: none;
+  background: #ffffff;
+  transition: background 0.15s ease;
+}
+
+.zalo-option-row:last-child {
+  border-bottom: none;
+}
+
+.zalo-option-row:hover {
+  background: #f8fafc;
+}
+
+.zalo-option-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.zalo-option-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: transparent;
+  transition: transform 0.15s ease;
+}
+
+.zalo-option-icon.green {
+  color: #16a34a;
+}
+
+.zalo-option-row:hover .zalo-option-icon {
+  transform: scale(1.08);
+}
+
+.zalo-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.zalo-option-title {
+  font-size: 15.5px;
+  font-weight: 600;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.zalo-option-desc {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.zalo-option-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.zalo-custom-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.custom-check-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid #d1d5db;
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  box-sizing: border-box;
+}
+
+.custom-check-circle svg {
+  opacity: 0;
+  transform: scale(0.6);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.zalo-custom-checkbox:checked+.custom-check-circle {
+  background: #111827;
+  border-color: #111827;
+}
+
+.zalo-custom-checkbox:checked+.custom-check-circle svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.zalo-option-row:hover .custom-check-circle {
+  border-color: #94a3b8;
+}
+
+/* KHU VỰC TÙY CHỈNH MẪU TIN NHẮN (COLLAPSIBLE / VISIBLE) */
+.zalo-template-customizer {
+  margin-top: 18px;
+  padding: 22px;
+  border-radius: var(--radius-lg, 14px);
+  background: #f8fafc;
+  border: 1px solid var(--border-color, #cbd5e1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: all 0.3s ease;
+}
+
+.template-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.template-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary-dark, #075985);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-text-action {
+  background: transparent;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--primary, #0284c7);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-text-action:hover {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+/* VARIABLE CHIPS CONTAINER */
+.template-variables-container {
+  margin-bottom: 14px;
+}
+
+.variable-help-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted, #64748b);
+  margin-bottom: 8px;
+}
+
+.variable-chips-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.variable-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.group-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  min-width: 68px;
+  padding-top: 4px;
+}
+
+.group-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.var-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+  line-height: 1.4;
+}
+
+.var-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  filter: brightness(0.95);
+}
+
+.var-chip:active {
+  transform: translateY(0);
+}
+
+/* CHIP COLOR CATEGORIES */
+.var-chip.chip-blue {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.var-chip.chip-green {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.var-chip.chip-indigo {
+  background: #eef2ff;
+  color: #4338ca;
+  border-color: #c7d2fe;
+}
+
+.var-chip.chip-amber {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.var-chip.chip-cyan {
+  background: #ecfeff;
+  color: #0e7490;
+  border-color: #a5f3fc;
+}
+
+.var-chip.chip-purple {
+  background: #faf5ff;
+  color: #7e22ce;
+  border-color: #e9d5ff;
+}
+
+.var-chip.chip-gray {
+  background: #f1f5f9;
+  color: #475467;
+  border-color: #cbd5e1;
+}
+
+/* OVERLAID HIGHLIGHT EDITOR */
+.zalo-editor-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 220px;
+  border-radius: var(--radius-md, 10px);
+  background: #ffffff;
+  border: 1px solid var(--border-color, #cbd5e1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.zalo-editor-wrapper:focus-within {
+  border-color: var(--primary, #0284c7);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.zalo-editor-backdrop,
+.zalo-editor-textarea {
+  font-family: var(--font-family, 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: 0;
+  word-spacing: 0;
+  padding: 14px 16px;
+  margin: 0;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-word;
+  font-variant-ligatures: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.zalo-editor-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  color: transparent;
+  pointer-events: none;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  z-index: 1;
+  user-select: none;
+  border: none;
+}
+
+.zalo-editor-textarea {
+  position: relative;
+  width: 100%;
+  min-height: 230px;
+  background: transparent;
+  color: var(--text-main, #0f172a);
+  border: none;
+  outline: none;
+  resize: vertical;
+  z-index: 2;
+  display: block;
+}
+
+/* BACKDROP VARIABLE HIGHLIGHTS (Không padding/border ngang để KHÔNG làm lệch chữ) */
+.editor-var-chip {
+  background: #dbeafe;
+  color: transparent;
+  border-radius: 3px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  box-shadow: 0 0 0 1px #93c5fd;
+  display: inline;
+}
+
+.editor-var-invalid {
+  background: #fee2e2;
+  color: transparent;
+  border-radius: 3px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  box-shadow: 0 0 0 1px #f87171;
+  text-decoration: underline wavy #dc2626;
+  display: inline;
+}
+
+/* WARNING BANNER */
+.zalo-var-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #b91c1c;
+  font-size: 12.5px;
+  font-weight: 500;
+  margin-top: 10px;
+  animation: fadeIn 0.2s ease;
+}
+
+.zalo-var-warning svg {
+  flex-shrink: 0;
+  color: #dc2626;
+}
+
+/* LIVE PREVIEW SECTION */
+.zalo-preview-section {
+  margin-top: 20px;
+  border-top: 1px solid var(--border-light, #e2e8f0);
+  padding-top: 16px;
+}
+
+.preview-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.preview-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main, #0f172a);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.preview-title svg {
+  color: var(--primary, #0284c7);
+}
+
+.preview-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.preview-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+}
+
+.preview-select {
+  padding: 5px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  background: #ffffff;
+  color: var(--text-main, #0f172a);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.preview-select:focus {
+  border-color: var(--primary, #0284c7);
+}
+
+
+.zalo-message-bubble-wrap {
+  max-width: 100%;
+  width: 100%;
+  margin: 0 auto;
+  /* Căn giữa hoàn toàn, margin 2 bên viền đều nhau */
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: 0 2px 8px rgba(0, 50, 120, 0.06);
+  border: 1px solid #dbeafe;
+  box-sizing: border-box;
+}
+
+.zalo-preview-bubble {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #1e293b;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.zalo-preview-footer {
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: right;
+  margin-top: 8px;
+  border-top: 1px dashed #f1f5f9;
+  padding-top: 4px;
+}

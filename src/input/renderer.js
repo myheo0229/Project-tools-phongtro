@@ -174,7 +174,11 @@ async function loadSettingsFile() {
             enableAnomalyPopup: data.enableAnomalyPopup !== undefined ? data.enableAnomalyPopup : true,
             bankName: data.bankName || "",
             bankAccount: data.bankAccount || "",
-            bankOwner: data.bankOwner || ""
+            bankOwner: data.bankOwner || "",
+            zaloSendReceiptImage: data.zaloSendReceiptImage !== undefined ? data.zaloSendReceiptImage : true,
+            zaloSendPaymentQr: data.zaloSendPaymentQr !== undefined ? data.zaloSendPaymentQr : true,
+            zaloSendMessageText: data.zaloSendMessageText !== undefined ? data.zaloSendMessageText : true,
+            zaloMessageTemplate: data.zaloMessageTemplate !== undefined ? data.zaloMessageTemplate : ""
           };
           return;
         }
@@ -419,21 +423,84 @@ function switchTab(tabName) {
   forceSwitchTab(tabName);
 }
 
-function forceSwitchTab(tabName) {
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+const TAB_KEYS = ['data', 'settings', 'residents'];
+let tabTransitionTimeout = null;
 
-  if (tabName === 'data') {
-    document.getElementById('tab-btn-data').classList.add('active');
-    document.getElementById('section-data').classList.add('active');
-  } else if (tabName === 'settings') {
-    document.getElementById('tab-btn-settings').classList.add('active');
-    document.getElementById('section-settings').classList.add('active');
-  } else if (tabName === 'residents') {
-    document.getElementById('tab-btn-residents').classList.add('active');
-    document.getElementById('section-residents').classList.add('active');
+function forceSwitchTab(tabName) {
+  const newSection = document.getElementById(`section-${tabName}`);
+  if (!newSection) return;
+
+  // Cập nhật trạng thái active của các nút trên Header ngay lập tức
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  const targetBtn = document.getElementById(`tab-btn-${tabName}`);
+  if (targetBtn) targetBtn.classList.add('active');
+
+  // Tìm section đang hiển thị hiện tại
+  const oldSection = document.querySelector('.tab-content.active');
+
+  // Nếu chuyển vào đúng tab đang hiển thị thì không cần chạy lại hiệu ứng
+  if (oldSection === newSection) return;
+
+  // Nếu đang có hiệu ứng chuyển tab dở dang thì dọn dẹp sạch sẽ ngay
+  if (tabTransitionTimeout) {
+    clearTimeout(tabTransitionTimeout);
+    tabTransitionTimeout = null;
+  }
+  document.querySelectorAll('.tab-content').forEach(s => {
+    s.classList.remove('page-out', 'page-in');
+    s.style.removeProperty('--dir');
+    s.style.removeProperty('margin-top');
+  });
+
+  // Nếu chưa có tab active nào (khi mở ứng dụng lần đầu)
+  if (!oldSection) {
+    document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
+    newSection.classList.add('active');
+    if (tabName === 'residents') initResidentsSection();
+    return;
+  }
+
+  // Xác định hướng di chuyển: 1 (tiến) hoặc -1 (lùi)
+  const oldTabKey = oldSection.id.replace('section-', '');
+  const oldIdx = TAB_KEYS.indexOf(oldTabKey);
+  const newIdx = TAB_KEYS.indexOf(tabName);
+  const dir = (newIdx >= oldIdx) ? 1 : -1;
+
+  // Khởi tạo trước dữ liệu cư dân nếu chuyển vào tab Phần 3
+  if (tabName === 'residents') {
     initResidentsSection();
   }
+
+  // Lấy vị trí cuộn hiện tại của trang cũ
+  const currentScrollY = window.scrollY || window.pageYOffset || 0;
+
+  // Đưa màn hình về đầu trang tức thì (không có hiệu ứng cuộn kéo lên)
+  // để trang mới lập tức hiển thị từ vị trí trên cùng
+  if (currentScrollY > 0) {
+    window.scrollTo(0, 0);
+    // Giữ nguyên vị trí khung nhìn của trang cũ tại vị trí người dùng đang xem trong lúc mờ dần
+    oldSection.style.marginTop = `-${currentScrollY}px`;
+  }
+
+  // Thiết lập biến hướng --dir cho 2 section
+  oldSection.style.setProperty('--dir', dir);
+  newSection.style.setProperty('--dir', dir);
+
+  // Kích hoạt hiệu ứng chuyển trang nhòe mờ (page-out & page-in)
+  oldSection.classList.add('page-out');
+  newSection.classList.add('active', 'page-in');
+
+  // Sau khi kết thúc thời gian hiệu ứng 700ms, dọn dẹp class và biến CSS
+  tabTransitionTimeout = setTimeout(() => {
+    oldSection.classList.remove('active', 'page-out');
+    oldSection.style.removeProperty('--dir');
+    oldSection.style.removeProperty('margin-top');
+
+    newSection.classList.remove('page-in');
+    newSection.style.removeProperty('--dir');
+
+    tabTransitionTimeout = null;
+  }, 700);
 }
 
 /**
@@ -472,6 +539,25 @@ function initSettingsForm() {
   if (anomalyCheck) {
     anomalyCheck.checked = appSettings.enableAnomalyPopup !== false;
   }
+
+  // Khởi tạo tùy chọn thành phần gửi Zalo & Mẫu tin nhắn
+  const zaloReceiptCheck = document.getElementById('set-zaloSendReceiptImage');
+  if (zaloReceiptCheck) {
+    zaloReceiptCheck.checked = appSettings.zaloSendReceiptImage !== false;
+  }
+  const zaloQrCheck = document.getElementById('set-zaloSendPaymentQr');
+  if (zaloQrCheck) {
+    zaloQrCheck.checked = appSettings.zaloSendPaymentQr !== false;
+  }
+  const zaloTextCheck = document.getElementById('set-zaloSendMessageText');
+  if (zaloTextCheck) {
+    zaloTextCheck.checked = appSettings.zaloSendMessageText !== false;
+  }
+  const tmplInput = document.getElementById('zalo-template-input');
+  if (tmplInput) {
+    tmplInput.value = appSettings.zaloMessageTemplate || DEFAULT_ZALO_TEMPLATE;
+  }
+  initZaloTemplateCustomizerUI();
 
   const bankAccountInput = document.getElementById('set-bankAccount');
   if (bankAccountInput) {
@@ -1194,6 +1280,18 @@ async function saveSettings(event) {
   const bankOwnerInput = document.getElementById('set-bankOwner');
   if (bankOwnerInput) appSettings.bankOwner = bankOwnerInput.value.trim();
 
+  const zaloReceiptCheck = document.getElementById('set-zaloSendReceiptImage');
+  if (zaloReceiptCheck) appSettings.zaloSendReceiptImage = zaloReceiptCheck.checked;
+
+  const zaloQrCheck = document.getElementById('set-zaloSendPaymentQr');
+  if (zaloQrCheck) appSettings.zaloSendPaymentQr = zaloQrCheck.checked;
+
+  const zaloTextCheck = document.getElementById('set-zaloSendMessageText');
+  if (zaloTextCheck) appSettings.zaloSendMessageText = zaloTextCheck.checked;
+
+  const tmplInput = document.getElementById('zalo-template-input');
+  if (tmplInput) appSettings.zaloMessageTemplate = tmplInput.value;
+
   const ok = await saveSettingsFile();
 
   if (!ok) {
@@ -1618,6 +1716,26 @@ function closeAnomalyModal() {
 let isSettingsDirty = false;
 let isBankDirty = false;
 let pendingActionAfterUnsavedModal = null;
+
+const DEFAULT_ZALO_TEMPLATE = `📋 HÓA ĐƠN PHÒNG {phong} - THÁNG {thang}/{nam}
+
+💰 TỔNG: {tongCong} đ
+
+💳 THÔNG TIN CHUYỂN KHOẢN
+- Ngân hàng: {bankName}
+- Số tài khoản: {bankAccount}
+- Chủ tài khoản: {bankOwner}
+- ND CK: {noiDungCK}
+
+(Chi tiết xem ảnh phiếu thu đính kèm)`;
+
+const ZALO_VALID_VARIABLES = [
+  'phong', 'thang', 'nam', 'tongCong', 'tenChuPhong', 'sdt', 'sdtZalo',
+  'bankName', 'bankAccount', 'bankOwner', 'noiDungCK',
+  'tienPhong', 'tienRac', 'tienInternet',
+  'dienCu', 'dienMoi', 'dienKwh', 'giaDien', 'tienDien', 'haoTaiKwh', 'tienHaoTai',
+  'nuocCu', 'nuocMoi', 'nuocKhoi', 'giaNuoc', 'tienNuoc'
+];
 
 function markSettingsDirty() {
   isSettingsDirty = true;
@@ -3659,10 +3777,19 @@ function closeZaloSelectRoomsModal() {
 async function executeSendZaloReceipts() {
   if (selectedZaloRooms.size === 0) return;
 
+  const sendReceiptImg = appSettings ? (appSettings.zaloSendReceiptImage !== false) : true;
+  const sendPaymentQr = appSettings ? (appSettings.zaloSendPaymentQr !== false) : true;
+  const sendMessageText = appSettings ? (appSettings.zaloSendMessageText !== false) : true;
+
+  if (!sendReceiptImg && !sendPaymentQr && !sendMessageText) {
+    showToast('Bạn đã tắt toàn bộ 3 thành phần gửi Zalo (ảnh phiếu, QR, tin nhắn). Vui lòng vào Cài Đặt Chung để bật ít nhất 1 thành phần!', 'warning');
+    return;
+  }
+
   const monthYearSelect = document.getElementById('month-year-select');
   const monthKey = monthYearSelect ? monthYearSelect.value : '';
 
-  // Thu thập danh sách tác vụ gửi cho các phòng đã chọn
+  // Thu thập danh sách tác vụ gửi cho các phòng đã chọn kèm toàn bộ biến tính toán
   const roomTasks = [];
   for (const phong of selectedZaloRooms) {
     const room = roomsData.find(r => r.phong === phong);
@@ -3689,7 +3816,22 @@ async function executeSendZaloReceipts() {
       tenChuPhong: hostResident ? hostResident.hoTen : (roomInfo?.tenKhach || ''),
       sdtZalo: hostResident ? (hostResident.sdtZalo || hostResident.sdtGoi || '') : '',
       sdtGoi: hostResident ? (hostResident.sdtGoi || '') : '',
-      tongCong: (isFullyEntered && calc) ? calc.tongCong : 0
+      tongCong: (isFullyEntered && calc) ? calc.tongCong : 0,
+      dienCu: room.dienCu !== undefined ? room.dienCu : 0,
+      dienMoi: room.dienMoi !== undefined ? room.dienMoi : 0,
+      dienKwh: calc ? calc.dienKwh : 0,
+      giaDien: calc ? calc.giaDien : (appSettings.giaDien || 0),
+      tienDien: calc ? calc.tienDien : 0,
+      nuocCu: room.nuocCu !== undefined ? room.nuocCu : 0,
+      nuocMoi: room.nuocMoi !== undefined ? room.nuocMoi : 0,
+      nuocKhoi: calc ? calc.nuocKhoi : 0,
+      giaNuoc: calc ? calc.giaNuoc : (appSettings.giaNuoc || 0),
+      tienNuoc: calc ? calc.tienNuoc : 0,
+      tienPhong: calc ? calc.tienPhong : (appSettings.giaPhong || 0),
+      tienRac: calc ? calc.rac : (appSettings.tienRac || 0),
+      tienInternet: calc ? calc.internet : (appSettings.tienInternet || 0),
+      haoTaiKwh: calc ? calc.haoTaiKwh : 0,
+      tienHaoTai: calc ? calc.tienHaoTai : 0
     });
   }
 
@@ -4457,6 +4599,339 @@ window.cancelZaloQrLogin = cancelZaloQrLogin;
 window.retryZaloQrLogin = retryZaloQrLogin;
 window.removeVietnameseTones = removeVietnameseTones;
 window.saveBankSettings = saveBankSettings;
+window.toggleZaloSendOption = toggleZaloSendOption;
+window.onZaloOptionCheckboxChange = onZaloOptionCheckboxChange;
+window.onZaloOptionChange = onZaloOptionChange;
+window.insertVariableIntoTemplate = insertVariableIntoTemplate;
+window.onZaloTemplateInput = onZaloTemplateInput;
+window.syncZaloEditorScroll = syncZaloEditorScroll;
+window.resetZaloTemplateToDefault = resetZaloTemplateToDefault;
+window.initZaloTemplateCustomizerUI = initZaloTemplateCustomizerUI;
+window.updateZaloLivePreview = updateZaloLivePreview;
+
+/** ============================================================
+ * TÙY CHỌN GỬI THÀNH PHẦN & TÙY CHỈNH MẪU TIN NHẮN ZALO
+ * ============================================================ */
+
+/**
+ * Click vào dòng tùy chọn gửi để bật/tắt checkbox
+ */
+function toggleZaloSendOption(type) {
+  let chk = null;
+  if (type === 'receipt') chk = document.getElementById('set-zaloSendReceiptImage');
+  else if (type === 'qr') chk = document.getElementById('set-zaloSendPaymentQr');
+  else if (type === 'text') chk = document.getElementById('set-zaloSendMessageText');
+
+  if (chk) {
+    chk.checked = !chk.checked;
+    onZaloOptionChange(true);
+  }
+}
+
+/**
+ * Click trực tiếp vào checkbox
+ */
+function onZaloOptionCheckboxChange(type) {
+  onZaloOptionChange(true);
+}
+
+/**
+ * Cập nhật giao diện khi thay đổi tùy chọn gửi
+ */
+function onZaloOptionChange(markDirty = true) {
+  const chkReceipt = document.getElementById('set-zaloSendReceiptImage');
+  const chkQr = document.getElementById('set-zaloSendPaymentQr');
+  const chkText = document.getElementById('set-zaloSendMessageText');
+
+  const customizer = document.getElementById('zalo-template-customizer');
+  const isTextChecked = chkText ? chkText.checked : true;
+
+  if (customizer) {
+    customizer.style.display = isTextChecked ? 'block' : 'none';
+  }
+
+  if (markDirty) {
+    markSettingsDirty();
+  }
+
+  if (isTextChecked) {
+    const tmplInput = document.getElementById('zalo-template-input');
+    if (tmplInput) {
+      onZaloTemplateInput(tmplInput, false);
+    }
+  }
+}
+
+/**
+ * Chèn biến vào vị trí con trỏ trong ô soạn thảo
+ */
+function insertVariableIntoTemplate(varKey) {
+  const textarea = document.getElementById('zalo-template-input');
+  if (!textarea) return;
+
+  const varTag = `{${varKey}}`;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const oldText = textarea.value;
+
+  const newText = oldText.substring(0, start) + varTag + oldText.substring(end);
+  textarea.value = newText;
+
+  // Đặt lại con trỏ ngay sau biến vừa chèn
+  const newPos = start + varTag.length;
+  textarea.focus();
+  textarea.setSelectionRange(newPos, newPos);
+
+  onZaloTemplateInput(textarea, true);
+  markSettingsDirty();
+}
+
+/**
+ * Xử lý khi gõ/thay đổi văn bản trong ô soạn thảo
+ */
+function onZaloTemplateInput(textarea, markDirty = true) {
+  if (!textarea) return;
+  const text = textarea.value;
+
+  // 1. Cập nhật backdrop làm nổi bật thẻ biến
+  updateZaloEditorBackdrop(text);
+
+  // 2. Kiểm tra biến không hợp lệ
+  validateZaloTemplateVariables(text);
+
+  // 3. Cập nhật xem trước trực tiếp (Live Preview)
+  updateZaloLivePreview();
+
+  if (markDirty) {
+    markSettingsDirty();
+  }
+}
+
+/**
+ * Cập nhật lớp hiển thị màu sắc biến (Backdrop)
+ */
+function updateZaloEditorBackdrop(text) {
+  const backdrop = document.getElementById('zalo-editor-backdrop');
+  if (!backdrop) return;
+
+  // Escape HTML để bảo mật
+  let safe = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Biến hợp lệ -> chip xanh; Biến không hợp lệ -> chip đỏ
+  safe = safe.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) => {
+    if (ZALO_VALID_VARIABLES.includes(key)) {
+      return `<span class="editor-var-chip">{${key}}</span>`;
+    } else {
+      return `<span class="editor-var-invalid">{${key}}</span>`;
+    }
+  });
+
+  // Xử lý dòng cuối cùng có dấu xuống dòng
+  if (safe.endsWith('\n')) {
+    safe += '<br>&nbsp;';
+  }
+
+  backdrop.innerHTML = safe;
+}
+
+/**
+ * Đồng bộ cuộn giữa textarea và backdrop
+ */
+function syncZaloEditorScroll(textarea) {
+  const backdrop = document.getElementById('zalo-editor-backdrop');
+  if (backdrop && textarea) {
+    backdrop.scrollTop = textarea.scrollTop;
+    backdrop.scrollLeft = textarea.scrollLeft;
+  }
+}
+
+/**
+ * Kiểm tra các biến không hợp lệ và hiển thị cảnh báo
+ */
+function validateZaloTemplateVariables(text) {
+  const warningBanner = document.getElementById('zalo-var-warning-banner');
+  const warningText = document.getElementById('zalo-var-warning-text');
+  if (!warningBanner || !warningText) return;
+
+  const matches = text.match(/\{([a-zA-Z0-9_]+)\}/g) || [];
+  const invalidKeys = [];
+
+  for (const m of matches) {
+    const key = m.slice(1, -1);
+    if (!ZALO_VALID_VARIABLES.includes(key) && !invalidKeys.includes(key)) {
+      invalidKeys.push(key);
+    }
+  }
+
+  if (invalidKeys.length > 0) {
+    warningText.textContent = `Phát hiện biến không hợp lệ: {${invalidKeys.join('}, {')}}. Các biến này sẽ không được thay thế bằng dữ liệu thực tế.`;
+    warningBanner.style.display = 'flex';
+  } else {
+    warningBanner.style.display = 'none';
+  }
+}
+
+/**
+ * Khôi phục mẫu tin nhắn về mặc định của hệ thống
+ */
+function resetZaloTemplateToDefault() {
+  const textarea = document.getElementById('zalo-template-input');
+  if (!textarea) return;
+
+  textarea.value = DEFAULT_ZALO_TEMPLATE;
+  onZaloTemplateInput(textarea, true);
+  showToast('Đã khôi phục mẫu tin nhắn mặc định của hệ thống!', 'info');
+  markSettingsDirty();
+}
+
+/**
+ * Khởi tạo các dropdown xem trước trong Settings
+ */
+function initZaloTemplateCustomizerUI() {
+  const roomSelect = document.getElementById('preview-room-select');
+  if (roomSelect && roomSelect.options.length === 0) {
+    DEFAULT_ROOM_NAMES.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = `Phòng ${p}`;
+      roomSelect.appendChild(opt);
+    });
+  }
+
+  const monthSelect = document.getElementById('preview-month-select');
+  const mainMonthSelect = document.getElementById('month-year-select');
+  if (monthSelect) {
+    monthSelect.innerHTML = '';
+    if (mainMonthSelect && mainMonthSelect.options.length > 0) {
+      Array.from(mainMonthSelect.options).forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.textContent = opt.textContent;
+        monthSelect.appendChild(o);
+      });
+      monthSelect.value = mainMonthSelect.value;
+    } else {
+      const o = document.createElement('option');
+      o.value = '2026-07';
+      o.textContent = 'Tháng 07 / 2026';
+      monthSelect.appendChild(o);
+    }
+  }
+
+  onZaloOptionChange(false);
+}
+
+/**
+ * Cập nhật nội dung xem trước tin nhắn Zalo trực tiếp (Live Preview)
+ */
+function updateZaloLivePreview() {
+  const bubble = document.getElementById('zalo-preview-bubble');
+  if (!bubble) return;
+
+  const textarea = document.getElementById('zalo-template-input');
+  const template = (textarea ? textarea.value : '') || DEFAULT_ZALO_TEMPLATE;
+
+  const roomSelect = document.getElementById('preview-room-select');
+  const monthSelect = document.getElementById('preview-month-select');
+  const targetRoomName = roomSelect ? roomSelect.value : '1A';
+  const targetMonthKey = monthSelect ? monthSelect.value : (document.getElementById('month-year-select')?.value || '2026-07');
+
+  const [yyyy, mm] = targetMonthKey.split('-');
+
+  // Lấy dữ liệu phòng mục tiêu
+  const room = roomsData.find(r => r.phong === targetRoomName) || { phong: targetRoomName, dienCu: 5000, dienMoi: 5080, nuocCu: 500, nuocMoi: 506 };
+  const roomInfo = (roomsList || []).find(r => r.phong === targetRoomName);
+  let hostResident = null;
+  if (roomInfo) {
+    if (roomInfo.chuPhong) {
+      hostResident = (residentsList || []).find(res => res.id === roomInfo.chuPhong);
+    }
+    if (!hostResident && roomInfo.cmnd) {
+      hostResident = (residentsList || []).find(res => res.cccd === roomInfo.cmnd);
+    }
+  }
+
+  const hasDienMoi = isNotEmpty(room.dienMoi);
+  const hasNuocMoi = isNotEmpty(room.nuocMoi);
+  const isFullyEntered = hasDienMoi && hasNuocMoi;
+  const calc = isFullyEntered ? calcRoom(room, appSettings) : calcRoom({
+    phong: targetRoomName,
+    dienCu: Number(room.dienCu) || 5000,
+    dienMoi: (Number(room.dienCu) || 5000) + 75,
+    nuocCu: Number(room.nuocCu) || 500,
+    nuocMoi: (Number(room.nuocCu) || 500) + 6,
+    tienPhong: appSettings.giaPhong || 2200000
+  }, appSettings);
+
+  const formatMoney = (val) => new Intl.NumberFormat('vi-VN').format(Number(val) || 0);
+  const formatNumber = (val) => new Intl.NumberFormat('vi-VN').format(Number(val) || 0);
+
+  // Lấy thông tin ngân hàng hiện tại trong Settings
+  const bankNameInput = document.getElementById('set-bankName');
+  const bankAccountInput = document.getElementById('set-bankAccount');
+  const bankOwnerInput = document.getElementById('set-bankOwner');
+
+  let currentBankCode = bankNameInput ? bankNameInput.value : (appSettings.bankName || '');
+  let bankShortName = currentBankCode;
+  if (window.VIETNAM_BANKS_MAP && window.VIETNAM_BANKS_MAP[currentBankCode]) {
+    bankShortName = window.VIETNAM_BANKS_MAP[currentBankCode].shortName || currentBankCode;
+  }
+  const currentBankAccount = bankAccountInput ? bankAccountInput.value : (appSettings.bankAccount || '');
+  const currentBankOwner = bankOwnerInput ? bankOwnerInput.value : (appSettings.bankOwner || '');
+
+  const tenChuPhong = hostResident ? hostResident.hoTen : (roomInfo?.tenKhach || 'Nguyễn Văn Thuê');
+  const sdt = hostResident ? (hostResident.sdtZalo || hostResident.sdtGoi || '0982141407') : '0982141407';
+
+  const previewValues = {
+    phong: targetRoomName,
+    tenChuPhong: tenChuPhong,
+    sdt: sdt,
+    sdtZalo: sdt,
+    thang: mm,
+    nam: yyyy,
+    tongCong: formatMoney(calc ? calc.tongCong : 0),
+    tienPhong: formatMoney(calc ? calc.tienPhong : appSettings.giaPhong),
+    tienRac: formatMoney(calc ? calc.rac : appSettings.tienRac),
+    tienInternet: formatMoney(calc ? calc.internet : appSettings.tienInternet),
+    dienCu: formatNumber(room.dienCu !== undefined ? room.dienCu : 5000),
+    dienMoi: formatNumber(room.dienMoi !== undefined ? room.dienMoi : 5075),
+    dienKwh: formatNumber(calc ? calc.dienKwh : 75),
+    giaDien: formatMoney(calc ? calc.giaDien : appSettings.giaDien),
+    tienDien: formatMoney(calc ? calc.tienDien : 217500),
+    nuocCu: formatNumber(room.nuocCu !== undefined ? room.nuocCu : 500),
+    nuocMoi: formatNumber(room.nuocMoi !== undefined ? room.nuocMoi : 506),
+    nuocKhoi: formatNumber(calc ? calc.nuocKhoi : 6),
+    giaNuoc: formatMoney(calc ? calc.giaNuoc : appSettings.giaNuoc),
+    tienNuoc: formatMoney(calc ? calc.tienNuoc : 72000),
+    haoTaiKwh: calc ? (calc.haoTaiKwh !== undefined ? String(calc.haoTaiKwh).replace('.', ',') : '5,3') : '5,3',
+    tienHaoTai: formatMoney(calc ? calc.tienHaoTai : 15000),
+    bankName: bankShortName || 'MB Bank',
+    bankAccount: currentBankAccount || '0982141407',
+    bankOwner: currentBankOwner || 'LE CONG BA NHAN',
+    noiDungCK: `${tenChuPhong} phong ${targetRoomName} thang ${mm}/${yyyy}`
+  };
+
+  let rendered = template.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) => {
+    if (Object.prototype.hasOwnProperty.call(previewValues, key)) {
+      return previewValues[key];
+    }
+    return match; // Giữ nguyên biến không hợp lệ để người dùng thấy
+  });
+
+  bubble.textContent = rendered;
+
+  const timeEl = document.getElementById('zalo-preview-time');
+  if (timeEl) {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    timeEl.textContent = `${hh}:${min} • Đã gửi qua Zalo`;
+  }
+}
+
 
 
 
