@@ -277,3 +277,13 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
 5. 🚫 **Luôn duy trì tính nhất quán khi tạo Component mới**:
    - Sử dụng lại các class CSS có sẵn: `.btn`, `.btn-primary`, `.btn-secondary`, `.stat-card`, `.modal-overlay`, `.modal-card`, `.custom-select`. Không tự tạo class mới có cùng mục đích.
 
+---
+
+## 9. Giao Diện Sao Lưu Dữ Liệu (Backup Data) & Modal Tiến Trình
+
+1. **Khu vực `SAO LƯU DỮ LIỆU (BACKUP DATA)` trong Cài Đặt (Khối bên trái)**:
+   - Đặt ngay bên dưới khối ô nhập đơn giá/số điện thoại và ngay phía trên mục `CẤU HÌNH POPUP THÔNG BÁO`.
+   - Bao gồm: Badge trạng thái Google Drive (`.backup-status-badge`: `disconnected`, `connected`, `checking`, `failed`), nút kiểm tra kết nối, khung cảnh báo sự cố tài khoản/Drive/mạng (`#backup-health-warning-box`), quản lý tài khoản Google, ô nhập/chọn thư mục đích trên Drive kèm hiển thị `Folder ID`, nút **Backup Data** (`.btn-backup-main`), trạng thái tiến trình inline và thẻ thông tin lần backup gần nhất.
+2. **Modal Tiến Trình Backup (`#backup-progress-modal`)**:
+   - Hiển thị chính giữa màn hình với lớp nền làm mờ (`.backup-blur-overlay` với `backdrop-filter: blur(7px)`), khóa toàn bộ thao tác nhập liệu phía sau trong suốt quá trình nén ZIP và tải lên Google Drive.
+   - Hiển thị thanh tiến độ phần trăm (`0% -> 100%`), danh sách 7 bước kiểm tra trực quan và hộp kết quả kèm nút mở nhanh thư mục sau khi hoàn tất.

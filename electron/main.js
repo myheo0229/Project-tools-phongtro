@@ -868,6 +868,155 @@ ipcMain.handle('zalo:send-receipts', async (event, { monthKey, roomTasks, appSet
   }
 });
 
+// ============================================================
+// BACKUP DATA (LOCAL ZIP + GOOGLE DRIVE API) IPC HANDLERS
+// ============================================================
+const backupConfig = require('./backup-config');
+const googleDriveService = require('./google-drive-service');
+const backupManager = require('./backup-manager');
+
+ipcMain.handle('backup:get-state', async (event, payload = {}) => {
+  const pointer = getPointer();
+  const baseFolder = (pointer && pointer.baseFolder) || (payload && payload.baseFolder) || '';
+  const runHealthCheck = Boolean(payload && payload.runHealthCheck);
+  return await backupManager.getBackupSystemState(baseFolder, runHealthCheck);
+});
+
+ipcMain.handle('backup:check-health', async () => {
+  const pointer = getPointer();
+  const baseFolder = pointer ? pointer.baseFolder : '';
+  return await backupManager.getBackupSystemState(baseFolder, true);
+});
+
+ipcMain.handle('backup:google-login', async () => {
+  try {
+    const pointer = getPointer();
+    const baseFolder = pointer ? pointer.baseFolder : '';
+    await googleDriveService.startOAuthLogin();
+    const state = await backupManager.getBackupSystemState(baseFolder, true);
+    return { ok: true, state };
+  } catch (err) {
+    return {
+      ok: false,
+      code: err.code || 'LOGIN_ERROR',
+      message: err.message || 'Đăng nhập Google Drive thất bại.'
+    };
+  }
+});
+
+ipcMain.handle('backup:google-cancel-login', async () => {
+  return googleDriveService.cancelOAuthLogin();
+});
+
+ipcMain.handle('backup:google-logout', async () => {
+  const pointer = getPointer();
+  const baseFolder = pointer ? pointer.baseFolder : '';
+  googleDriveService.disconnectGoogleAccount();
+  const state = await backupManager.getBackupSystemState(baseFolder, false);
+  return { ok: true, state };
+});
+
+ipcMain.handle('backup:configure-folder', async (event, rawInput) => {
+  try {
+    const pointer = getPointer();
+    const baseFolder = pointer ? pointer.baseFolder : '';
+    const res = await googleDriveService.configureTargetDriveFolder(rawInput);
+    const state = await backupManager.getBackupSystemState(baseFolder, true);
+    return { ok: true, ...res, state };
+  } catch (err) {
+    return {
+      ok: false,
+      code: err.code || 'FOLDER_ERROR',
+      message: err.message || 'Không thể cấu hình thư mục Google Drive.'
+    };
+  }
+});
+
+ipcMain.handle('backup:rename-folder', async (event, newName) => {
+  try {
+    const pointer = getPointer();
+    const baseFolder = pointer ? pointer.baseFolder : '';
+    const res = await googleDriveService.renameTargetDriveFolder(newName);
+    const state = await backupManager.getBackupSystemState(baseFolder, true);
+    return { ok: true, ...res, state };
+  } catch (err) {
+    return {
+      ok: false,
+      code: err.code || 'RENAME_FOLDER_ERROR',
+      message: err.message || 'Không thể đổi tên thư mục trên Google Drive.'
+    };
+  }
+});
+
+ipcMain.handle('backup:save-oauth-client', async (event, payload) => {
+  try {
+    const pointer = getPointer();
+    const baseFolder = pointer ? pointer.baseFolder : '';
+    const saved = backupConfig.saveOAuthClientCredentials(payload);
+    const state = await backupManager.getBackupSystemState(baseFolder, false);
+    return { ok: true, clientId: saved.clientId, state };
+  } catch (err) {
+    return { ok: false, message: err.message };
+  }
+});
+
+ipcMain.handle('backup:pick-oauth-json', async () => {
+  try {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Chọn file JSON OAuth Client (credentials.json) tải từ Google Cloud Console',
+      filters: [{ name: 'JSON Files', extensions: ['json'] }],
+      properties: ['openFile']
+    });
+    if (canceled || !filePaths || filePaths.length === 0) {
+      return { ok: false, canceled: true };
+    }
+    const raw = fs.readFileSync(filePaths[0], 'utf8');
+    const parsed = JSON.parse(raw);
+    const saved = backupConfig.saveOAuthClientCredentials(parsed);
+    const pointer = getPointer();
+    const baseFolder = pointer ? pointer.baseFolder : '';
+    const state = await backupManager.getBackupSystemState(baseFolder, false);
+    return { ok: true, clientId: saved.clientId, state };
+  } catch (err) {
+    return { ok: false, message: `File JSON không hợp lệ: ${err.message}` };
+  }
+});
+
+ipcMain.handle('backup:start', async (event, payload = {}) => {
+  const pointer = getPointer();
+  const baseFolder = (pointer && pointer.baseFolder) || (payload && payload.baseFolder) || '';
+  const sendProgress = (prog) => {
+    if (event.sender && !event.sender.isDestroyed()) {
+      event.sender.send('backup:progress', prog);
+    }
+  };
+  return await backupManager.executeFullBackup({ baseFolder, sendProgress });
+});
+
+ipcMain.handle('backup:open-local-folder', async (event, payload = {}) => {
+  const pointer = getPointer();
+  const baseFolder = (pointer && pointer.baseFolder) || (payload && payload.baseFolder) || '';
+  if (!baseFolder || !fs.existsSync(baseFolder)) {
+    return { ok: false, message: 'Chưa cấu hình hoặc không tìm thấy thư mục dữ liệu gốc (BaseFolder).' };
+  }
+  const backupDataDir = path.join(path.resolve(baseFolder), 'BackupData');
+  if (!fs.existsSync(backupDataDir)) {
+    fs.mkdirSync(backupDataDir, { recursive: true });
+  }
+  await shell.openPath(backupDataDir);
+  return { ok: true, path: backupDataDir };
+});
+
+ipcMain.handle('backup:open-drive-folder', async () => {
+  const config = backupConfig.loadBackupConfig();
+  const folderId = config.driveBackupDataFolderId || config.targetDriveFolderId;
+  const url = folderId
+    ? `https://drive.google.com/drive/folders/${encodeURIComponent(folderId)}`
+    : 'https://drive.google.com/drive/my-drive';
+  await shell.openExternal(url);
+  return { ok: true, url };
+});
+
 app.whenReady().then(() => {
   createWindow();
 

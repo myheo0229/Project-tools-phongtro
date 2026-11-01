@@ -11,3 +11,12 @@ data/Thông tin người ở/
 **/Thông tin người ở/**
 **/zalo_session.json
 pointer.json
+
+# Thư mục sao lưu ZIP và cấu hình token riêng
+BackupData/
+**/BackupData/**
+*.zip
+*.zip.tmp
+backup-tokens.enc
+backup-config.json
+electron/google-oauth-client.json

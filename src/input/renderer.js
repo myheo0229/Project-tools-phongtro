@@ -436,6 +436,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Khởi tạo trạng thái và sự kiện Tích hợp Zalo
   initZaloIntegration();
+
+  // Khởi tạo hệ thống Sao lưu Dữ liệu (Local ZIP + Google Drive API)
+  initBackupSystem();
 });
 
 /**
@@ -478,8 +481,11 @@ function forceSwitchTab(tabName) {
   if (oldSection === newSection) return;
 
   // Tự động lưu dữ liệu Phần 1 nếu đang rời khỏi màn hình nhập liệu
-  if (oldSection && oldSection.id === 'section-input' && currentLoadedMonth) {
+  if (oldSection && (oldSection.id === 'section-data' || oldSection.id === 'section-input') && currentLoadedMonth) {
     autoSaveCurrentMonthData(currentLoadedMonth);
+  }
+  if (tabName === 'settings' && typeof refreshBackupSystemState === 'function') {
+    refreshBackupSystemState(true);
   }
 
   // Nếu chưa có tab active nào (khi mở ứng dụng lần đầu)
@@ -1470,6 +1476,9 @@ async function saveSettings(event) {
 
   roomsData.forEach((_, idx) => updateRowUI(idx));
   updateFooterTotals();
+  if (typeof refreshBackupSystemState === 'function') {
+    refreshBackupSystemState(false);
+  }
   showToast("Đã lưu cài đặt giá và thư mục lưu thành công!", 'success');
   return true;
 }
@@ -5197,3 +5206,783 @@ window.addEventListener('keydown', (e) => {
     }
   }
 });
+
+
+/* ============================================================
+   HỆ THỐNG SAO LƯU DỮ LIỆU (LOCAL ZIP + GOOGLE DRIVE API)
+   ============================================================ */
+let currentBackupState = null;
+let isBackupModalLocked = false;
+
+const BACKUP_STAGE_ORDER = [
+  'checking_config',
+  'preparing_data',
+  'compressing_zip',
+  'saving_local',
+  'connecting_drive',
+  'uploading',
+  'verifying'
+];
+
+function formatBytesRenderer(bytes) {
+  const num = Number(bytes) || 0;
+  if (num <= 0) return '0 B';
+  if (num < 1024) return `${num} B`;
+  if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`;
+  if (num < 1024 * 1024 * 1024) return `${(num / (1024 * 1024)).toFixed(2)} MB`;
+  return `${(num / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+async function initBackupSystem() {
+  if (!window.api) return;
+
+  if (typeof window.api.onBackupProgress === 'function') {
+    window.api.onBackupProgress((prog) => {
+      handleBackupProgressEvent(prog);
+    });
+  }
+
+  const folderInputEl = document.getElementById('backup-drive-folder-input');
+  if (folderInputEl && !folderInputEl.dataset.boundRenameEvents) {
+    folderInputEl.dataset.boundRenameEvents = '1';
+
+    folderInputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        folderInputEl.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        const existingName = currentBackupState && currentBackupState.targetDriveFolderName
+          ? currentBackupState.targetDriveFolderName
+          : '';
+        folderInputEl.value = existingName;
+        folderInputEl.blur();
+      }
+    });
+
+    folderInputEl.addEventListener('blur', (e) => {
+      const related = e.relatedTarget;
+      if (related && related.id && (
+        related.id === 'btn-backup-google-logout' ||
+        related.id === 'btn-backup-switch-account' ||
+        related.id === 'btn-backup-google-login' ||
+        related.id === 'btn-backup-google-cancel'
+      )) {
+        return;
+      }
+
+      setTimeout(() => {
+        const modal = document.getElementById('confirm-rename-drive-folder-modal');
+        if (modal && modal.style.display === 'flex') return;
+
+        const existingId = currentBackupState && currentBackupState.targetDriveFolderId
+          ? currentBackupState.targetDriveFolderId
+          : '';
+        const existingName = currentBackupState && currentBackupState.targetDriveFolderName
+          ? currentBackupState.targetDriveFolderName
+          : '';
+        const rawVal = folderInputEl.value.trim();
+
+        if (existingId) {
+          if (!rawVal) {
+            folderInputEl.value = existingName;
+            return;
+          }
+          if (rawVal !== existingName) {
+            handleConfigureDriveFolderClick('blur');
+          }
+        }
+      }, 60);
+    });
+  }
+
+  await refreshBackupSystemState(true);
+}
+
+function setBackupStatusBadgeUI(statusClass, statusText) {
+  const badgeEl = document.getElementById('backup-drive-status-badge');
+  const textEl = document.getElementById('backup-drive-status-text');
+  if (badgeEl) {
+    badgeEl.className = `backup-status-badge ${statusClass}`;
+  }
+  if (textEl) {
+    textEl.textContent = statusText;
+  }
+}
+
+async function refreshBackupSystemState(runHealthCheck = false) {
+  if (!window.api || typeof window.api.getBackupState !== 'function') return null;
+  try {
+    if (runHealthCheck) {
+      setBackupStatusBadgeUI('checking', 'Đang kiểm tra');
+    }
+    const state = await window.api.getBackupState({
+      baseFolder: appSettings.baseFolder || '',
+      runHealthCheck
+    });
+    currentBackupState = state;
+    renderBackupStateUI(state);
+    return state;
+  } catch (err) {
+    console.error('Lỗi khi tải trạng thái hệ thống Backup:', err);
+    setBackupStatusBadgeUI('failed', 'Kết nối thất bại');
+    return null;
+  }
+}
+
+function renderBackupStateUI(state) {
+  if (!state) return;
+
+  const health = state.health || null;
+  const email = state.connectedEmail || (health && health.email) || '';
+  const isConnected = Boolean(email) && (!health || (health.status !== 'disconnected' && health.status !== 'auth_failed'));
+
+  // 1. Trạng thái Google Drive Badge
+  if (health) {
+    if (health.status === 'connected') {
+      setBackupStatusBadgeUI('connected', 'Đã kết nối');
+    } else if (health.status === 'disconnected') {
+      setBackupStatusBadgeUI('disconnected', 'Chưa kết nối');
+    } else {
+      setBackupStatusBadgeUI('failed', health.statusText || 'Kết nối thất bại');
+    }
+  } else {
+    if (email) {
+      setBackupStatusBadgeUI('connected', 'Đã kết nối');
+    } else {
+      setBackupStatusBadgeUI('disconnected', 'Chưa kết nối');
+    }
+  }
+
+  // Hiển thị đường dẫn Local BackupData & Dung lượng trống Google Drive
+  const quotaTextEl = document.getElementById('backup-drive-quota-text');
+  if (quotaTextEl) {
+    const localPart = state.localBackupFolderPath
+      ? `Local: ${state.localBackupFolderPath}`
+      : 'Local: Chưa chọn BaseFolder';
+
+    let driveQuotaPart = '';
+    if (health && health.quota && !health.quota.isUnlimited && health.quota.limitBytes) {
+      const usedStr = formatBytesRenderer(health.quota.usageBytes);
+      const limitStr = formatBytesRenderer(health.quota.limitBytes);
+      const freeStr = formatBytesRenderer(health.quota.freeBytes);
+      driveQuotaPart = ` • Drive: Đã dùng ${usedStr} / ${limitStr} (Trống ${freeStr})`;
+    }
+    quotaTextEl.textContent = localPart + driveQuotaPart;
+  }
+
+  // Cảnh báo sức khỏe Tài khoản / Drive / Mạng
+  const warnBox = document.getElementById('backup-health-warning-box');
+  const warnText = document.getElementById('backup-health-warning-text');
+  if (warnBox && warnText) {
+    const warnings = (health && Array.isArray(health.warnings)) ? health.warnings : [];
+    if (warnings.length > 0) {
+      warnText.textContent = warnings.join(' | ');
+      warnBox.style.display = 'flex';
+    } else {
+      warnBox.style.display = 'none';
+      warnText.textContent = '';
+    }
+  }
+
+  // 2. Tài khoản Google
+  const emailEl = document.getElementById('backup-connected-email');
+  const btnLogin = document.getElementById('btn-backup-google-login');
+  const btnCancel = document.getElementById('btn-backup-google-cancel');
+  const btnSwitch = document.getElementById('btn-backup-switch-account');
+  const btnLogout = document.getElementById('btn-backup-google-logout');
+
+  if (emailEl) {
+    if (email) {
+      emailEl.textContent = state.connectedName ? `${email} (${state.connectedName})` : email;
+    } else {
+      emailEl.textContent = 'Chưa kết nối tài khoản Google';
+    }
+  }
+
+  if (btnCancel) btnCancel.style.display = 'none';
+  if (email && isConnected) {
+    if (btnLogin) btnLogin.style.display = 'none';
+    if (btnSwitch) btnSwitch.style.display = 'inline-flex';
+    if (btnLogout) btnLogout.style.display = 'inline-flex';
+  } else {
+    if (btnLogin) {
+      btnLogin.style.display = 'inline-flex';
+      btnLogin.disabled = false;
+    }
+    if (btnSwitch) btnSwitch.style.display = 'none';
+    if (btnLogout) btnLogout.style.display = email ? 'inline-flex' : 'none';
+  }
+
+  // 3. Thư mục backup trên Google Drive: chỉ hiển thị "Tên thư mục (Folder ID)"
+  const inlineDisplayEl = document.getElementById('backup-folder-inline-display');
+  const folderInputEl = document.getElementById('backup-drive-folder-input');
+
+  if (state.targetDriveFolderId) {
+    const fName = state.targetDriveFolderName || 'RoomManager_Backup';
+    if (inlineDisplayEl) {
+      inlineDisplayEl.innerHTML = '';
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = fName;
+      const idSpan = document.createElement('span');
+      idSpan.className = 'folder-id-paren';
+      idSpan.textContent = `(${state.targetDriveFolderId})`;
+      inlineDisplayEl.appendChild(nameSpan);
+      inlineDisplayEl.appendChild(idSpan);
+    }
+    if (folderInputEl && document.activeElement !== folderInputEl) {
+      folderInputEl.value = fName;
+    }
+  } else {
+    if (inlineDisplayEl) {
+      inlineDisplayEl.textContent = 'Chưa thiết lập thư mục';
+    }
+  }
+
+  // 4. Nút Backup Data
+  const btnBackupMain = document.getElementById('btn-trigger-backup-data');
+  if (btnBackupMain) {
+    btnBackupMain.disabled = Boolean(state.isBackupRunning);
+  }
+
+  // 6. Thông tin lần backup gần nhất
+  const last = state.lastBackupInfo;
+  const lastTimeEl = document.getElementById('backup-info-last-time');
+  const zipNameEl = document.getElementById('backup-info-zip-name');
+  const zipSizeEl = document.getElementById('backup-info-zip-size');
+  const uploadStatusEl = document.getElementById('backup-info-upload-status');
+  const completedTimeEl = document.getElementById('backup-info-completed-time');
+
+  if (last) {
+    if (lastTimeEl) lastTimeEl.textContent = last.lastBackupAt || '-';
+    if (zipNameEl) zipNameEl.textContent = last.zipFileName || '-';
+    if (zipSizeEl) zipSizeEl.textContent = last.zipSizeFormatted || formatBytesRenderer(last.zipSizeBytes);
+    if (uploadStatusEl) uploadStatusEl.textContent = last.uploadStatus || '-';
+    if (completedTimeEl) completedTimeEl.textContent = last.completedAt || '-';
+  } else {
+    if (lastTimeEl) lastTimeEl.textContent = 'Chưa có bản sao lưu nào';
+    if (zipNameEl) zipNameEl.textContent = '-';
+    if (zipSizeEl) zipSizeEl.textContent = '-';
+    if (uploadStatusEl) uploadStatusEl.textContent = '-';
+    if (completedTimeEl) completedTimeEl.textContent = '-';
+  }
+}
+
+/**
+ * Chủ động bấm nút "Kiểm tra" để kiểm tra kết nối mạng, tài khoản Google, dung lượng Drive và thư mục đích
+ */
+async function handleCheckBackupHealthClick() {
+  const btn = document.getElementById('btn-backup-check-health');
+  if (btn) btn.disabled = true;
+  setBackupStatusBadgeUI('checking', 'Đang kiểm tra');
+
+  try {
+    const state = await window.api.checkBackupDriveHealth();
+    currentBackupState = state;
+    renderBackupStateUI(state);
+
+    const health = state && state.health;
+    if (!health || health.status === 'disconnected') {
+      showToast('Chưa kết nối tài khoản Google Drive. Hãy nhấn "Đăng nhập Google".', 'info');
+    } else if (health.status === 'offline') {
+      showToast('Không có kết nối mạng Internet! Vui lòng kiểm tra Wi-Fi hoặc dây mạng.', 'error');
+    } else if (health.status === 'auth_failed') {
+      showToast(health.warnings[0] || 'Phiên đăng nhập Google đã hết hạn, vui lòng đăng nhập lại.', 'error');
+    } else if (health.warnings && health.warnings.length > 0) {
+      showToast(health.warnings[0], 'warning');
+    } else {
+      const freeText = (health.quota && health.quota.freeBytes)
+        ? ` (Còn trống ${formatBytesRenderer(health.quota.freeBytes)})`
+        : '';
+      showToast(`Kết nối Google Drive (${health.email}) hoạt động tốt!${freeText}`, 'success');
+    }
+  } catch (err) {
+    setBackupStatusBadgeUI('failed', 'Kết nối thất bại');
+    showToast(`Lỗi khi kiểm tra Google Drive: ${err.message}`, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/**
+ * Bấm nút "Đăng nhập Google" hoặc "Đổi tài khoản"
+ */
+async function handleGoogleLoginClick() {
+  if (!window.api) return;
+
+  // Kiểm tra xem đã có OAuth Client ID chưa
+  const latestState = await window.api.getBackupState({
+    baseFolder: appSettings.baseFolder || '',
+    runHealthCheck: false
+  });
+  if (latestState && !latestState.hasOAuthClient) {
+    openOAuthClientModal();
+    showToast('Vui lòng nạp file JSON hoặc nhập Google OAuth Client ID (chỉ cần thiết lập 1 lần).', 'info');
+    return;
+  }
+
+  const btnLogin = document.getElementById('btn-backup-google-login');
+  const btnCancel = document.getElementById('btn-backup-google-cancel');
+  if (btnLogin) btnLogin.disabled = true;
+  if (btnCancel) btnCancel.style.display = 'inline-flex';
+  setBackupStatusBadgeUI('checking', 'Đang kiểm tra');
+
+  showToast('Đã mở trình duyệt! Vui lòng chọn tài khoản Gmail và nhấn Cho phép...', 'info');
+
+  try {
+    const res = await window.api.startGoogleDriveLogin();
+    if (!res || !res.ok) {
+      if (res && res.code === 'MISSING_CLIENT_ID') {
+        openOAuthClientModal();
+      }
+      setBackupStatusBadgeUI('failed', 'Kết nối thất bại');
+      showToast((res && res.message) || 'Đăng nhập Google Drive không thành công.', 'warning');
+      await refreshBackupSystemState(false);
+      return;
+    }
+
+    currentBackupState = res.state;
+    renderBackupStateUI(res.state);
+    showToast(`Đã kết nối tài khoản Google (${res.state.connectedEmail}) thành công!`, 'success');
+  } catch (err) {
+    setBackupStatusBadgeUI('failed', 'Kết nối thất bại');
+    showToast(`Lỗi đăng nhập Google: ${err.message}`, 'error');
+  } finally {
+    if (btnLogin) btnLogin.disabled = false;
+    if (btnCancel) btnCancel.style.display = 'none';
+  }
+}
+
+async function handleCancelGoogleLoginClick() {
+  if (window.api && typeof window.api.cancelGoogleDriveLogin === 'function') {
+    await window.api.cancelGoogleDriveLogin();
+  }
+  const btnCancel = document.getElementById('btn-backup-google-cancel');
+  const btnLogin = document.getElementById('btn-backup-google-login');
+  if (btnCancel) btnCancel.style.display = 'none';
+  if (btnLogin) btnLogin.disabled = false;
+  await refreshBackupSystemState(false);
+}
+
+async function handleGoogleLogoutClick() {
+  if (!window.api || typeof window.api.disconnectGoogleDrive !== 'function') return;
+  const res = await window.api.disconnectGoogleDrive();
+  if (res && res.state) {
+    currentBackupState = res.state;
+    renderBackupStateUI(res.state);
+  }
+  const folderInputEl = document.getElementById('backup-drive-folder-input');
+  if (folderInputEl) folderInputEl.value = '';
+  showToast('Đã ngắt kết nối tài khoản Google Drive.', 'info');
+}
+
+let pendingRenameFolderName = '';
+
+/**
+ * Chọn hoặc Đổi tên thư mục đích trên Google Drive
+ * - Nếu đã có thư mục (targetDriveFolderId) và người dùng nhập tên mới -> Hiện Popup hỏi xác nhận đổi tên
+ * - Nếu người dùng bấm Hủy -> Khôi phục lại tên cũ trước đó vào ô nhập, không đổi tên và không tạo thư mục mới
+ */
+async function handleConfigureDriveFolderClick(source = 'button') {
+  if (!window.api || typeof window.api.configureDriveBackupFolder !== 'function') return;
+
+  const modal = document.getElementById('confirm-rename-drive-folder-modal');
+  if (modal && modal.style.display === 'flex') return;
+
+  const inputEl = document.getElementById('backup-drive-folder-input');
+  const existingId = currentBackupState && currentBackupState.targetDriveFolderId ? currentBackupState.targetDriveFolderId : '';
+  const existingName = currentBackupState && currentBackupState.targetDriveFolderName ? currentBackupState.targetDriveFolderName : '';
+
+  let rawVal = inputEl ? inputEl.value.trim() : '';
+
+  // Nếu đã có thư mục rồi mà người dùng xóa trắng ô nhập -> khôi phục lại tên cũ
+  if (existingId && !rawVal) {
+    if (inputEl) inputEl.value = existingName;
+    if (source === 'button') {
+      showToast('Đã giữ nguyên tên thư mục cũ.', 'info');
+    }
+    return;
+  }
+
+  // Nếu đã có thư mục và tên nhập vào trùng với tên hiện tại -> không cần đổi
+  if (existingId && rawVal === existingName) {
+    if (source === 'button') {
+      showToast(`Thư mục hiện tại đã là "${existingName}" (${existingId}).`, 'info');
+    }
+    return;
+  }
+
+  // Nếu đã có thư mục và người dùng nhập tên mới -> Hiện Modal hỏi xác nhận đổi tên!
+  if (existingId && rawVal !== existingName) {
+    pendingRenameFolderName = rawVal;
+    const oldNameEl = document.getElementById('rename-folder-old-name');
+    const newNameEl = document.getElementById('rename-folder-new-name');
+    const keepIdEl = document.getElementById('rename-folder-keep-id');
+
+    if (oldNameEl) oldNameEl.textContent = existingName || '(Chưa đặt tên)';
+    if (newNameEl) newNameEl.textContent = rawVal;
+    if (keepIdEl) keepIdEl.textContent = existingId;
+    if (modal) modal.style.display = 'flex';
+    return;
+  }
+
+  // Trường hợp chưa có thư mục nào trên Drive -> Khởi tạo thư mục lần đầu
+  if (!rawVal) {
+    rawVal = 'RoomManager_Backup';
+    if (inputEl) inputEl.value = rawVal;
+  }
+
+  const btnSave = document.getElementById('btn-backup-save-folder');
+  if (btnSave) {
+    btnSave.disabled = true;
+    btnSave.textContent = 'Đang xử lý...';
+  }
+
+  try {
+    const res = await window.api.configureDriveBackupFolder(rawVal);
+    if (!res || !res.ok) {
+      showToast((res && res.message) || 'Không thể chọn thư mục trên Google Drive.', 'error');
+      return;
+    }
+
+    if (res.state) {
+      currentBackupState = res.state;
+      renderBackupStateUI(res.state);
+    }
+    showToast(`Đã thiết lập thư mục: ${res.folderName} (${res.folderId})`, 'success');
+  } catch (err) {
+    showToast(`Lỗi cấu hình thư mục Drive: ${err.message}`, 'error');
+  } finally {
+    if (btnSave) {
+      btnSave.disabled = false;
+      btnSave.textContent = 'Đổi tên / Chọn thư mục';
+    }
+  }
+}
+
+/**
+ * Khi người dùng bấm "Hủy (Giữ tên cũ)" trên popup xác nhận đổi tên thư mục:
+ * Đóng popup và lấy lại đúng tên cũ trước đó trả về ô nhập
+ */
+function cancelRenameDriveFolderModal() {
+  pendingRenameFolderName = '';
+  const modal = document.getElementById('confirm-rename-drive-folder-modal');
+  if (modal) modal.style.display = 'none';
+
+  const existingName = currentBackupState && currentBackupState.targetDriveFolderName ? currentBackupState.targetDriveFolderName : '';
+  const inputEl = document.getElementById('backup-drive-folder-input');
+  if (inputEl) {
+    inputEl.value = existingName;
+  }
+  showToast(`Đã hủy đổi tên, giữ nguyên tên cũ "${existingName}".`, 'info');
+}
+
+/**
+ * Khi người dùng bấm "Xác nhận đổi tên" trên popup:
+ * Đổi tên trực tiếp trên đúng Folder ID hiện tại, tuyệt đối không tạo thêm thư mục mới
+ */
+async function confirmRenameDriveFolderModal() {
+  if (!pendingRenameFolderName || !window.api || typeof window.api.renameDriveBackupFolder !== 'function') {
+    cancelRenameDriveFolderModal();
+    return;
+  }
+
+  const targetNewName = pendingRenameFolderName;
+  const btnConfirm = document.getElementById('btn-confirm-rename-drive-folder');
+  if (btnConfirm) {
+    btnConfirm.disabled = true;
+    btnConfirm.textContent = 'Đang đổi tên...';
+  }
+
+  try {
+    const res = await window.api.renameDriveBackupFolder(targetNewName);
+    const modal = document.getElementById('confirm-rename-drive-folder-modal');
+    if (modal) modal.style.display = 'none';
+
+    if (!res || !res.ok) {
+      // Nếu lỗi thì khôi phục lại tên cũ vào ô nhập
+      const existingName = currentBackupState && currentBackupState.targetDriveFolderName ? currentBackupState.targetDriveFolderName : '';
+      const inputEl = document.getElementById('backup-drive-folder-input');
+      if (inputEl) inputEl.value = existingName;
+      showToast((res && res.message) || 'Không thể đổi tên thư mục trên Google Drive.', 'error');
+      return;
+    }
+
+    if (res.state) {
+      currentBackupState = res.state;
+      renderBackupStateUI(res.state);
+    }
+    showToast(`Đã đổi tên thư mục thành "${res.folderName}" (Giữ nguyên ID: ${res.folderId})!`, 'success');
+  } catch (err) {
+    const modal = document.getElementById('confirm-rename-drive-folder-modal');
+    if (modal) modal.style.display = 'none';
+    const existingName = currentBackupState && currentBackupState.targetDriveFolderName ? currentBackupState.targetDriveFolderName : '';
+    const inputEl = document.getElementById('backup-drive-folder-input');
+    if (inputEl) inputEl.value = existingName;
+    showToast(`Lỗi khi đổi tên thư mục: ${err.message}`, 'error');
+  } finally {
+    pendingRenameFolderName = '';
+    if (btnConfirm) {
+      btnConfirm.disabled = false;
+      btnConfirm.textContent = 'Xác nhận đổi tên';
+    }
+  }
+}
+
+/**
+ * Mở / đóng Modal Cấu hình OAuth Client ID
+ */
+function openOAuthClientModal() {
+  const modal = document.getElementById('oauth-client-config-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeOAuthClientModal() {
+  const modal = document.getElementById('oauth-client-config-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function handlePickOAuthJsonFile() {
+  if (!window.api || typeof window.api.pickGoogleOAuthJsonFile !== 'function') return;
+  const res = await window.api.pickGoogleOAuthJsonFile();
+  if (res && res.canceled) return;
+  if (!res || !res.ok) {
+    showToast((res && res.message) || 'Không thể nạp file JSON OAuth.', 'error');
+    return;
+  }
+  if (res.state) {
+    currentBackupState = res.state;
+    renderBackupStateUI(res.state);
+  }
+  closeOAuthClientModal();
+  showToast('Đã nạp cấu hình Google OAuth Client ID thành công! Bây giờ bạn có thể nhấn "Đăng nhập Google".', 'success');
+}
+
+async function handleSaveOAuthClientManual() {
+  const clientIdInput = document.getElementById('oauth-input-client-id');
+  const clientSecretInput = document.getElementById('oauth-input-client-secret');
+  const clientId = clientIdInput ? clientIdInput.value.trim() : '';
+  const clientSecret = clientSecretInput ? clientSecretInput.value.trim() : '';
+
+  if (!clientId) {
+    showToast('Vui lòng nhập Client ID hoặc chọn file JSON từ Google Cloud.', 'warning');
+    return;
+  }
+
+  const res = await window.api.saveGoogleOAuthClient({ clientId, clientSecret });
+  if (!res || !res.ok) {
+    showToast((res && res.message) || 'Lưu cấu hình OAuth thất bại.', 'error');
+    return;
+  }
+
+  if (res.state) {
+    currentBackupState = res.state;
+    renderBackupStateUI(res.state);
+  }
+  closeOAuthClientModal();
+  showToast('Đã lưu Google OAuth Client ID thành công!', 'success');
+}
+
+/**
+ * Cập nhật giao diện tiến trình (cả trên Modal giữa màn hình lẫn khung inline trong Settings)
+ */
+function handleBackupProgressEvent(prog) {
+  if (!prog) return;
+  const { stepKey, stepLabel, detailText, percent } = prog;
+
+  // 1. Cập nhật khung inline trong Settings
+  const inlineBox = document.getElementById('backup-inline-progress-box');
+  const inlineStep = document.getElementById('backup-inline-step-label');
+  const inlineDetail = document.getElementById('backup-inline-detail-text');
+
+  if (inlineBox) {
+    inlineBox.classList.remove('success', 'failed');
+    if (stepKey === 'success') inlineBox.classList.add('success');
+    if (stepKey === 'failed') inlineBox.classList.add('failed');
+  }
+  if (inlineStep) inlineStep.textContent = `${stepLabel} (${percent}%)`;
+  if (inlineDetail) inlineDetail.textContent = detailText || '';
+
+  // 2. Cập nhật Modal giữa màn hình
+  const stageBadge = document.getElementById('backup-modal-stage-label');
+  const percentEl = document.getElementById('backup-modal-percent');
+  const fillEl = document.getElementById('backup-modal-progress-fill');
+  const detailEl = document.getElementById('backup-modal-detail-text');
+
+  if (stageBadge) {
+    stageBadge.textContent = stepLabel || 'Đang xử lý';
+    stageBadge.classList.remove('success', 'failed');
+    if (stepKey === 'success') stageBadge.classList.add('success');
+    if (stepKey === 'failed') stageBadge.classList.add('failed');
+  }
+  if (percentEl) percentEl.textContent = `${percent}%`;
+  if (fillEl) {
+    fillEl.style.width = `${percent}%`;
+    fillEl.classList.toggle('failed', stepKey === 'failed');
+  }
+  if (detailEl) detailEl.textContent = detailText || '';
+
+  // Cập nhật danh sách 7 bước
+  const stepItems = document.querySelectorAll('#backup-modal-steps-list .backup-step-item');
+  const activeIdx = BACKUP_STAGE_ORDER.indexOf(stepKey);
+
+  stepItems.forEach((item) => {
+    const itemKey = item.getAttribute('data-step');
+    const itemIdx = BACKUP_STAGE_ORDER.indexOf(itemKey);
+    item.classList.remove('active', 'done', 'error');
+
+    if (stepKey === 'success') {
+      item.classList.add('done');
+    } else if (stepKey === 'failed') {
+      // Đánh dấu bước đã qua là done
+      if (percent >= 50 && itemIdx <= 3) {
+        item.classList.add('done');
+      } else {
+        item.classList.add('error');
+      }
+    } else if (activeIdx !== -1) {
+      if (itemIdx < activeIdx) {
+        item.classList.add('done');
+      } else if (itemIdx === activeIdx) {
+        item.classList.add('active');
+      }
+    }
+  });
+}
+
+function openBackupProgressModal() {
+  isBackupModalLocked = true;
+  const modal = document.getElementById('backup-progress-modal');
+  const footer = document.getElementById('backup-modal-footer');
+  const resBox = document.getElementById('backup-modal-result-box');
+  const titleEl = document.getElementById('backup-modal-title');
+  const subEl = document.getElementById('backup-modal-subtitle');
+
+  if (titleEl) titleEl.textContent = 'Đang Sao Lưu Dữ Liệu (Backup Data)';
+  if (subEl) subEl.textContent = 'Vui lòng không tắt phần mềm hoặc thao tác trong khi tiến trình đang xử lý...';
+  if (footer) footer.style.display = 'none';
+  if (resBox) resBox.style.display = 'none';
+
+  handleBackupProgressEvent({
+    stepKey: 'checking_config',
+    stepLabel: 'Đang kiểm tra cấu hình',
+    detailText: 'Đang lưu đồng bộ dữ liệu hiện tại và kiểm tra cấu hình...',
+    percent: 5
+  });
+
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeBackupProgressModal() {
+  if (isBackupModalLocked) return;
+  const modal = document.getElementById('backup-progress-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+/**
+ * Nút duy nhất kích hoạt quy trình Backup Data
+ * 1. Tự động lưu dữ liệu đang mở trên màn hình
+ * 2. Hiện Modal Progress giữa màn hình + làm mờ nền (background blur) khóa thao tác
+ * 3. Nén ZIP vào BaseFolder/BackupData/ trước -> Kiểm tra CRC32 -> Upload lên Google Drive API -> Xác minh
+ */
+async function handleTriggerBackupDataClick() {
+  if (!window.api || typeof window.api.startBackupData !== 'function') return;
+  if (isBackupModalLocked) return;
+
+  const baseFolderInput = document.getElementById('set-baseFolder');
+  const currentBaseFolder = (baseFolderInput && baseFolderInput.value.trim()) || appSettings.baseFolder || '';
+
+  if (!currentBaseFolder) {
+    showToast('Vui lòng chọn "Thư mục lưu ảnh & PDF phiếu thu" (BaseFolder) trước khi Backup Data!', 'error');
+    if (baseFolderInput) {
+      baseFolderInput.classList.add('input-error');
+      baseFolderInput.focus();
+    }
+    return;
+  }
+
+  const btnBackup = document.getElementById('btn-trigger-backup-data');
+  if (btnBackup) btnBackup.disabled = true;
+
+  // Mở ngay Modal Tiến trình giữa màn hình + làm mờ nền khóa nhập liệu
+  openBackupProgressModal();
+
+  try {
+    // Tự động lưu dữ liệu đang nhập trên màn hình xuống đĩa trước khi chụp snapshot nén ZIP
+    appSettings.baseFolder = currentBaseFolder;
+    await saveSettingsFile(true);
+    if (currentLoadedMonth) {
+      await autoSaveCurrentMonthData(currentLoadedMonth);
+    }
+
+    const result = await window.api.startBackupData({
+      baseFolder: currentBaseFolder
+    });
+
+    isBackupModalLocked = false;
+
+    const titleEl = document.getElementById('backup-modal-title');
+    const subEl = document.getElementById('backup-modal-subtitle');
+    const resBox = document.getElementById('backup-modal-result-box');
+    const resZipName = document.getElementById('backup-res-zip-name');
+    const resZipSize = document.getElementById('backup-res-zip-size');
+    const resStatus = document.getElementById('backup-res-status');
+    const footer = document.getElementById('backup-modal-footer');
+
+    if (footer) footer.style.display = 'flex';
+
+    if (result && result.lastBackupInfo && resBox) {
+      resBox.style.display = 'flex';
+      resBox.classList.toggle('failed', !result.ok);
+      if (resZipName) resZipName.textContent = result.lastBackupInfo.zipFileName || '-';
+      if (resZipSize) resZipSize.textContent = result.lastBackupInfo.zipSizeFormatted || '-';
+      if (resStatus) resStatus.textContent = result.lastBackupInfo.uploadStatus || '-';
+    }
+
+    if (result && result.ok) {
+      if (titleEl) titleEl.textContent = 'Backup dữ liệu thành công!';
+      if (subEl) subEl.textContent = 'Bản sao lưu đã được lưu tại BaseFolder/BackupData và tải lên Google Drive hoàn tất.';
+      showToast('Backup dữ liệu thành công!', 'success');
+    } else {
+      if (titleEl) {
+        titleEl.textContent = result && result.localSaved
+          ? 'Đã lưu ZIP tại máy (Chưa tải lên Google Drive)'
+          : 'Sao lưu dữ liệu không thành công';
+      }
+      if (subEl) {
+        subEl.textContent = (result && result.message) || 'Đã xảy ra lỗi trong quá trình sao lưu.';
+      }
+      showToast((result && result.message) || 'Sao lưu dữ liệu thất bại.', result && result.localSaved ? 'warning' : 'error');
+    }
+
+    await refreshBackupSystemState(false);
+  } catch (err) {
+    isBackupModalLocked = false;
+    const footer = document.getElementById('backup-modal-footer');
+    if (footer) footer.style.display = 'flex';
+    handleBackupProgressEvent({
+      stepKey: 'failed',
+      stepLabel: 'Thất bại',
+      detailText: err.message || 'Lỗi không xác định khi sao lưu.',
+      percent: 100
+    });
+    showToast(`Lỗi khi thực hiện Backup Data: ${err.message}`, 'error');
+  } finally {
+    if (btnBackup) btnBackup.disabled = false;
+  }
+}
+
+async function handleOpenLocalBackupFolderClick() {
+  if (!window.api || typeof window.api.openLocalBackupFolder !== 'function') return;
+  const res = await window.api.openLocalBackupFolder({
+    baseFolder: appSettings.baseFolder || ''
+  });
+  if (res && !res.ok) {
+    showToast(res.message || 'Không thể mở thư mục BackupData trên máy tính.', 'warning');
+  }
+}
+
+async function handleOpenDriveBackupFolderClick() {
+  if (!window.api || typeof window.api.openDriveBackupFolder !== 'function') return;
+  await window.api.openDriveBackupFolder();
+}

@@ -272,3 +272,25 @@ Các kênh IPC được phơi ra thông qua `window.api` trong `electron/preload
    - Địa chỉ: `https://img.mservice.com.vn/momo_app_v2/img/{BANK_CODE}.png`.
    - Nạp tự động vào dropdown tìm kiếm ngân hàng trong Tab Cài Đặt Chung.
 
+---
+
+## 7. Cấu Trúc Lưu Trữ & Kênh IPC Hệ Thống Backup Data
+
+### 7.1. File cấu hình & Token tại `app.getPath('userData')`
+1. **`backup-config.json`**:
+   - `connectedEmail`, `connectedName`: Thông tin tài khoản Google đang kết nối.
+   - `targetDriveFolderId`, `targetDriveFolderName`: Folder ID và tên thư mục đích trên Google Drive.
+   - `driveBackupDataFolderId`: Folder ID của thư mục con `BackupData` trên Google Drive.
+   - `localBackupFolderPath`: Đường dẫn `BaseFolder/BackupData` trên máy tính.
+   - `lastBackupInfo`: Thông tin lần sao lưu gần nhất (`lastBackupAt`, `zipFileName`, `zipSizeBytes`, `zipSizeFormatted`, `uploadStatus`, `completedAt`, `driveFileId`).
+2. **`backup-tokens.enc`**:
+   - Lưu `access_token`, `refresh_token`, `expiry_date` đã được mã hóa qua `safeStorage` (Windows DPAPI).
+
+### 7.2. Danh sách kênh IPC Backup
+- `backup:get-state`: Lấy trạng thái tổng hợp của hệ thống Backup.
+- `backup:check-health`: Kiểm tra kết nối mạng, tài khoản Google, dung lượng trống trên Drive và tình trạng thư mục đích.
+- `backup:google-login` / `backup:google-cancel-login` / `backup:google-logout`: Đăng nhập, hủy chờ đăng nhập và ngắt kết nối Google OAuth 2.0.
+- `backup:configure-folder`: Kiểm tra/lưu Folder ID hoặc tạo thư mục backup trên Google Drive.
+- `backup:save-oauth-client` / `backup:pick-oauth-json`: Cấu hình hoặc chọn file JSON OAuth Client ID.
+- `backup:start` & sự kiện `backup:progress`: Thực thi quy trình Backup Data 7 giai đoạn và phát tiến độ thời gian thực về Renderer.
+- `backup:open-local-folder` / `backup:open-drive-folder`: Mở nhanh thư mục `BaseFolder/BackupData` trên máy tính hoặc trên Google Drive.

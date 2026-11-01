@@ -217,3 +217,14 @@ Project-tools-phongtro/
 - `date-input-picker-template.html`: Bản thiết kế mẫu của bộ Date Mask Input và Calendar Popup.
 - **Lưu ý**: Cả 3 file này là các file thiết kế mẫu độc lập (static mockups) được người phát triển dùng làm quy chuẩn khi code vào `src/input/index.html`, `style.css` và `renderer.js`. Không xóa hoặc sửa các file này.
 
+---
+
+## 6. Các Module Hệ Thống Sao Lưu Dữ Liệu (Backup Data)
+
+| File | Vai trò & Các hàm chính |
+|---|---|
+| `electron/backup-config.js` | Quản lý cấu hình backup riêng cho từng Windows user tại `userData/backup-config.json` và mã hóa OAuth token bằng `safeStorage` (Windows DPAPI) tại `userData/backup-tokens.enc`. Các hàm: `loadBackupConfig`, `saveBackupConfig`, `saveEncryptedTokens`, `loadEncryptedTokens`, `clearAccountSession`, `getOAuthClientCredentials`, `saveOAuthClientCredentials`. |
+| `electron/zip-service.js` | Tạo snapshot dữ liệu nhất quán, nén toàn bộ `BaseFolder` thành file ZIP chuẩn PKZIP (UTF-8 flag `0x0800`), loại trừ chính xác `BaseFolder/BackupData` và kiểm tra toàn vẹn `CRC32`. Các hàm: `isExcludedBackupDataPath`, `generateUniqueZipFileName`, `createFullBackupZip`, `verifyZipIntegrity`. |
+| `electron/google-drive-service.js` | Thực thi OAuth 2.0 Desktop Loopback + PKCE, kiểm tra kết nối mạng (`checkInternetConnectivity`), kiểm tra sức khỏe tài khoản & dung lượng Drive (`checkDriveHealth`), chọn/tạo thư mục đích (`configureTargetDriveFolder`, `ensureDriveBackupDataFolder`), tải lên bằng Resumable Upload (`uploadZipFileToDrive`) và xác minh sau upload (`verifyUploadedZipOnDrive`). |
+| `electron/backup-manager.js` | Điều phối quy trình sao lưu 7 giai đoạn (`executeFullBackup`), khóa chống chạy trùng (`isBackupRunning`), và tổng hợp trạng thái (`getBackupSystemState`). |
+| `electron/google-oauth-client.json` | File cấu hình chứa `clientId` và `clientSecret` (Desktop OAuth 2.0) để đóng gói cùng ứng dụng. |

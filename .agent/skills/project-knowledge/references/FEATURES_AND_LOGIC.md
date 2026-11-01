@@ -264,3 +264,24 @@
   - Khi đạt 100%: Phát Windows Native Notification góc màn hình.
   - Đếm ngược 3.5 giây trên giao diện rồi tự động gọi `quitAndInstall(true, true)` để nâng cấp ngầm (Silent Install) và tự khởi động lại vào phiên bản mới.
 
+---
+
+## 7. Hệ Thống Sao Lưu Dữ Liệu (Local ZIP + Google Drive API Upload-Only)
+
+### 7.1. Mục tiêu & Kiến trúc
+- Cho phép người dùng chủ động sao lưu toàn bộ dữ liệu trong `BaseFolder` theo luồng một chiều an toàn:
+  `Dữ liệu BaseFolder → Tạo Snapshot & Nén ZIP Local → Lưu tại BaseFolder/BackupData/ → Kiểm tra toàn vẹn CRC32 → Google Drive API Upload → Xác minh hoàn tất`.
+- Không sử dụng Google Drive for Desktop, không dùng ổ `G:`, không đồng bộ 2 chiều, chỉ chạy khi người dùng nhấn nút **Backup Data**.
+
+### 7.2. Cơ chế nén ZIP & Chống lồng BackupData
+- Định dạng tên file chuẩn: `Backup_YYYYMMDD_HHmmss.zip` (nếu có 2 lần backup trong cùng 1 giây sẽ tự thêm hậu tố `_01`, `_02`... tuyệt đối không ghi đè file cũ).
+- Loại trừ chính xác thư mục `BaseFolder/BackupData/` (so sánh đường dẫn chuẩn hóa `path.resolve`) để ngăn chặn hiện tượng nén chồng các bản ZIP cũ vào ZIP mới.
+- Giữ nguyên cấu trúc tương đối ở gốc file ZIP (`data/`, `PhieuThu/`, `settings.json`...), hỗ trợ cờ UTF-8 (`0x0800`) bảo toàn tên thư mục/file tiếng Việt có dấu.
+- Kiểm tra tính toàn vẹn của file ZIP (tồn tại, `size > 0`, đọc cấu trúc Central Directory và kiểm tra mã băm `CRC32` của từng entry) trước khi upload lên Google Drive.
+
+### 7.3. Google OAuth 2.0 & Kiểm tra sức khỏe Tài khoản / Drive (Health Check)
+- Mỗi Windows user đăng nhập tài khoản Google riêng qua OAuth 2.0 Desktop Loopback (`127.0.0.1:<port>`) + PKCE với Non-Sensitive Scope (`drive.file` + `userinfo.email`), giúp mọi khách hàng đăng nhập Gmail trực tiếp mà không cần thêm vào danh sách Test Users.
+- Token được mã hóa bằng `safeStorage` (Windows DPAPI) tại `app.getPath('userData')/backup-tokens.enc`.
+- Hàm `checkDriveHealth()` kiểm tra: kết nối mạng Internet, tình trạng token (phát hiện đổi mật khẩu/thu hồi quyền), dung lượng trống thực tế trên Google Drive (`storageQuota`), và tình trạng thư mục đích (phát hiện nếu thư mục bị xóa vào Thùng rác hoặc mất quyền truy cập).
+- Hỗ trợ chọn thư mục đích bằng cách nhập tên thư mục muốn tạo mới trên Drive hoặc dán trực tiếp `Folder ID` / đường link thư mục Google Drive, tự động tạo/dùng lại thư mục con `BackupData/` bên trong.
+- **Upload-Only tuyệt đối**: Chỉ gọi `about.get`, `files.get`, `files.list`, `files.create`. Tuyệt đối không xóa, không sửa, không ghi đè bất kỳ file nào trên Google Drive.

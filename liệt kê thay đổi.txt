@@ -129,3 +129,30 @@ v3.1.0
   + Cải tiến hàm downloadVietQrImage trong electron/zalo-manager.js: Tích hợp thư viện sharp để tự động chuyển đổi toàn bộ dữ liệu vector SVG sang ảnh PNG bitmap chuẩn nét cao (150 DPI) trước khi lưu vào file tạm.
   + Trì hoãn việc dọn dẹp file tạm tempQrPath (delay an toàn 3 giây) sau khi gửi để bảo đảm tiến trình ngầm của zca-js đã giải phóng hoàn toàn file handle, tránh xung đột I/O trên Windows.
   + Cập nhật tài liệu dự án: FEATURES_AND_LOGIC.md, SOURCE_CODE_MAP.md, SKILL zalo-gui-hoa-don-an-toan và liệt kê thay đổi.txt.
+
+================================================================================
+NGÀY CẬP NHẬT: 01/11/2026 - TRIỂN KHAI HỆ THỐNG SAO LƯU DỮ LIỆU (LOCAL ZIP + GOOGLE DRIVE API)
+================================================================================
+1. Các file tạo mới:
+   - electron/backup-config.js: Quản lý cấu hình backup theo từng Windows user và mã hóa OAuth token bằng Windows DPAPI (safeStorage).
+   - electron/zip-service.js: Tạo snapshot dữ liệu nhất quán, nén ZIP toàn bộ BaseFolder vào BaseFolder/BackupData/Backup_YYYYMMDD_HHmmss.zip, loại trừ chính xác BaseFolder/BackupData và kiểm tra toàn vẹn CRC32.
+   - electron/google-drive-service.js: Đăng nhập OAuth 2.0 Desktop Loopback + PKCE, kiểm tra kết nối mạng/tài khoản/dung lượng Drive/thư mục đích (checkDriveHealth), chọn hoặc tạo thư mục đích và Resumable Upload (Upload-Only).
+   - electron/backup-manager.js: Điều phối quy trình sao lưu 7 giai đoạn và khóa chống chạy đồng thời.
+   - electron/google-oauth-client.json: File cấu hình OAuth 2.0 Desktop Client ID.
+
+2. Các file cập nhật:
+   - electron/main.js, electron/preload.js: Bổ sung các kênh IPC cho hệ thống Backup Data.
+   - src/input/index.html, src/input/style.css, src/input/renderer.js: Thêm khu vực SAO LƯU DỮ LIỆU (BACKUP DATA) tại khối bên trái phần Cài đặt (ngay dưới các ô nhập giá và trên mục CẤU HÌNH POPUP THÔNG BÁO), cùng Modal Tiến trình ở giữa màn hình có làm mờ nền (background blur) khóa thao tác trong khi đang backup.
+   - .gitignore: Loại trừ BackupData/, *.zip và các file token cá nhân.
+
+   - Tinh chỉnh mục "3. Thư mục backup trên Google Drive:":
+     + Chỉ hiển thị gọn gàng "Tên thư mục (Folder ID)".
+     + Hỗ trợ tự động bật Popup xác nhận đổi tên ngay khi người dùng sửa tên trong ô nhập rồi click chuột ra ngoài (blur), nhấn phím Enter, hoặc bấm nút "Đổi tên / Chọn thư mục".
+     + Khi xác nhận đổi tên: thực hiện đổi tên trực tiếp trên đúng Folder ID hiện có (PATCH /drive/v3/files/{folderId}), giữ nguyên 100% Folder ID và không tạo thêm thư mục mới.
+     + Khi bấm Hủy (hoặc nhấn phím Esc): tự động khôi phục lại tên thư mục cũ trước đó vào ô nhập.
+     + Nâng z-index của .toast-container lên 999999 để thông báo lỗi/thành công luôn nổi ở bậc cao nhất trên cùng mọi popup.
+
+v4.0.0
+- Phát hành phiên bản chính thức v4.0.0 tích hợp Hệ thống Sao Lưu Dữ Liệu (Backup Data: Local ZIP + Google Drive API).
+- Tự động đổi tên thư mục trên Google Drive tại chỗ (giữ nguyên 100% Folder ID và các bản sao lưu cũ) kèm Popup xác nhận khi click chuột ra ngoài (blur) hoặc nhấn Enter.
+- Cách ly tuyệt đối dữ liệu cá nhân và bảo toàn 100% dữ liệu người dùng khi tự động cập nhật (Auto Update).

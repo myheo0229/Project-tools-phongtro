@@ -71,5 +71,23 @@ contextBridge.exposeInMainWorld('api', {
   onZaloSendProgress: (callback) => {
     ipcRenderer.removeAllListeners('zalo:send-progress');
     ipcRenderer.on('zalo:send-progress', (event, data) => callback(data));
+  },
+
+  // Hệ thống Sao lưu Dữ liệu (Local ZIP + Google Drive API)
+  getBackupState: (payload) => ipcRenderer.invoke('backup:get-state', payload),
+  checkBackupDriveHealth: () => ipcRenderer.invoke('backup:check-health'),
+  startGoogleDriveLogin: () => ipcRenderer.invoke('backup:google-login'),
+  cancelGoogleDriveLogin: () => ipcRenderer.invoke('backup:google-cancel-login'),
+  disconnectGoogleDrive: () => ipcRenderer.invoke('backup:google-logout'),
+  configureDriveBackupFolder: (rawInput) => ipcRenderer.invoke('backup:configure-folder', rawInput),
+  renameDriveBackupFolder: (newName) => ipcRenderer.invoke('backup:rename-folder', newName),
+  saveGoogleOAuthClient: (payload) => ipcRenderer.invoke('backup:save-oauth-client', payload),
+  pickGoogleOAuthJsonFile: () => ipcRenderer.invoke('backup:pick-oauth-json'),
+  startBackupData: (payload) => ipcRenderer.invoke('backup:start', payload),
+  openLocalBackupFolder: (payload) => ipcRenderer.invoke('backup:open-local-folder', payload),
+  openDriveBackupFolder: () => ipcRenderer.invoke('backup:open-drive-folder'),
+  onBackupProgress: (callback) => {
+    ipcRenderer.removeAllListeners('backup:progress');
+    ipcRenderer.on('backup:progress', (event, data) => callback(data));
   }
 });
