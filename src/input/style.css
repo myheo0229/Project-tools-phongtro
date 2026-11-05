@@ -4035,7 +4035,7 @@ mark.search-hl {
 }
 
 .template-section-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--primary-dark, #075985);
   display: flex;
@@ -4046,7 +4046,7 @@ mark.search-hl {
 .btn-text-action {
   background: transparent;
   border: none;
-  font-size: 12.5px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--primary, #0284c7);
   cursor: pointer;
@@ -4069,7 +4069,7 @@ mark.search-hl {
 }
 
 .variable-help-label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-muted, #64748b);
   margin-bottom: 8px;
