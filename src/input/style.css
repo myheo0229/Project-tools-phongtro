@@ -125,15 +125,23 @@ body {
 }
 
 .brand-icon {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-  color: white;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
   border-radius: var(--radius-md);
+
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+
+  overflow: hidden;
+}
+
+.brand-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .brand-text h1 {
@@ -2094,7 +2102,6 @@ body {
 
 #section-residents .stat-card.highlight {
   background: linear-gradient(135deg, #0284c7, #0369a1);
-  border-color: var(--accent);
 }
 
 #section-residents .stat-card__icon {
