@@ -1756,6 +1756,7 @@ async function saveSettings(event) {
   // Chụp lại bộ đơn giá cũ trước khi ghi đè để khóa bảo vệ cho các tháng cũ đã xuất trước đó
   const previousPricingSnapshot = createPricingSnapshot(appSettings);
   await backfillLegacyLockedMonthsSnapshot(previousPricingSnapshot);
+  const oldSettingsForLog = JSON.parse(JSON.stringify(appSettings));
 
   appSettings.baseFolder = selectedPath;
   appSettings.giaPhong = parseMoneyInput(document.getElementById('set-giaPhong').value);
@@ -1816,6 +1817,10 @@ async function saveSettings(event) {
   // Đã lưu thành công
   if (baseFolderInput) baseFolderInput.classList.remove('input-error');
 
+  if (typeof logSettingsAndPricingChanges === 'function') {
+    await logSettingsAndPricingChanges(oldSettingsForLog, appSettings);
+  }
+
   const activeSettings = getActiveMonthSettings();
   roomsData.forEach(r => {
     r.tienPhong = activeSettings.giaPhong;
@@ -1851,6 +1856,10 @@ async function saveAndExport() {
   const btnText = document.getElementById('btn-save-export-text');
   const currentMonthYear = document.getElementById('month-year-select').value;
   const activeSettings = getActiveMonthSettings();
+  const wasEditingLockedMonth = Boolean(isCurrentMonthLocked && isCurrentMonthEditing);
+  const backupRoomsBeforeEdit = (lockedMonthBackupState && Array.isArray(lockedMonthBackupState.rooms))
+    ? JSON.parse(JSON.stringify(lockedMonthBackupState.rooms))
+    : null;
 
   // Khóa nút tránh bấm trùng lặp
   if (btn) btn.disabled = true;
@@ -1919,6 +1928,13 @@ async function saveAndExport() {
         showToast("Đã hủy xuất theo yêu cầu.", 'info');
         return false;
       } else if (res && res.error) {
+        if (typeof logMonthSaveAndExportEvent === 'function') {
+          await logMonthSaveAndExportEvent({
+            monthKey: currentMonthYear,
+            result: 'failed',
+            errorMsg: res.message || res.error
+          });
+        }
         if (res.error === 'CHUA_CHON_THU_MUC') {
           showToast(res.message, 'error');
           switchTab('settings');
@@ -1950,6 +1966,18 @@ async function saveAndExport() {
 
           renderInitialTable();
           updateMonthLockUI();
+
+          if (typeof logMonthSaveAndExportEvent === 'function') {
+            await logMonthSaveAndExportEvent({
+              monthKey: currentMonthYear,
+              wasEditingLockedMonth,
+              backupRoomsBeforeEdit,
+              currentRooms: roomsData,
+              jpgCount: res.jpgCount,
+              pdfFile: res.pdfFile,
+              result: 'success'
+            });
+          }
 
           showToast(`Đã lưu, xuất thành công ${res.jpgCount} ảnh JPG + 1 file PDF (${res.pdfFile}) và khóa dữ liệu ${formatMonthLabel(currentMonthYear)}!`, 'success');
         } else {
@@ -2045,7 +2073,14 @@ function handleToggleEditMonthClick() {
 
   if (isCurrentMonthEditing) {
     // Đang mở chỉnh sửa -> Bấm nút này là Hủy thay đổi & Giữ nguyên
+    const backupRooms = (lockedMonthBackupState && Array.isArray(lockedMonthBackupState.rooms))
+      ? JSON.parse(JSON.stringify(lockedMonthBackupState.rooms))
+      : [];
+    const currentRoomsSnap = JSON.parse(JSON.stringify(roomsData));
     restoreLockedMonthFromBackup();
+    if (typeof logCancelMonthEditEvent === 'function') {
+      logCancelMonthEditEvent(currentLoadedMonth, currentRoomsSnap, backupRooms);
+    }
     showToast(`Đã hủy các thay đổi và khôi phục dữ liệu ban đầu của ${formatMonthLabel(currentLoadedMonth)}`, 'info');
   } else {
     // Đang khóa -> Bấm nút này là Chỉnh Sửa -> Hiện Popup 1
@@ -2072,6 +2107,9 @@ function confirmUnlockMonthForEditing() {
   isCurrentMonthEditing = true;
   renderInitialTable();
   updateMonthLockUI();
+  if (typeof logUnlockMonthEvent === 'function') {
+    logUnlockMonthEvent(currentLoadedMonth);
+  }
   showToast(`Đã mở khóa ${formatMonthLabel(currentLoadedMonth)}. Bạn có thể chỉnh sửa và bấm "Lưu & Xuất" khi hoàn tất!`, 'info');
 }
 
@@ -2107,7 +2145,14 @@ function stayInMonthEditingModal() {
 
 async function discardMonthEditingAndProceed() {
   closeUnsavedMonthEditModal();
+  const backupRooms = (lockedMonthBackupState && Array.isArray(lockedMonthBackupState.rooms))
+    ? JSON.parse(JSON.stringify(lockedMonthBackupState.rooms))
+    : [];
+  const currentRoomsSnap = JSON.parse(JSON.stringify(roomsData));
   restoreLockedMonthFromBackup();
+  if (typeof logCancelMonthEditEvent === 'function') {
+    await logCancelMonthEditEvent(currentLoadedMonth, currentRoomsSnap, backupRooms);
+  }
   showToast(`Đã giữ nguyên dữ liệu gốc của ${formatMonthLabel(currentLoadedMonth)}`, 'info');
   if (typeof pendingActionAfterMonthEditModal === 'function') {
     const act = pendingActionAfterMonthEditModal;
@@ -2279,14 +2324,25 @@ function confirmRolloverModal() {
     closeRolloverModal();
 
     const room = roomsData[idx];
+    const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
+    const dienMoiNum = isNotEmpty(room.dienMoi) ? Number(room.dienMoi) : 0;
+    const surrogate = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
+    const activeSettings = getActiveMonthSettings();
+    const roomCalc = typeof calcRoom === 'function' ? calcRoom(surrogate, activeSettings) : null;
+    const currKwh = roomCalc ? roomCalc.dienKwh : Math.max(0, (10000 - dienCuNum) + dienMoiNum);
+
+    if (typeof logRolloverConfirmedEvent === 'function') {
+      logRolloverConfirmedEvent({
+        monthKey: targetMonth,
+        phong: room.phong,
+        dienCu: dienCuNum,
+        dienMoi: dienMoiNum,
+        kwh: currKwh
+      });
+    }
+
     const prevKwh = Number(room.prevDienKwh) || 0;
     if (prevKwh > 0) {
-      const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
-      const dienMoiNum = isNotEmpty(room.dienMoi) ? Number(room.dienMoi) : 0;
-      const surrogate = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
-      const activeSettings = getActiveMonthSettings();
-      const roomCalc = typeof calcRoom === 'function' ? calcRoom(surrogate, activeSettings) : null;
-      const currKwh = roomCalc ? roomCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
       const diff = currKwh - prevKwh;
       const percentChange = (diff / prevKwh) * 100;
 
@@ -2399,24 +2455,46 @@ function showAnomalyModal(index) {
 function confirmAnomalyModal() {
   if (currentAnomalyIndex !== null && roomsData[currentAnomalyIndex]) {
     const idx = currentAnomalyIndex;
-    roomsData[idx].confirmedAnomaly = true;
+    const room = roomsData[idx];
+    room.confirmedAnomaly = true;
     updateRowUI(idx);
     updateFooterTotals();
-    showToast(`Đã xác nhận số điện phòng ${roomsData[idx].phong} bình thường`, 'success');
+    showToast(`Đã xác nhận số điện phòng ${room.phong} bình thường`, 'success');
 
     // Lưu vào settings.json và file history ngay lập tức
     const targetMonth = currentLoadedMonth || document.getElementById('month-year-select')?.value;
     if (targetMonth) {
       if (!appSettings.confirmedAlerts) appSettings.confirmedAlerts = {};
       if (!appSettings.confirmedAlerts[targetMonth]) appSettings.confirmedAlerts[targetMonth] = {};
-      const roomKey = roomsData[idx].phong;
+      const roomKey = room.phong;
       appSettings.confirmedAlerts[targetMonth][roomKey] = {
         ...(appSettings.confirmedAlerts[targetMonth][roomKey] || {}),
         anomaly: true,
-        dienMoi: roomsData[idx].dienMoi
+        dienMoi: room.dienMoi
       };
       saveSettingsFile(true);
       autoSaveCurrentMonthData(targetMonth);
+    }
+
+    if (typeof logAnomalyConfirmedEvent === 'function') {
+      const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
+      const dienMoiNum = isNotEmpty(room.dienMoi) ? Number(room.dienMoi) : 0;
+      const surrogate = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
+      const activeSettings = getActiveMonthSettings();
+      const roomCalc = typeof calcRoom === 'function' ? calcRoom(surrogate, activeSettings) : null;
+      const currKwh = roomCalc ? roomCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
+      const prevKwh = Number(room.prevDienKwh) || 0;
+      const diff = currKwh - prevKwh;
+      const percentChange = prevKwh > 0 ? (diff / prevKwh) * 100 : 0;
+      const signStr = percentChange > 0 ? '+' : '';
+      const percentStr = `${signStr}${percentChange.toFixed(1)}%`;
+      logAnomalyConfirmedEvent({
+        monthKey: targetMonth,
+        phong: room.phong,
+        prevKwh,
+        currKwh,
+        diffPercent: percentStr
+      });
     }
   }
   closeAnomalyModal();
@@ -2540,6 +2618,12 @@ async function saveBankSettings(event) {
   const bankAccount = bankAccountInput ? bankAccountInput.value.trim() : "";
   const bankOwner = bankOwnerInput ? bankOwnerInput.value.trim().toUpperCase() : "";
 
+  const oldBankSnapshot = {
+    bankName: appSettings.bankName || '',
+    bankAccount: appSettings.bankAccount || '',
+    bankOwner: appSettings.bankOwner || ''
+  };
+
   appSettings.bankName = bankName;
   appSettings.bankAccount = bankAccount;
   appSettings.bankOwner = bankOwner;
@@ -2548,6 +2632,10 @@ async function saveBankSettings(event) {
   if (!ok) {
     showToast("Lỗi khi lưu thông tin tài khoản ngân hàng!", "error");
     return false;
+  }
+
+  if (typeof logBankSettingsChange === 'function') {
+    await logBankSettingsChange(oldBankSnapshot, { bankName, bankAccount, bankOwner });
   }
 
   isBankDirty = false;
@@ -3299,6 +3387,15 @@ function renderRoomMembersChecklist(selectedHostId, currentMemberIds) {
  */
 async function saveRoomDetailAssignment() {
   if (!currentDetailRoomName) return;
+  const targetRoomName = currentDetailRoomName;
+
+  const existingRoomObj = roomsList.find(r => r.phong === targetRoomName);
+  const oldHostId = existingRoomObj ? existingRoomObj.chuPhong : null;
+  const oldHostPerson = oldHostId ? residentsList.find(r => r.id === oldHostId) : null;
+  const oldHostName = oldHostPerson ? oldHostPerson.hoTen : (existingRoomObj ? (existingRoomObj.tenKhach || '') : '');
+
+  const removedResidentsForLog = [];
+  const addedResidentsForLog = [];
 
   const hostSelect = document.getElementById('room-host-select');
   const selectedHostId = hostSelect && hostSelect.value ? hostSelect.value : null;
@@ -3315,6 +3412,7 @@ async function saveRoomDetailAssignment() {
   const previousResidentsInRoom = residentsList.filter(r => r.phong === currentDetailRoomName);
   for (const prev of previousResidentsInRoom) {
     if (!newResidentIdsInRoom.has(prev.id)) {
+      removedResidentsForLog.push({ id: prev.id, hoTen: prev.hoTen });
       if (prev.anhCccdMatTruoc || prev.anhCccdMatSau) {
         try {
           const moveRes = await window.api.moveCccdFolder({
@@ -3346,6 +3444,7 @@ async function saveRoomDetailAssignment() {
     const person = residentsList.find(r => r.id === resId);
     if (person && person.phong !== currentDetailRoomName) {
       const oldRoom = person.phong;
+      addedResidentsForLog.push({ id: person.id, hoTen: person.hoTen, oldRoom });
       if (person.anhCccdMatTruoc || person.anhCccdMatSau) {
         try {
           const moveRes = await window.api.moveCccdFolder({
@@ -3389,10 +3488,20 @@ async function saveRoomDetailAssignment() {
   await window.api.saveRooms(roomsList);
   await window.api.saveResidents(residentsList);
 
+  if (typeof logRoomDetailAssignmentEvent === 'function') {
+    await logRoomDetailAssignmentEvent({
+      phong: targetRoomName,
+      oldHostName,
+      newHostName: hostPerson ? hostPerson.hoTen : '',
+      addedResidents: addedResidentsForLog,
+      removedResidents: removedResidentsForLog
+    });
+  }
+
   // 5. Cập nhật lại UI
   initResidentsSection();
   closeRoomDetailModal();
-  showToast(`Đã lưu phân bổ phòng ${currentDetailRoomName} thành công!`, 'success');
+  showToast(`Đã lưu phân bổ phòng ${targetRoomName} thành công!`, 'success');
 }
 
 /**
@@ -3982,6 +4091,12 @@ async function handleExportResidentsExcelClick() {
     const result = await window.api.exportResidentsExcel({ baseFolder });
 
     if (result && result.success) {
+      if (typeof logExportResidentsExcelEvent === 'function') {
+        logExportResidentsExcelEvent({
+          count: result.totalExported || (Array.isArray(residentsList) ? residentsList.length : 0),
+          fileName: result.fileName || ''
+        });
+      }
       showToast(`Xuất Excel thành công: ${result.fileName}`, 'success');
       showExcelExportResultModal(result);
     } else {
@@ -4404,10 +4519,13 @@ async function submitResidentForm() {
     return;
   }
 
+  const isEditing = Boolean(editingResidentId);
+  let oldPersonSnapshot = null;
   let person = null;
   if (editingResidentId) {
     person = residentsList.find(r => r.id === editingResidentId);
     if (!person) return;
+    oldPersonSnapshot = JSON.parse(JSON.stringify(person));
 
     // Đổi tên thư mục nếu người này đổi họ tên hoặc CCCD
     if ((person.hoTen !== hoTen || person.cccd !== cccd) && (person.anhCccdMatTruoc || person.anhCccdMatSau)) {
@@ -4521,9 +4639,15 @@ async function submitResidentForm() {
 
   await window.api.saveResidents(residentsList);
 
+  if (isEditing && oldPersonSnapshot && typeof logUpdateResidentEvent === 'function') {
+    await logUpdateResidentEvent(oldPersonSnapshot, person, oldPersonSnapshot.phong || null, person.phong || null);
+  } else if (!isEditing && typeof logAddResidentEvent === 'function') {
+    await logAddResidentEvent(person, person.phong || null);
+  }
+
   initResidentsSection();
   closeResidentFormModal();
-  showToast(editingResidentId ? 'Đã cập nhật thông tin người thuê!' : 'Đã thêm người thuê mới thành công!', 'success');
+  showToast(isEditing ? 'Đã cập nhật thông tin người thuê!' : 'Đã thêm người thuê mới thành công!', 'success');
 }
 
 /**
@@ -4712,10 +4836,17 @@ async function executeDeleteResidents() {
   if (!residentsToDelete || residentsToDelete.length === 0) return;
 
   let roomsModified = false;
+  const deletedSnapshots = [];
 
   for (const id of residentsToDelete) {
     const person = residentsList.find(r => r.id === id);
     if (!person) continue;
+
+    deletedSnapshots.push({
+      id: person.id,
+      hoTen: person.hoTen,
+      phong: person.phong || null
+    });
 
     // Gỡ khỏi phòng nếu đang ở
     if (person.phong) {
@@ -4755,6 +4886,12 @@ async function executeDeleteResidents() {
     await window.api.saveRooms(roomsList);
   }
   await window.api.saveResidents(residentsList);
+
+  if (typeof logDeleteResidentEvent === 'function') {
+    for (const snap of deletedSnapshots) {
+      await logDeleteResidentEvent(snap, snap.phong);
+    }
+  }
 
   closeDeleteResidentModal();
   initResidentsSection();
@@ -5100,6 +5237,15 @@ async function executeSendZaloReceipts() {
     if (result && result.error) {
       showToast(`Lỗi gửi Zalo: ${result.message || result.error}`, 'error');
     } else if (result) {
+      if (typeof logZaloSendBatchEvent === 'function') {
+        await logZaloSendBatchEvent({
+          monthKey,
+          results: Array.isArray(result.results) ? result.results : [],
+          sendReceiptImg,
+          sendPaymentQr,
+          sendMessageText
+        });
+      }
       showZaloSummaryReportModal(result, monthKey);
     }
   } catch (err) {
@@ -6933,6 +7079,10 @@ async function handleTriggerBackupDataClick() {
       baseFolder: currentBaseFolder
     });
 
+    if (typeof logBackupExecutionResult === 'function') {
+      await logBackupExecutionResult(result);
+    }
+
     isBackupModalLocked = false;
 
     const titleEl = document.getElementById('backup-modal-title');
@@ -6980,6 +7130,13 @@ async function handleTriggerBackupDataClick() {
       detailText: err.message || 'Lỗi không xác định khi sao lưu.',
       percent: 100
     });
+    if (typeof logBackupExecutionResult === 'function') {
+      await logBackupExecutionResult({
+        ok: false,
+        localSaved: false,
+        message: err.message || 'Lỗi không xác định khi sao lưu.'
+      });
+    }
     showToast(`Lỗi khi thực hiện Backup Data: ${err.message}`, 'error');
   } finally {
     if (btnBackup) btnBackup.disabled = false;

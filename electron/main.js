@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell, Notification } = require('el
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
+const activityLogger = require('./activity-logger');
 
 // Tắt tự động tải ngầm, chỉ tải khi người dùng đồng ý
 autoUpdater.autoDownload = false;
@@ -308,7 +309,19 @@ ipcMain.handle('settings:save', async (event, data) => {
 
     // Sao chép toàn bộ dữ liệu data từ vị trí cũ sang folder mới (chỉ khi có oldBaseFolder khác targetDataDir)
     if (oldDataDir && fs.existsSync(oldDataDir) && path.normalize(oldDataDir) !== path.normalize(targetDataDir)) {
+      const preTargetLogs = activityLogger.readLogsFromDataDirSync(targetDataDir);
       copyDirSync(oldDataDir, targetDataDir);
+      const migrateRes = await activityLogger.migrateLogsOnBaseFolderChange(
+        oldDataDir,
+        targetDataDir,
+        oldBaseFolder,
+        cleanNewBaseFolder,
+        app.getVersion(),
+        preTargetLogs
+      );
+      if (!migrateRes || !migrateRes.ok) {
+        return { error: `Không thể di chuyển Nhật Ký Hoạt Động sang thư mục mới: ${(migrateRes && migrateRes.error) || 'Lỗi không xác định'}` };
+      }
     }
 
     // Sao chép toàn bộ ảnh/PDF phiếu thu đã xuất từ vị trí cũ sang folder mới
@@ -1162,6 +1175,70 @@ ipcMain.handle('backup:open-drive-folder', async () => {
     : 'https://drive.google.com/drive/my-drive';
   await shell.openExternal(url);
   return { ok: true, url };
+});
+
+// ============================================================
+// NHẬT KÝ HOẠT ĐỘNG (ACTIVITY LOG) IPC HANDLERS
+// ============================================================
+ipcMain.handle('activity-logs:load', async () => {
+  const pointer = getPointer();
+  return await activityLogger.loadActivityLogs(pointer);
+});
+
+ipcMain.handle('activity-logs:append', async (event, payload = {}) => {
+  const pointer = getPointer();
+  return await activityLogger.appendActivityLog(pointer, payload, app.getVersion());
+});
+
+ipcMain.handle('activity-logs:dismiss-notice', async () => {
+  const pointer = getPointer();
+  return await activityLogger.dismissCorruptedLogNotice(pointer);
+});
+
+ipcMain.handle('activity-logs:preserve-on-restore', async (event, payload = {}) => {
+  const pointer = getPointer();
+  const preRestoreLogs = Array.isArray(payload.preRestoreLogs) ? payload.preRestoreLogs : [];
+  const restoreMetadata = (payload.restoreMetadata && typeof payload.restoreMetadata === 'object') ? payload.restoreMetadata : {};
+  return await activityLogger.preserveLogsAfterBackupRestore(pointer, preRestoreLogs, restoreMetadata, app.getVersion());
+});
+
+ipcMain.handle('activity-logs:export-json', async () => {
+  try {
+    const pointer = getPointer();
+    const res = await activityLogger.loadActivityLogs(pointer);
+    const logs = (res && Array.isArray(res.logs)) ? res.logs : [];
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const defaultName = `NhatKyHoatDong_${ts}.json`;
+    const defaultDir = (pointer && pointer.baseFolder) ? pointer.baseFolder : app.getPath('desktop');
+
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: 'Xuất Nhật Ký Hoạt Động ra file JSON',
+      defaultPath: path.join(defaultDir, defaultName),
+      filters: [{ name: 'JSON File (*.json)', extensions: ['json'] }]
+    });
+
+    if (canceled || !filePath) {
+      return { canceled: true };
+    }
+
+    const exportPayload = {
+      exportedAt: now.toISOString(),
+      exportedAtVn: activityLogger.formatTimeVn(now),
+      appVersion: `v${app.getVersion()}`,
+      totalEvents: logs.length,
+      logs
+    };
+
+    fs.writeFileSync(filePath, JSON.stringify(exportPayload, null, 2), 'utf8');
+    shell.showItemInFolder(filePath);
+    return { ok: true, filePath, count: logs.length };
+  } catch (err) {
+    console.error('Lỗi khi xuất file JSON nhật ký:', err);
+    return { ok: false, error: err.message };
+  }
 });
 
 app.whenReady().then(() => {

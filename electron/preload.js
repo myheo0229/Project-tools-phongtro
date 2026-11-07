@@ -95,5 +95,12 @@ contextBridge.exposeInMainWorld('api', {
   onBackupProgress: (callback) => {
     ipcRenderer.removeAllListeners('backup:progress');
     ipcRenderer.on('backup:progress', (event, data) => callback(data));
-  }
+  },
+
+  // Nhật ký Hoạt động (Activity Log)
+  loadActivityLogs: () => ipcRenderer.invoke('activity-logs:load'),
+  appendActivityLog: (payload) => ipcRenderer.invoke('activity-logs:append', payload),
+  exportActivityLogsJson: () => ipcRenderer.invoke('activity-logs:export-json'),
+  dismissCorruptedLogNotice: () => ipcRenderer.invoke('activity-logs:dismiss-notice'),
+  preserveLogsOnRestore: (payload) => ipcRenderer.invoke('activity-logs:preserve-on-restore', payload)
 });

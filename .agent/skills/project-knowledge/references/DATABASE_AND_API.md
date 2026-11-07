@@ -324,3 +324,21 @@ Các kênh IPC được phơi ra thông qua `window.api` trong `electron/preload
 - `backup:save-oauth-client` / `backup:pick-oauth-json`: Cấu hình hoặc chọn file JSON OAuth Client ID.
 - `backup:start` & sự kiện `backup:progress`: Thực thi quy trình Backup Data 7 giai đoạn và phát tiến độ thời gian thực về Renderer.
 - `backup:open-local-folder` / `backup:open-drive-folder`: Mở nhanh thư mục `BaseFolder/BackupData` trên máy tính hoặc trên Google Drive.
+
+---
+
+## 8. Cấu Trúc Lưu Trữ & Kênh IPC Nhật Ký Hoạt Động (`activity-logs.json`)
+
+### 8.1. Tệp Nhật Ký Hoạt Động: `<BaseFolder>/data/activity-logs.json`
+- **Cấu trúc JSON**:
+  - `version`: `1`
+  - `updatedAt`: Chuỗi ISO 8601
+  - `corruptedNotice`: Chuỗi thông báo nếu hệ thống vừa cứu hộ file lỗi sang `.corrupted_<timestamp>.json` (hoặc `null`)
+  - `logs`: Mảng tối đa `2000` bản ghi sắp xếp mới nhất trước (`id`, `timestamp`, `timeVn`, `appVersion`, `category`, `action`, `level`, `result`, `title`, `summary`, `reason`, `metadata`).
+
+### 8.2. Danh sách kênh IPC Nhật Ký Hoạt Động
+- `activity-logs:load`: Đọc danh sách log hiện tại từ `<BaseFolder>/data/activity-logs.json`.
+- `activity-logs:append`: Đưa yêu cầu ghi thêm 1 bản ghi log mới vào hàng đợi tuần tự (`writeQueue`).
+- `activity-logs:dismiss-notice`: Đánh dấu đã xem cảnh báo file log cũ bị lỗi định dạng.
+- `activity-logs:preserve-on-restore`: Hợp nhất log hiện tại và log trong bản sao lưu sau khi phục hồi, đồng thời ghi log `RESTORE_BACKUP`.
+- `activity-logs:export-json`: Mở hộp thoại lưu và kết xuất danh sách log ra file `.json`.

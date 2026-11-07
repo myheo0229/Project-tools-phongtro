@@ -352,3 +352,21 @@
   3. **Tự động nhận diện và chuẩn hóa tỷ lệ hao tải thông minh**:
      - Khi người dùng nhập `7`, `0.7`, `0,7`, `0.07`, hoặc `0,07` -> Hệ thống đều tự động hiểu là `7%` và chuẩn hóa hiển thị thành số nguyên `7` ngay khi người dùng nhấn Enter hoặc click chuột ra ngoài (blur).
      - Khi lưu cài đặt, giá trị được quy đổi chính xác về hệ số thập phân lưu trữ (`tyLeHaoTai = 7 / 100 = 0.07`) và tự động định dạng lại giao diện chuẩn sau khi lưu.
+
+---
+
+## 12. Hệ Thống Nhật Ký Hoạt Động (Activity / Audit Log)
+
+- **Vị trí**: Nút **Nhật Ký** (`#btn-open-activity-log`) trên thanh Header chính mở Modal `#activity-log-modal`.
+- **Module xử lý**: Tách biệt hoàn toàn tại `electron/activity-logger.js` (Main Process) và `src/input/activity-log.js` (Renderer Process).
+- **5 Nhóm hành động ghi nhận**:
+  1. `PRICING` (Đơn giá & Cài đặt): Thay đổi đơn giá điện/nước/phòng/rác/internet/hao tải, cài đặt tài khoản ngân hàng (chỉ lưu 4 số cuối STK), cấu hình Zalo, đổi thư mục `BaseFolder`.
+  2. `MONTH_DATA` (Dữ liệu tháng & Khóa sổ): Lưu & Xuất phiếu thu lần đầu (`EXPORT_MONTH`), Mở khóa chỉnh sửa tháng đã khóa (`UNLOCK_MONTH`), Lưu & Xuất lại sau khi chỉnh sửa kèm đối chiếu từng phòng thay đổi (`REEXPORT_EDITED_MONTH`), Hủy chỉnh sửa & Khôi phục số gốc (`CANCEL_MONTH_EDIT`), Xác nhận công tơ quay vòng (`CONFIRM_ROLLOVER`), Xác nhận biến động điện $\ge 40\%$ (`CONFIRM_ANOMALY`).
+  3. `RESIDENTS` (Người thuê & Phân bổ phòng): Thêm mới (`ADD_RESIDENT`), Cập nhật hồ sơ (`UPDATE_RESIDENT`), Chuyển phòng (`TRANSFER_RESIDENT`), Xóa hồ sơ (`DELETE_RESIDENT`), Phân bổ chủ phòng & thành viên (`ASSIGN_ROOM_MEMBERS`), Xuất Excel danh sách cư dân (`EXPORT_RESIDENTS_EXCEL`).
+  4. `ZALO` (Gửi hóa đơn Zalo): Ghi nhận từng đợt gửi phiếu thu Zalo (`SEND_ZALO_BATCH`) kèm kết quả từng phòng, số tiền, SĐT đã che và nguyên nhân lỗi chi tiết.
+  5. `BACKUP` (Sao lưu & Phục hồi): Tạo bản sao lưu ZIP & tải lên Google Drive (`CREATE_BACKUP`), Phục hồi dữ liệu (`RESTORE_BACKUP`).
+- **4 Cơ chế an toàn cốt lõi**:
+  1. **Bảo vệ PII**: Không lưu full CCCD, SĐT hay STK ngân hàng; với các trường nhạy cảm của người thuê chỉ lưu `{ field, label, changed: true }`.
+  2. **Single-Writer Queue & Atomic Write**: Xếp hàng tuần tự tại Main Process, ghi qua `.tmp`, tự khôi phục từ `.tmp` hoặc đổi tên file lỗi thành `activity-logs.corrupted_<timestamp>.json` (không bao giờ tự xóa file cũ), giới hạn tối đa 2.000 dòng.
+  3. **Bảo toàn khi đổi BaseFolder**: Tự động di chuyển và hợp nhất log từ thư mục cũ sang thư mục mới trong `settings:save`.
+  4. **Bảo toàn khi Phục hồi Backup**: Hợp nhất log hiện tại và log trong bản sao lưu để không mất lịch sử gần nhất.

@@ -251,3 +251,12 @@ Project-tools-phongtro/
   - Quản lý trạng thái: `isCurrentMonthLocked`, `isCurrentMonthEditing`, `currentMonthSnapshotSettings`, `lockedMonthBackupState`, `monthLocksState`.
   - Hàm tiện ích: `hasMonthEnteredNewData()`, `createPricingSnapshot()`, `getActiveMonthSettings()`, `extractHistoryPayload()`, `formatMonthLabel()`.
   - Điều khiển UI & Modal: `updateMonthLockUI()`, `handleToggleEditMonthClick()`, `confirmUnlockMonthForEditing()`, `restoreLockedMonthFromBackup()`, `showUnsavedMonthEditModal()`, `stayInMonthEditingModal()`, `discardMonthEditingAndProceed()`, `saveAndExportFromMonthEditModal()`.
+
+---
+
+## 7. Các Module Hệ Thống Nhật Ký Hoạt Động (Activity Log)
+
+| File | Vai trò & Các hàm chính |
+|---|---|
+| `electron/activity-logger.js` | Quản lý đọc/ghi file `<BaseFolder>/data/activity-logs.json` tại Main Process với hàng đợi tuần tự (`writeQueue`), Atomic Write qua `.tmp`, tự khôi phục hoặc đổi tên file lỗi thành `.corrupted_<timestamp>.json`, giới hạn 2.000 bản ghi, định dạng `timeVn` (`"HH:mm:ss - DD/MM/YYYY"`). Các hàm: `appendActivityLog`, `loadActivityLogs`, `migrateLogsOnBaseFolderChange`, `preserveLogsAfterBackupRestore`, `dismissCorruptedLogNotice`. |
+| `src/input/activity-log.js` | Module độc lập tại Renderer Process phụ trách ẩn thông tin nhạy cảm (PII masking), ghi nhận sự kiện cho 5 phân nhóm (`logSettingsAndPricingChanges`, `logBankSettingsChange`, `logUnlockMonthEvent`, `logCancelMonthEditEvent`, `logMonthSaveAndExportEvent`, `logRolloverConfirmedEvent`, `logAnomalyConfirmedEvent`, `logAddResidentEvent`, `logUpdateResidentEvent`, `logDeleteResidentEvent`, `logRoomDetailAssignmentEvent`, `logExportResidentsExcelEvent`, `logZaloSendBatchEvent`, `logBackupExecutionResult`) và điều khiển giao diện Modal Nhật Ký Hoạt Động (`openActivityLogModal`, `renderActivityLogList`, `toggleActivityLogDetail`). |

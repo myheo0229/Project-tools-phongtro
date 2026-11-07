@@ -220,3 +220,20 @@ TÍNH NĂNG KHÓA DỮ LIỆU THÁNG ĐÃ LƯU & XUẤT + NÚT CHỈNH SỬA + 2
      + Bổ sung các hàm helper: `parseMoneyInput(val)` (lọc số sạch), `formatMoneyInputRealtime(inputEl)` (tính toán vị trí con trỏ và format `toLocaleString('vi-VN')`), `parseHaoTaiPercent(val)` (nhận diện các dạng `0.7`, `0,7`, `0.07`, `7` thành số nguyên `7`).
      + Trong `initSettingsForm()`: Tải dữ liệu ban đầu hiển thị theo định dạng có dấu chấm phân cách hàng nghìn (`formatNumber`) và số nguyên hao tải; gắn listener `input` realtime cho 5 ô tiền và listener `blur`/`keydown (Enter)` chuẩn hóa cho ô hao tải.
      + Trong `saveSettings()`: Parse giá trị số tiền an toàn qua `parseMoneyInput`, parse hao tải qua `parseHaoTaiPercent`, quy đổi lưu `tyLeHaoTai = haoTaiPercent / 100`, và định dạng lại giao diện chuẩn hàng nghìn sau khi lưu thành công.
+
+================================================================================
+HỆ THỐNG NHẬT KÝ HOẠT ĐỘNG (ACTIVITY / AUDIT LOG) AN TOÀN & TRỰC QUAN
+================================================================================
+1. Kiến trúc & Bảo mật dữ liệu (Giải quyết triệt để 4 rủi ro):
+   - Bảo vệ thông tin cá nhân (PII Protection): Tuyệt đối không lưu full CCCD, full SĐT hay full Số tài khoản ngân hàng trong Log. Với người thuê, ưu tiên nhận diện qua Mã định danh (`residentId`) + Họ tên, và với các trường nhạy cảm (`cccd`, `sdtGoi`, `sdtZalo`, `ngaySinh`, ảnh CCCD) chỉ ghi nhận `{ field, label, changed: true }`. Với STK ngân hàng và SĐT gửi Zalo, tự động che số ở giữa (`***1234`, `098***407`).
+   - Hàng đợi ghi tuần tự duy nhất tại Main Process (`writeQueue` trong `electron/activity-logger.js`): Mọi thao tác ghi log đều xếp hàng tuần tự qua Atomic Write (`.tmp` -> kiểm tra `JSON.parse` -> `rename`). Nếu phát hiện file log cũ bị lỗi định dạng, hệ thống tự động khôi phục từ `.tmp` hợp lệ hoặc đổi tên file lỗi thành `activity-logs.corrupted_<timestamp>.json` (tuyệt đối không xóa file cũ). Giới hạn xoay vòng tối đa 2.000 bản ghi mới nhất.
+   - Bảo toàn Log khi đổi `BaseFolder`: Khi người dùng chuyển thư mục lưu trữ trong `settings:save`, hệ thống tự động di chuyển và hợp nhất (`mergeLogArrays`) toàn bộ lịch sử log từ thư mục cũ sang thư mục mới, xác minh sau khi chuyển và ghi nhận sự kiện `CHANGE_BASE_FOLDER`.
+   - Bảo toàn Log khi Phục hồi Backup (`preserveLogsAfterBackupRestore`): Hợp nhất log hiện tại và log trong bản sao lưu để không bao giờ bị mất lịch sử hoạt động gần nhất khi restore bản cũ, đồng thời ghi nhận log `RESTORE_BACKUP`.
+2. Cấu trúc bản ghi chuẩn (có đầy đủ `timestamp` ISO và `timeVn`):
+   - Mỗi bản ghi gồm: `id` (`log_...`), `timestamp` (ISO 8601), `timeVn` (`"HH:mm:ss - DD/MM/YYYY"`), `appVersion`, `category` (`PRICING`, `MONTH_DATA`, `RESIDENTS`, `ZALO`, `BACKUP`), `action`, `level` (`info`, `warning`, `critical`), `result` (`success`, `failed`, `partial`), `title`, `summary`, `reason`, `metadata`.
+3. Giao diện Nhật Ký Hoạt Động (`#activity-log-modal`):
+   - Nút "Nhật Ký" (`#btn-open-activity-log`) đặt ngay trên thanh Header chính cạnh chọn Tháng/Năm.
+   - Thiết kế chuẩn theo bản minh họa UI: Chữ to rõ dễ nhìn, thanh tìm kiếm bo tròn tức thì, bộ lọc nhóm dạng pill (`Tất cả`, `Đơn giá`, `Tháng`, `Người thuê`, `Zalo`, `Backup`), bộ lọc mức độ & thời gian, gom nhóm theo ngày (`Hôm nay · DD/MM/YYYY`), click vào từng dòng để mở rộng xem bảng đối chiếu chi tiết (`Trước -> Sau`), xuất file JSON và đảo chiều sắp xếp.
+4. File tạo mới & cập nhật:
+   - File mới: `electron/activity-logger.js` (Backend), `src/input/activity-log.js` (Frontend độc lập).
+   - File cập nhật: `electron/main.js`, `electron/preload.js`, `src/input/index.html`, `src/input/style.css`, `src/input/renderer.js`.

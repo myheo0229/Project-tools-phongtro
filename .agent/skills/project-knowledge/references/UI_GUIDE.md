@@ -332,3 +332,20 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
   - `#set-tileHaoTai`: `type="text" inputmode="decimal"`, placeholder `"7"`.
   - Hiển thị: Luôn là số nguyên, không có đuôi `.0` (VD: `7`).
   - Chuẩn hóa: Nhận diện linh hoạt `7`, `0.7`, `0,7`, `0.07`, `0,07` thành số nguyên `7` khi blur hoặc nhấn Enter.
+
+---
+
+## 12. Giao Diện Modal Nhật Ký Hoạt Động (`#activity-log-modal`)
+
+1. **Nút mở Nhật Ký trên Header (`#btn-open-activity-log`, `.btn-activity-log-header`)**:
+   - Đặt tại `.header-actions` ngay bên trái bộ chọn Tháng/Năm, nền trắng viền `#cbd5e1`, chữ đậm `15px`, hover chuyển sang viền và chữ xanh primary `#0284c7`.
+2. **Thiết kế Modal Nhật Ký (`.alog-modal-card`)**:
+   - Chiều rộng `860px`, bố cục thoáng rộng, chữ to rõ dễ nhìn dành cho chủ nhà trọ.
+   - **Ô tìm kiếm bo tròn (`.alog-search-input`)**: Bo tròn `999px`, chữ `16px`, tìm kiếm tức thì không phân biệt dấu tiếng Việt.
+   - **Bộ lọc nhóm dạng Pill (`.alog-pill`)**: `Tất cả`, `Đơn giá`, `Tháng`, `Người thuê`, `Zalo`, `Backup` — nút đang chọn có nền xanh nhạt `#dbeafe`, chữ `#1d4ed8`.
+   - **Nhóm theo ngày (`.alog-day-header`)**: Hiển thị `Hôm nay · DD/MM/YYYY` hoặc `Hôm qua · DD/MM/YYYY` chữ đậm `18px` kèm mốc giờ sự kiện mới nhất bên phải.
+   - **Thẻ sự kiện (`.alog-item`, `.alog-item-main`)**:
+     + Icon vuông bo góc `44x44px` phân màu theo nhóm (`cat-pricing` vàng cam, `cat-month_data` xanh dương, `cat-residents` tím, `cat-zalo` xanh cyan, `cat-backup` xanh lá).
+     + Tiêu đề sự kiện `17.5px` đậm, dòng phụ `CATEGORY · HH:mm:ss`, nội dung tóm tắt `16.5px`, trạng thái kết quả (`Thành công` xanh lá / `Cảnh báo` cam / `Thất bại` đỏ) và mã sự kiện `Mã: log_...`.
+     + Nhấn vào dòng sự kiện sẽ mở rộng khung `.alog-item-detail` hiển thị bảng đối chiếu chi tiết (`Trường thông tin | Trước | Sau` hoặc kết quả từng phòng Zalo) và thông tin đầy đủ của thời gian `timeVn` (`HH:mm:ss - DD/MM/YYYY`).
+   - **Chân trang (`.alog-footer`)**: Hiển thị bộ đếm `Hiển thị X / Y sự kiện` bên trái và nút đảo chiều sắp xếp `Mới nhất trước / Cũ nhất trước` bên phải.
