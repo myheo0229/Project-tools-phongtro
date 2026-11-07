@@ -8,6 +8,10 @@ contextBridge.exposeInMainWorld('api', {
   saveMonthData: (monthKey, data) => ipcRenderer.invoke('month-data:save', monthKey, data),
   loadMonthData: (monthKey) => ipcRenderer.invoke('month-data:load', monthKey),
 
+  // Quản lý khóa dữ liệu tháng đã Lưu & Xuất (month-locks.json)
+  loadMonthLocks: () => ipcRenderer.invoke('month-locks:load'),
+  saveMonthLocks: (data) => ipcRenderer.invoke('month-locks:save', data),
+
   // Quản lý lưu/đọc cài đặt giá & thư mục gốc
   saveSettings: (data) => ipcRenderer.invoke('settings:save', data),
   loadSettings: () => ipcRenderer.invoke('settings:load'),

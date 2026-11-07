@@ -195,6 +195,32 @@
 
 ---
 
+### 2.7. Tệp Khóa Dữ Liệu Tháng & Snapshot Đơn Giá: `month-locks.json`
+- **Vị trí**: `<baseFolder>/data/month-locks.json`.
+- **Mục đích**: Quản lý trạng thái khóa các tháng đã Lưu & Xuất, lưu snapshot bộ đơn giá lịch sử tại thời điểm xuất để bảo toàn số tiền cũ khi Cài Đặt Chung thay đổi, giữ nguyên 100% cấu trúc mảng JSON thuần `[...]` của `history/YYYY-MM.json`.
+- **Cấu trúc JSON**:
+```json
+{
+  "version": 1,
+  "months": {
+    "2026-07": {
+      "isLocked": true,
+      "exportedAt": "2026-11-05T14:30:00.000Z",
+      "settingsSnapshot": {
+        "giaPhong": 2200000,
+        "giaDien": 2900,
+        "giaNuoc": 12000,
+        "tienRac": 40000,
+        "tienInternet": 24000,
+        "tyLeHaoTai": 0.07,
+        "dienThoai": "0982 141 407"
+      }
+    }
+  },
+  "legacyScanned": ["2026-07"]
+}
+```
+
 ## 3. Danh Mục Toàn Bộ Kênh Giao Tiếp IPC (IPC Channels Map)
 
 Các kênh IPC được phơi ra thông qua `window.api` trong `electron/preload.js` và xử lý tại `electron/main.js`.
@@ -217,6 +243,8 @@ Các kênh IPC được phơi ra thông qua `window.api` trong `electron/preload
 | `month-data:save` | `invoke` | `monthKey`, `data` (Array[12]) | `{ success: true, filePath }` hoặc `{ error }` | Ghi dữ liệu tháng vào thư mục `history/` |
 | `export:receipts` | `invoke` | `monthKey`, `roomDataList` | `{ success: true, jpgCount, pdfFile, targetDir }` | Render 12 ảnh JPG (3x) + 1 file PDF gộp, tự mở Explorer |
 | `export:progress` | `on (event)` | Callback | `{ current, total }` | Stream tiến trình xuất file (1 đến 12) |
+| `month-locks:load` | `invoke` | Không | `{ ok, data, exportedMonths }` | Đọc trạng thái khóa các tháng + danh sách tháng đã xuất |
+| `month-locks:save` | `invoke` | `data` (Object) | `{ success: true }` hoặc `{ error }` | Lưu trạng thái khóa và snapshot đơn giá (ghi atomic qua .tmp) |
 
 ### 3.3. Nhóm Quản Lý Phòng, Cư Dân & Ảnh CCCD
 

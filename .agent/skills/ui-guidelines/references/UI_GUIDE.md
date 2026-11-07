@@ -298,3 +298,37 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
    - Nút cảnh báo `(!)` (`.meter-alert-badge`) định vị tuyệt đối (`right: 4px; top: 50%; margin-top: -9px; width: 18px; height: 18px`) không làm đẩy lệch con số khỏi trục giữa.
 2. **Ô tìm kiếm cư dân thông minh (`#resident-search-box`)**:
    - Tích hợp badge đếm số lượng kết quả (`.search-result-badge`), nút xóa nhanh `✕` (`.search-clear-btn`), và tô sáng trực tiếp từ khóa trùng khớp bằng `mark.search-hl` trên bảng danh sách người thuê (không phân biệt chữ hoa/thường và có dấu/không dấu, không mark lên 12 thẻ phòng phía trên).
+
+---
+
+## 11. Giao Diện Khóa Dữ Liệu Tháng & Hệ Thống 2 Modal Chữ To
+
+1. **Badge Khóa & Nút Chỉnh Sửa tại tiêu đề Bảng nhập chỉ số**:
+   - Vị trí: Ngay bên trái nút "Gửi Zalo" (`.table-card-header-actions`).
+   - Badge trạng thái (`#month-lock-status-badge`, `.month-lock-badge`):
+     + Đã khóa: `.month-lock-badge.locked` (`🔒 Đã khóa dữ liệu`, nền `#f1f5f9`, chữ `#475569`, border `#cbd5e1`).
+     + Đang mở chỉnh sửa: `.month-lock-badge.editing` (`✏️ Đang mở chỉnh sửa (Cần bấm Lưu & Xuất)`, nền `#fff7ed`, chữ `#c2410c`, border `#fed7aa`).
+   - Nút Chỉnh Sửa / Hủy (`#btn-toggle-edit-month`, `.btn-edit-month`):
+     + Trạng thái bình thường: Màu hổ phách/cam (`#d97706`), viền `#f59e0b`, nền trắng, hover nền vàng nhạt `#fffbeb`.
+     + Trạng thái hủy: `.cancel-mode` màu đỏ hồng (`#e11d48`), viền `#f43f5e`, nền `#fff1f2`.
+   - Các ô nhập bị khóa (`.month-locked-input`): Khóa thao tác gõ/focus (`readonly`, `tabindex="-1"`, `cursor: not-allowed !important`) nhưng **giữ nguyên 100% màu sắc gốc** — đặc biệt hai cột chỉ số mới (`Điện Mới`, `Nước Mới` — `.table-input.editable-meter.month-locked-input`) giữ nguyên nền vàng `#fffbe6`, viền vàng `#ffe58f` và chữ đậm `var(--text-main)` giống hệt tháng mới.
+2. **Hệ Thống 2 Modal Chữ To (`.modal-card-large-text`)**:
+   - Thiết kế chữ lớn đặc biệt dành riêng cho người lớn tuổi:
+     + Tiêu đề: `font-size: 21px`, `font-weight: 700`, `color: #0f172a`.
+     + Nội dung: `font-size: 16.5px`, `line-height: 1.65`, `color: #334155`.
+     + Khung lưu ý: `font-size: 15.5px - 16px`, nền vàng ấm (`.modal-notice-box-warning`) hoặc xanh lá nhạt (`.modal-notice-box-info`).
+     + Nút hành động: `font-size: 15.5px - 16px`, `padding: 11px 20px`, bo tròn `8px`.
+   - **Popup 1 (`#unlock-month-modal`)**: Xác nhận mở khóa chỉnh sửa tháng đã xuất + lưu ý đổi đơn giá trước ở Cài Đặt Chung.
+   - **Popup 2 (`#unsaved-month-edit-modal`)**: Chặn chuyển tab/tháng khi chưa lưu + 3 nút hành động rõ ràng: `Ở Lại Chỉnh Sửa Tiếp`, `✕ Hủy Thay Đổi & Giữ Nguyên`, `💾 Lưu & Xuất Ngay`.
+
+### 4.9. Định Dạng Số Hàng Nghìn Realtime & Ô Tỷ Lệ Hao Tải (Cài Đặt Chung)
+
+- **Các ô nhập tiền & đơn giá**:
+  - `#set-giaPhong`, `#set-giaDien`, `#set-giaNuoc`, `#set-rac`, `#set-internet`.
+  - Kiểu ô: `type="text" inputmode="numeric"` kèm `.input-with-unit`.
+  - Placeholder: `2.200.000`, `2.900`, `12.000`, `40.000`, `24.000`.
+  - Hành vi: Tự động format phân cách dấu chấm (`.`) hàng nghìn theo thời gian thực (realtime) ngay khi người dùng gõ phím. Con trỏ chuột giữ đúng vị trí số đang gõ.
+- **Ô tỷ lệ hao tải**:
+  - `#set-tileHaoTai`: `type="text" inputmode="decimal"`, placeholder `"7"`.
+  - Hiển thị: Luôn là số nguyên, không có đuôi `.0` (VD: `7`).
+  - Chuẩn hóa: Nhận diện linh hoạt `7`, `0.7`, `0,7`, `0.07`, `0,07` thành số nguyên `7` khi blur hoặc nhấn Enter.

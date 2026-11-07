@@ -405,6 +405,119 @@ ipcMain.handle('month-data:load', async (event, monthKey) => {
   }
 });
 
+// ============================================================
+// KHÓA DỮ LIỆU THÁNG ĐÃ LƯU & XUẤT (baseFolder/<dataFolderName>/month-locks.json)
+// Lưu riêng file, KHÔNG thay đổi định dạng history/YYYY-MM.json (tương thích ngược 100%)
+// ============================================================
+const MONTH_KEY_REGEX = /^\d{4}-\d{2}$/;
+
+function getMonthLocksFilePath(pointer) {
+  return path.join(pointer.baseFolder, pointer.dataFolderName || 'data', 'month-locks.json');
+}
+
+function normalizeMonthLocksData(raw) {
+  const result = { version: 1, months: {}, legacyScanned: [] };
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return result;
+  if (raw.months && typeof raw.months === 'object' && !Array.isArray(raw.months)) {
+    Object.keys(raw.months).forEach(key => {
+      const entry = raw.months[key];
+      if (MONTH_KEY_REGEX.test(key) && entry && typeof entry === 'object') {
+        result.months[key] = entry;
+      }
+    });
+  }
+  if (Array.isArray(raw.legacyScanned)) {
+    result.legacyScanned = raw.legacyScanned.filter(k => typeof k === 'string' && MONTH_KEY_REGEX.test(k));
+  }
+  return result;
+}
+
+// Liệt kê các tháng đã thực sự nhập dữ liệu và xuất file phiếu thu (.jpg/.pdf) trong PhieuThu/Thang_MM_YYYY
+function listExportedMonthKeys(pointer) {
+  const keys = [];
+  try {
+    const ptDir = path.join(pointer.baseFolder, pointer.phieuThuFolderName || 'PhieuThu');
+    const historyDir = path.join(pointer.baseFolder, pointer.dataFolderName || 'data', 'history');
+    if (!fs.existsSync(ptDir)) return keys;
+    fs.readdirSync(ptDir, { withFileTypes: true }).forEach(dirent => {
+      if (!dirent.isDirectory()) return;
+      const m = /^Thang_(\d{2})_(\d{4})$/.exec(dirent.name);
+      if (!m) return;
+      const targetMonthDir = path.join(ptDir, dirent.name);
+      const files = fs.readdirSync(targetMonthDir);
+      if (!files.some(f => /\.(jpg|jpeg|pdf)$/i.test(f))) return;
+
+      const monthKey = `${m[2]}-${m[1]}`;
+      // Chỉ coi là tháng đã xuất dữ liệu nếu file lịch sử tháng đó tồn tại và đã có nhập chỉ số mới
+      const historyFile = path.join(historyDir, `${monthKey}.json`);
+      if (!fs.existsSync(historyFile)) return;
+      try {
+        const histRaw = JSON.parse(fs.readFileSync(historyFile, 'utf8'));
+        const rooms = Array.isArray(histRaw) ? histRaw : (histRaw && Array.isArray(histRaw.rooms) ? histRaw.rooms : []);
+        const hasEnteredData = rooms.some(r => r && (
+          (r.dienMoi !== '' && r.dienMoi !== null && r.dienMoi !== undefined && Number(r.dienMoi) > 0) ||
+          (r.nuocMoi !== '' && r.nuocMoi !== null && r.nuocMoi !== undefined && Number(r.nuocMoi) > 0)
+        ));
+        if (!hasEnteredData) return;
+      } catch (histErr) {
+        return;
+      }
+
+      keys.push(monthKey);
+    });
+  } catch (err) {
+    console.error('Lỗi khi quét thư mục phiếu thu đã xuất:', err);
+  }
+  return keys.sort();
+}
+
+// IPC: Đọc trạng thái khóa các tháng + danh sách tháng đã có file xuất
+ipcMain.handle('month-locks:load', async () => {
+  try {
+    const pointer = getPointer();
+    if (!pointer || !pointer.baseFolder) {
+      return { ok: false, data: normalizeMonthLocksData(null), exportedMonths: [] };
+    }
+    const filePath = getMonthLocksFilePath(pointer);
+    let raw = null;
+    if (fs.existsSync(filePath)) {
+      try {
+        raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      } catch (parseErr) {
+        console.error('File month-locks.json bị lỗi định dạng:', parseErr);
+        return { ok: false, error: 'FILE_LOI_DINH_DANG', data: normalizeMonthLocksData(null), exportedMonths: listExportedMonthKeys(pointer) };
+      }
+    }
+    return { ok: true, data: normalizeMonthLocksData(raw), exportedMonths: listExportedMonthKeys(pointer) };
+  } catch (err) {
+    console.error('Lỗi khi đọc month-locks:', err);
+    return { ok: false, error: err.message, data: normalizeMonthLocksData(null), exportedMonths: [] };
+  }
+});
+
+// IPC: Ghi trạng thái khóa các tháng (ghi file tạm rồi đổi tên để tránh hỏng file)
+ipcMain.handle('month-locks:save', async (event, data) => {
+  try {
+    const pointer = getPointer();
+    if (!pointer || !pointer.baseFolder) {
+      return { error: 'Chưa chọn thư mục lưu dữ liệu!' };
+    }
+    const normalized = normalizeMonthLocksData(data);
+    const filePath = getMonthLocksFilePath(pointer);
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const tmpPath = `${filePath}.tmp`;
+    fs.writeFileSync(tmpPath, JSON.stringify(normalized, null, 2), 'utf8');
+    fs.renameSync(tmpPath, filePath);
+    return { success: true };
+  } catch (err) {
+    console.error('Lỗi khi ghi month-locks:', err);
+    return { error: err.message };
+  }
+});
+
 // Helper tạo danh sách 12 phòng mặc định trắng
 function getDefaultRooms() {
   const defaultRoomNames = ['1A', '2A', '3A', '4A', '5A', '6A', '1B', '2B', '3B', '4B', '5B', '6B'];

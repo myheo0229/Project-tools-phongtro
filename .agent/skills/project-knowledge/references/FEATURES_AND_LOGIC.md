@@ -35,7 +35,9 @@
 | 23 | Quản lý & Xem Lightbox Ảnh CCCD 2 mặt | Phần 3: Pop-up | `electron/main.js`, `src/input/renderer.js` | ✅ Hoàn thành |
 | 24 | Masked Date Input (`dd/mm/yyyy`) & Calendar Popup | Phần 3: Form | `src/shared/date-picker.js`, `date-picker.css` | ✅ Hoàn thành |
 | 25 | Tự động Cập nhật ứng dụng (Auto Updater + GitHub) | Toàn hệ thống | `electron/main.js`, `src/input/renderer.js` | ✅ Hoàn thành |
-| 24 | Thông báo Toast góc màn hình | Toàn hệ thống | `src/input/renderer.js` (`showToast`) | ✅ Hoàn thành |
+| 26 | Thông báo Toast góc màn hình | Toàn hệ thống | `src/input/renderer.js` (`showToast`) | ✅ Hoàn thành |
+| 27 | Khóa Dữ Liệu Tháng Đã Xuất & 2 Popup Bảo Vệ | Phần 1: Bảng nhập | `electron/main.js`, `src/input/renderer.js` | ✅ Hoàn thành |
+| 28 | Định Dạng Phân Cách Hàng Nghìn Realtime & Chuẩn Hóa Tỷ Lệ Hao Tải | Phần 2: Cài Đặt Chung | `src/input/index.html`, `renderer.js` | ✅ Hoàn thành |
 
 ---
 
@@ -311,3 +313,42 @@
   3. **Phạm vi dữ liệu độc lập bộ lọc**: Đọc trực tiếp toàn bộ danh sách người thuê hiện có từ `<BaseFolder>/data/residents.json` (kèm đối chiếu phòng từ `rooms.json`), hoàn toàn không phụ thuộc vào từ khóa đang nhập trong ô tìm kiếm nhanh.
   4. **Định dạng bảng chuẩn**: 1 sheet duy nhất (`Danh Sach Nguoi Thue`), dòng tiêu đề in đậm nền xanh nhạt (`#E2EFDA`), có kẻ viền mảnh toàn bảng, căn giữa `STT`, `Giới Tính`, `Phòng Ở`, căn trái các cột còn lại và tự động co giãn độ rộng cột (`<cols>`).
   5. **Vị trí lưu & Chống ghi đè**: Lưu trực tiếp tại `<BaseFolder>/DanhSachNguoiThue_YYYYMMDD_HHmmss.xlsx` theo giờ máy tính local (không tạo thư mục con, không gọi Backup hay Google Drive). Nếu xuất nhiều lần trong cùng một giây sẽ tự động thêm hậu tố `_01`, `_02`... để không ghi đè file cũ. Nếu danh sách trống sẽ thông báo chưa có dữ liệu và không tạo file rỗng.
+
+---
+
+## 11. Khóa Dữ Liệu Tháng Đã Xuất & Luồng Chỉnh Sửa Lại An Toàn (Phần 1)
+
+- **Mục tiêu**: Ngăn chặn người dùng vô tình bấm sửa chỉ số hoặc thay đổi cài đặt đơn giá làm sai lệch số tiền và phiếu thu của các tháng đã xuất trước đó.
+- **Vị trí**: Tiêu đề Bảng nhập chỉ số (Phần 1: Nhập Dữ Liệu), gồm huy hiệu trạng thái `#month-lock-status-badge`, nút `#btn-toggle-edit-month` (kế bên trái nút `#btn-send-zalo-month`), và 2 popup chữ to (`#unlock-month-modal`, `#unsaved-month-edit-modal`).
+- **Cơ chế hoạt động**:
+  1. **Tự động nhận diện & Khóa (Chỉ khóa tháng đã có dữ liệu và đã xuất)**:
+     - Khi chọn một tháng trong dropdown: Hệ thống kiểm tra trước tiên xem tháng đó đã có nhập chỉ số mới nào hay chưa (`hasMonthEnteredNewData`). Nếu tháng mới chưa nhập gì thì **tuyệt đối không khóa** (đồng thời tự dọn cờ khóa cũ nếu có và đánh dấu `legacyScanned`).
+     - Với các tháng đã nhập dữ liệu: Kiểm tra trạng thái trong `data/month-locks.json` (hoặc quét một lần `PhieuThu/Thang_MM_YYYY` kết hợp đối chiếu dữ liệu lịch sử đối với các tháng cũ).
+     - Nếu đã xuất dữ liệu: Tự động khóa 4 ô chỉ số (`dienCu`, `dienMoi`, `nuocCu`, `nuocMoi`) sang `readonly` (`.month-locked-input`, giữ nguyên màu vàng `#fffbe6` của ô nhập mới), khóa nút `Lưu & Xuất`, hiện badge `🔒 Đã khóa dữ liệu` và hiện nút `✏️ Chỉnh Sửa`.
+  2. **Bảo toàn đơn giá lịch sử (`settingsSnapshot`)**:
+     - Bộ đơn giá (`giaPhong`, `giaDien`, `giaNuoc`, `tienRac`, `tienInternet`, `tyLeHaoTai`, `dienThoai`) tại thời điểm xuất được lưu snapshot vào `month-locks.json`.
+     - Mọi tính toán hiển thị trên bảng, tổng tiền footer, xem lại cảnh báo và gửi Zalo cho tháng đã khóa đều sử dụng `getActiveMonthSettings()` (lấy từ snapshot). Việc đổi đơn giá ở Phần 2 không làm đổi số tiền các tháng cũ.
+  3. **Mở khóa chỉnh sửa an toàn (Popup 1)**:
+     - Bấm nút `✏️ Chỉnh Sửa`: Hiện Popup 1 (`#unlock-month-modal`) chữ to (`21px / 16.5px / 16px`) nhắc nhở người dùng: nếu muốn tính lại tháng này theo đơn giá/tiền phòng mới thì hãy đóng popup, qua Cài Đặt Chung chỉnh đơn giá trước rồi quay lại mở khóa sau.
+     - Bấm `🔓 Mở Khóa Chỉnh Sửa`: Bảng mở khóa cho nhập, nút chuyển thành `✕ Hủy thay đổi & Giữ nguyên`, nút `Lưu & Xuất` mở lại. Lưu bản sao lưu tạm `lockedMonthBackupState` trong bộ nhớ.
+  4. **Hủy thay đổi tức thì**:
+     - Bấm `✕ Hủy thay đổi & Giữ nguyên`: Khôi phục nguyên vẹn 100% số liệu ban đầu từ `lockedMonthBackupState` và khóa lại bảng ngay lập tức.
+  5. **Bảo vệ chống mất dữ liệu khi chưa lưu (Popup 2)**:
+     - Khi đang mở chỉnh sửa mà người dùng chuyển sang Tab khác (`switchTab`), đổi sang Tháng khác (`onMonthYearChange`), hoặc bấm `Gửi Zalo`: Bị chặn lại lập tức và hiện Popup 2 (`#unsaved-month-edit-modal`) chữ to bắt buộc chọn 1 trong 3 hành động:
+       + `Ở Lại Chỉnh Sửa Tiếp`: Đóng popup, tiếp tục chỉnh sửa.
+       + `✕ Hủy Thay Đổi & Giữ Nguyên`: Khôi phục số cũ, khóa lại tháng rồi chuyển tiếp sang tab/tháng đã chọn.
+       + `💾 Lưu & Xuất Ngay`: Lưu số mới, xuất lại 12 ảnh JPG + 1 PDF, khóa lại bảng an toàn rồi chuyển tiếp.
+
+### 2.14. Định Dạng Tiền Phân Cách Hàng Nghìn Realtime & Chuẩn Hóa Tỷ Lệ Hao Tải
+
+- **Vị trí**: Phần 2: Cài Đặt Chung (`THIẾT LẬP GIÁ & THÔNG TIN CHUNG`).
+- **Nghiệp vụ chi tiết**:
+  1. **Định dạng tiền tệ theo thời gian thực (Realtime Thousand Separator)**:
+     - Áp dụng cho 5 ô nhập tiền và đơn giá: Tiền Phòng mặc định (`#set-giaPhong`), Đơn giá Điện (`#set-giaDien`), Đơn giá Nước (`#set-giaNuoc`), Tiền Rác (`#set-rac`), Tiền Internet (`#set-internet`).
+     - Khi người dùng gõ từng ký tự, hệ thống tự động chèn dấu chấm phân cách hàng nghìn theo chuẩn Việt Nam (ví dụ: `200` -> `2.000` -> `20.000` -> `2.200.000`).
+     - Tự động ghi nhớ và tính toán lại vị trí con trỏ chuột (`selectionStart`) dựa trên số lượng chữ số nằm trước con trỏ, đảm bảo người dùng có thể đặt chuột vào giữa chuỗi số để thêm/xóa chữ số mà con trỏ không bị nhảy giật về cuối chuỗi.
+  2. **Hiển thị tỷ lệ điện hao tải dạng số nguyên**:
+     - Ô `#set-tileHaoTai` loại bỏ hoàn toàn phần thập phân `.0` phía sau (ví dụ: hiển thị `7` thay vì `7.0`).
+  3. **Tự động nhận diện và chuẩn hóa tỷ lệ hao tải thông minh**:
+     - Khi người dùng nhập `7`, `0.7`, `0,7`, `0.07`, hoặc `0,07` -> Hệ thống đều tự động hiểu là `7%` và chuẩn hóa hiển thị thành số nguyên `7` ngay khi người dùng nhấn Enter hoặc click chuột ra ngoài (blur).
+     - Khi lưu cài đặt, giá trị được quy đổi chính xác về hệ số thập phân lưu trữ (`tyLeHaoTai = 7 / 100 = 0.07`) và tự động định dạng lại giao diện chuẩn sau khi lưu.

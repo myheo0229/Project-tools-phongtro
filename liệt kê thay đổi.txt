@@ -179,3 +179,44 @@ TRIỂN KHAI CHỨC NĂNG XUẤT EXCEL DANH SÁCH NGƯỜI THUÊ (.XLSX)
      + Thêm nút "Xuất Excel" (`#btn-export-residents-excel`) nằm ngay bên trái ô tìm kiếm nhanh (`#resident-search-box`) tại khu vực Danh Sách Tất Cả Người Thuê.
      + Thêm Modal kết quả xuất Excel (`#excel-export-result-modal`) hiển thị rõ trạng thái, số lượng người thuê đã xuất, tên file, đường dẫn lưu file và nút mở nhanh vị trí lưu file.
    - Đảm bảo 9 cột chuẩn theo đúng thứ tự (`STT | Họ Và Tên | SĐT Gọi | SĐT Zalo | Số CCCD | Ngày Sinh | Giới Tính | Phòng Ở | Ngày Vào Ở`), ép kiểu Text (`@` / `inlineStr`) cho SĐT và CCCD giữ nguyên số 0 ở đầu, lưu trực tiếp vào `BaseFolder` với tên `DanhSachNguoiThue_YYYYMMDD_HHmmss.xlsx` (tự thêm hậu tố `_01`, `_02` nếu trùng giây, không ghi đè file cũ, không phụ thuộc bộ lọc tìm kiếm).
+
+
+================================================================================
+TÍNH NĂNG KHÓA DỮ LIỆU THÁNG ĐÃ LƯU & XUẤT + NÚT CHỈNH SỬA + 2 POPUP BẢO VỆ CHỮ TO
+================================================================================
+1. Mục tiêu & Nghiệp vụ:
+   - Tự động khóa dữ liệu của các tháng đã Lưu & Xuất phiếu thu (tự động phát hiện qua file xuất trong PhieuThu/ hoặc cấu hình month-locks.json).
+   - Bảo toàn 100% đơn giá lịch sử (settingsSnapshot) tại thời điểm xuất của tháng đã khóa: khi người dùng thay đổi đơn giá ở Phần 2 (Cài Đặt Chung), số tiền và phiếu thu của các tháng đã xuất trước đó hoàn toàn không bị ảnh hưởng.
+   - Thêm nút "✏️ Chỉnh Sửa" nằm ngay bên trái nút "Gửi Zalo" trong tiêu đề Bảng nhập chỉ số (Phần 1). Khi bấm vào sẽ hiển thị Popup 1 (chữ to) xác nhận mở khóa, kèm lưu ý nếu muốn đổi đơn giá thì chỉnh ở Cài Đặt Chung trước.
+   - Khi đang mở chỉnh sửa, nút chuyển thành "✕ Hủy thay đổi & Giữ nguyên" (khôi phục số liệu gốc và khóa lại ngay lập tức). Nút "Lưu & Xuất" mở lại để người dùng bắt buộc bấm lưu sau khi sửa xong.
+   - Khi đang mở chỉnh sửa mà người dùng chuyển Tab (sang Cài đặt/Người ở), đổi Tháng khác hoặc bấm Gửi Zalo, hệ thống lập tức chặn lại và bật Popup 2 (chữ to) nhắc nhở bắt buộc chọn: "Ở Lại Chỉnh Sửa Tiếp", "Hủy Thay Đổi & Giữ Nguyên", hoặc "Lưu & Xuất Ngay".
+2. File cập nhật:
+   - electron/main.js: Bổ sung 2 kênh IPC `month-locks:load` và `month-locks:save` quản lý file `data/month-locks.json` (ghi atomic qua file tạm .tmp). Hàm `listExportedMonthKeys` tự động quét thư mục `PhieuThu/Thang_MM_YYYY` để tự động nhận diện tháng cũ đã xuất. Giữ nguyên 100% cấu trúc mảng JSON chuẩn của `history/YYYY-MM.json`.
+   - electron/preload.js: Expose `api.loadMonthLocks()` và `api.saveMonthLocks(data)` qua `contextBridge`.
+   - src/input/index.html: Thêm badge `#month-lock-status-badge`, nút `#btn-toggle-edit-month` ngay bên trái `#btn-send-zalo-month`, và 2 Popup chữ to `#unlock-month-modal`, `#unsaved-month-edit-modal`.
+   - src/input/style.css: Thêm style cho badge khóa/đang sửa (`.month-lock-badge`), nút chỉnh sửa hổ phách / hủy đỏ (`.btn-edit-month`), ô input bị khóa (`.month-locked-input`), thẻ modal chữ to (`.modal-card-large-text`, `font-size: 21px / 16.5px / 16px`), nút `.btn-danger-outline`, `.btn-success`.
+   - src/input/renderer.js: Quản lý biến trạng thái `isCurrentMonthLocked`, `isCurrentMonthEditing`, `currentMonthSnapshotSettings`, `lockedMonthBackupState`. Sử dụng `getActiveMonthSettings()` để tính toán đúng theo đơn giá snapshot lịch sử. Chặn chuyển tab (`switchTab`), chặn đổi tháng (`onMonthYearChange`), chặn gửi Zalo (`handleSendZaloMonthClick`) khi chưa lưu. Ngăn `autoSaveCurrentMonthData` ghi đè khi tháng đang khóa.
+
+- Tinh chỉnh logic khóa tháng & giữ màu vàng ô nhập số mới:
+  + Chỉ khóa những tháng thực sự đã có nhập dữ liệu mới (`hasMonthEnteredNewData`) và đã xuất phiếu thu; các tháng mới chưa nhập gì tuyệt đối không bị khóa (tự động gỡ cờ khóa thừa nếu trước đó từng có thư mục xuất thử rỗng và đánh dấu `legacyScanned`).
+  + Giữ nguyên màu vàng gốc (`#fffbe6`, viền `#ffe58f`, chữ đậm rõ nét) cho các ô `Điện Mới` và `Nước Mới` ở các tháng đã khóa (`.table-input.editable-meter.month-locked-input`), chỉ khóa thao tác nhập (`readonly`, `tabindex="-1"`, chặn focus con trỏ).
+
+================================================================================
+ĐỊNH DẠNG TIỀN PHÂN CÁCH HÀNG NGHÌN & TỰ ĐỘNG CHUẨN HÓA TỶ LỆ ĐIỆN HAO TẢI
+================================================================================
+1. Mục tiêu & Nghiệp vụ:
+   - Các ô tiền và đơn giá trong Phần 2: Cài Đặt Chung (`Tiền Phòng mặc định`, `Đơn giá Điện`, `Đơn giá Nước`, `Tiền Rác`, `Tiền Internet`) được định dạng phân cách hàng nghìn chuẩn Việt Nam bằng dấu chấm (`.`) theo thời gian thực (realtime) ngay khi người dùng gõ phím (VD: 200 -> 2.000 -> 20.000 -> 2.200.000).
+   - Vị trí con trỏ chuột được bảo toàn chuẩn xác khi gõ hoặc sửa số ở giữa chuỗi, không bị nhảy lung tung về cuối ô nhập.
+   - Ô `Tỷ lệ Điện Hao Tải (%)` loại bỏ phần thập phân `.0` phía sau, luôn hiển thị số nguyên rõ ràng (VD: `7` thay vì `7.0`).
+   - Xử lý thông minh khi người dùng nhập tỷ lệ hao tải: Cho phép gõ `7`, `0.7`, `0,7`, `0.07`, hoặc `0,07` đều tự động hiểu là `7%` và tự động định dạng chuẩn về số nguyên `7` khi người dùng nhấn phím Enter hoặc click chuột ra ngoài (blur).
+2. File cập nhật:
+   - `src/input/index.html`:
+     + Chuyển 5 ô tiền (`#set-giaPhong`, `#set-giaDien`, `#set-giaNuoc`, `#set-rac`, `#set-internet`) từ `type="number"` sang `type="text" inputmode="numeric"`, cập nhật placeholder hiển thị phân cách hàng nghìn (`2.200.000`, `2.900`, `12.000`, `40.000`, `24.000`).
+     + Chuyển ô `#set-tileHaoTai` sang `type="text" inputmode="decimal"` với placeholder là `"7"`.
+     + Thêm class `btn-unlock-month` cho nút "Mở Khóa Chỉnh Sửa" trong Popup 1.
+   - `src/input/style.css`:
+     + Cập nhật style cho `.btn-warning, .btn-unlock-month` trong modal footer: đồng bộ tone màu vàng hổ phách (viền `#f59e0b`, chữ & icon stroke `#d97706`, nền trắng chuyển sang `#fffbeb` khi hover) giống như nút nhấn Chỉnh Sửa ở giao diện bảng nhập liệu.
+   - `src/input/renderer.js`:
+     + Bổ sung các hàm helper: `parseMoneyInput(val)` (lọc số sạch), `formatMoneyInputRealtime(inputEl)` (tính toán vị trí con trỏ và format `toLocaleString('vi-VN')`), `parseHaoTaiPercent(val)` (nhận diện các dạng `0.7`, `0,7`, `0.07`, `7` thành số nguyên `7`).
+     + Trong `initSettingsForm()`: Tải dữ liệu ban đầu hiển thị theo định dạng có dấu chấm phân cách hàng nghìn (`formatNumber`) và số nguyên hao tải; gắn listener `input` realtime cho 5 ô tiền và listener `blur`/`keydown (Enter)` chuẩn hóa cho ô hao tải.
+     + Trong `saveSettings()`: Parse giá trị số tiền an toàn qua `parseMoneyInput`, parse hao tải qua `parseHaoTaiPercent`, quy đổi lưu `tyLeHaoTai = haoTaiPercent / 100`, và định dạng lại giao diện chuẩn hàng nghìn sau khi lưu thành công.

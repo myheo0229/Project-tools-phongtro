@@ -237,3 +237,17 @@ Project-tools-phongtro/
 | `electron/backup-manager.js` | Điều phối quy trình sao lưu 7 giai đoạn (`executeFullBackup`), khóa chống chạy trùng (`isBackupRunning`), và tổng hợp trạng thái (`getBackupSystemState`). |
 | `electron/google-oauth-client.json` | File cấu hình chứa `clientId` và `clientSecret` (Desktop OAuth 2.0) để đóng gói cùng ứng dụng. |
 | `src/input/renderer.js` (`tokenizeSearchQuery`, `highlightSearchText`, `getFilteredAndRankedResidents`, `clearResidentSearch`) | Bộ máy tìm kiếm cư dân tức thì kiểu Google Search (đa từ khóa, xếp hạng điểm ưu tiên, tô sáng `<mark>` không phân biệt dấu và đồng bộ sáng thẻ phòng). |
+
+---
+
+### 2.5. Cơ Chế Khóa Dữ Liệu Tháng Đã Xuất & 2 Popup Chữ To (`month-locks`)
+
+- **Backend (`electron/main.js`)**:
+  - `month-locks:load`: Đọc file `<baseFolder>/data/month-locks.json` (chuẩn hóa schema) và tự động quét `PhieuThu/Thang_MM_YYYY` bằng hàm `listExportedMonthKeys` (đối chiếu kèm `data/history/YYYY-MM.json` đảm bảo chỉ tính tháng thực sự đã nhập chỉ số mới) để khóa tự động các tháng đã xuất từ trước.
+  - `month-locks:save`: Ghi atomic qua file tạm `.tmp` rồi đổi tên để tránh hỏng file. Giữ nguyên 100% định dạng mảng JSON `[...]` của `history/YYYY-MM.json`.
+- **Preload (`electron/preload.js`)**:
+  - `api.loadMonthLocks()`, `api.saveMonthLocks(data)`.
+- **Frontend (`src/input/renderer.js`)**:
+  - Quản lý trạng thái: `isCurrentMonthLocked`, `isCurrentMonthEditing`, `currentMonthSnapshotSettings`, `lockedMonthBackupState`, `monthLocksState`.
+  - Hàm tiện ích: `hasMonthEnteredNewData()`, `createPricingSnapshot()`, `getActiveMonthSettings()`, `extractHistoryPayload()`, `formatMonthLabel()`.
+  - Điều khiển UI & Modal: `updateMonthLockUI()`, `handleToggleEditMonthClick()`, `confirmUnlockMonthForEditing()`, `restoreLockedMonthFromBackup()`, `showUnsavedMonthEditModal()`, `stayInMonthEditingModal()`, `discardMonthEditingAndProceed()`, `saveAndExportFromMonthEditModal()`.
