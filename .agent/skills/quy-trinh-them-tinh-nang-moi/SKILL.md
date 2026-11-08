@@ -69,6 +69,12 @@ Sau khi viết code và kiểm tra chạy thử (test) thành công, Agent phả
   - Thêm mục ghi nhận tính năng/sửa đổi mới vào cuối file hoặc phiên bản tương ứng.
   - Ghi rõ ngày giờ, nội dung cập nhật, các file đã tác động và kết quả nghiệm thu.
 
+### 📄 6. Đồng Bộ Hệ Thống Nhật Ký Hoạt Động (Activity / Audit Log)
+- **Đường dẫn**: `electron/activity-logger.js`, `src/input/activity-log.js`, `src/input/renderer.js`
+- **Nguyên tắc bắt buộc**:
+  - Bất cứ khi nào **thêm mới, sửa đổi hoặc xóa** một thao tác của người dùng (thay đổi cài đặt/đơn giá, thao tác tháng/chỉ số, người thuê, Zalo, Backup/Restore...): **BẮT BUỘC PHẢI GẮN LOG TƯƠNG ỨNG** vào hệ thống Nhật Ký Hoạt Động (`activity-logs.json`).
+  - Đảm bảo tuân thủ tuyệt đối quy tắc bảo vệ PII (không ghi full CCCD, SĐT, STK), sử dụng đúng Category (`PRICING`, `MONTH_DATA`, `RESIDENTS`, `ZALO`, `BACKUP`, `SYSTEM`), có `title`, `summary`, `timeVn`, và metadata đối chiếu (`oldValue` -> `newValue` nếu có thay đổi).
+
 ---
 
 ## 3. Checklist Thực Hiện Trước Khi Báo Cáo Người Dùng
@@ -79,6 +85,7 @@ Mỗi lượt lập trình kết thúc bằng việc kiểm tra lại danh sách
 - [ ] Tuân thủ quy chuẩn kích thước chữ Header: Nút điều hướng phân hệ (`.tab-btn`) tối thiểu `font-size: 16px`, nút hành động chính tối thiểu `15px` - `16px`.
 - [ ] Nếu có ô soạn thảo highlight biến 2 lớp (Backdrop): Thẻ biến span trong backdrop phải `padding: 0; margin: 0; border: none` để tránh lệch chữ.
 - [ ] Kiểm tra cú pháp (`node --check <file>`) đối với các file JS/Node.
+- [ ] **Đã bổ sung ghi log (Activity Log) cho các thao tác thêm mới/sửa đổi** theo chuẩn an toàn PII và metadata.
 - [ ] Đã cập nhật `FEATURES_AND_LOGIC.md` đầy đủ chi tiết nghiệp vụ.
 - [ ] Đã cập nhật `SOURCE_CODE_MAP.md` với các hàm và biến mới.
 - [ ] Đã cập nhật `DATABASE_AND_API.md` với các trường dữ liệu / API mới.

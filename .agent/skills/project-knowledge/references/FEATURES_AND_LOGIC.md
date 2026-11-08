@@ -355,6 +355,29 @@
 
 ---
 
+## 13. Cấu Hình Số Chữ Số Đồng Hồ Điện & Nước Cho Từng Phòng
+
+- **Vị trí**: Phần 2: Cài Đặt Chung, nằm ngay dưới trường "Số điện thoại hiển thị trên phiếu thu" và trên khối "SAO LƯU DỮ LIỆU (BACKUP DATA)".
+- **Đặc điểm & Nghiệp vụ**:
+  1. **Bố cục 2 dãy phòng đối xứng**:
+     - Cột trái: Dãy phòng `1A` đến `6A`.
+     - Cột phải: Dãy phòng `1B` đến `6B`.
+     - Đường kẻ dọc phân cách sắc nét ở giữa 2 dãy.
+     - Mỗi hàng phòng gồm nhãn tên phòng dạng badge và 2 ô số: Điện và Nước.
+  2. **Giá trị mặc định**: Điện mặc định là `5` chữ số (tối đa $99.999$, quay vòng ở $100.000$), Nước mặc định là `4` chữ số (tối đa $9.999$, quay vòng ở $10.000$).
+  3. **Ràng buộc nhập liệu (3 - 7 chữ số)**:
+     - Chặn ký tự phi số, chỉ cho nhập số nguyên duy nhất từ `3` đến `7`.
+     - Nếu gõ số ngoài khoảng sẽ tự động chặn về giá trị hợp lệ; nếu xóa trống khi blur sẽ tự động khôi phục giá trị mặc định (`Điện: 5`, `Nước: 4`).
+  4. **Nút tiện ích "Áp dụng tất cả"**:
+     - Mở Modal `#apply-all-meter-digits-modal` cho phép nhập 1 lần số chữ số Điện và Nước để đồng loạt áp dụng cho toàn bộ 12 phòng chỉ bằng 1 cú click.
+  5. **Tác động sang tính toán & giao diện nhập**:
+     - Hàm toán học `calcRoom` (`src/shared/calc.js`) và popup cảnh báo quay vòng xác định mốc quay vòng theo công thức $10^{\text{meterDigits}}$ của từng phòng.
+     - Ô nhập chỉ số ở Phần 1 tự động giới hạn độ dài ký tự tối đa (`slice(0, maxDigits)`) theo đúng số chữ số đã cấu hình cho phòng đó.
+  6. **Nhật Ký Hoạt Động**:
+     - Khi có thay đổi chữ số đồng hồ của bất kỳ phòng nào, hệ thống tự động ghi log nhóm `PRICING` lưu chi tiết phòng nào thay đổi từ bao nhiêu số sang bao nhiêu số.
+
+---
+
 ## 12. Hệ Thống Nhật Ký Hoạt Động (Activity / Audit Log)
 
 - **Vị trí**: Nút **Nhật Ký** (`#btn-open-activity-log`) trên thanh Header chính mở Modal `#activity-log-modal`.

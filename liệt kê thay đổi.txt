@@ -237,3 +237,21 @@ HỆ THỐNG NHẬT KÝ HOẠT ĐỘNG (ACTIVITY / AUDIT LOG) AN TOÀN & TRỰC 
 4. File tạo mới & cập nhật:
    - File mới: `electron/activity-logger.js` (Backend), `src/input/activity-log.js` (Frontend độc lập).
    - File cập nhật: `electron/main.js`, `electron/preload.js`, `src/input/index.html`, `src/input/style.css`, `src/input/renderer.js`.
+
+================================================================================
+CẤU HÌNH SỐ CHỮ SỐ ĐỒNG HỒ ĐIỆN & NƯỚC CHO TỪNG PHÒNG (3 - 7 CHỮ SỐ)
+================================================================================
+1. Mục tiêu & Nghiệp vụ:
+   - Cho phép người dùng cấu hình số chữ số đồng hồ điện & nước riêng biệt cho từng phòng trong 12 phòng (1A - 6B).
+   - Mặc định: Đồng hồ Điện là 5 chữ số (tối đa 99.999), Đồng hồ Nước là 4 chữ số (tối đa 9.999).
+   - Ràng buộc nhập liệu: Bắt buộc số nguyên nằm trong khoảng 3 đến 7 chữ số (chặn nhập ngoài khoảng ngay khi gõ).
+   - Bổ sung nút tiện ích "Áp dụng tất cả" mở Modal cài đặt nhanh cùng lúc cho toàn bộ 12 phòng chỉ với 1 click.
+   - Đồng bộ tính toán: Hàm tính toán `calcRoom` và modal cảnh báo quay vòng tự động tính theo giới hạn `10^digits` của từng phòng. Ô nhập chỉ số ở Phần 1 tự động giới hạn độ dài ký tự theo số chữ số đã cấu hình.
+   - Ghi nhận Nhật Ký Hoạt Động (Activity Log): Tự động ghi log nhóm `PRICING` khi có thay đổi cấu hình số chữ số đồng hồ kèm danh sách chi tiết các phòng thay đổi.
+2. File cập nhật:
+   - `src/shared/calc.js`: Hàm `getMeterLimitByDigits(digits, defaultVal)`, cập nhật `calcRoom` lấy giới hạn theo `settings.meterDigits[phong]`.
+   - `src/input/index.html`: Thêm khu vực cấu hình 2 cột (1A-6A & 1B-6B), nút "Áp dụng tất cả" và Modal `#apply-all-meter-digits-modal`.
+   - `src/input/style.css`: Thêm styling cho lưới cấu hình chữ số `.meter-digits-container`, các cột `.meter-digits-column`, đường kẻ dọc `.meter-digits-divider` và các ô `.meter-digit-input`.
+   - `src/input/renderer.js`: Logic render danh sách `renderMeterDigitsSettingsList`, validate realtime `validateMeterDigitInputRealtime`, ép khoảng `enforceMeterDigitRange`, thu thập `collectMeterDigitsFromUI`, xử lý modal áp dụng tất cả và cập nhật `showRolloverModal`.
+   - `src/input/activity-log.js`: Đối chiếu và ghi log `meterDigits` trong `logSettingsAndPricingChanges`.
+   - `src/input/globals.d.ts`: Khai báo ambient type `getMeterLimitByDigits`.

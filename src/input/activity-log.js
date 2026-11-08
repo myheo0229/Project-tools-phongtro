@@ -239,6 +239,45 @@ async function logSettingsAndPricingChanges(oldSettings, newSettings) {
     summaryParts.push('Cập nhật mẫu tin nhắn Zalo');
   }
 
+  // Cấu hình số chữ số đồng hồ điện & nước từng phòng
+  const oldMeterDigits = oldSettings.meterDigits || {};
+  const newMeterDigits = newSettings.meterDigits || {};
+  const meterDigitChanges = [];
+  const roomKeys = ['1A', '2A', '3A', '4A', '5A', '6A', '1B', '2B', '3B', '4B', '5B', '6B'];
+
+  roomKeys.forEach(p => {
+    const oldD = (oldMeterDigits[p] && oldMeterDigits[p].dien) || 5;
+    const newD = (newMeterDigits[p] && newMeterDigits[p].dien) || 5;
+    const oldN = (oldMeterDigits[p] && oldMeterDigits[p].nuoc) || 4;
+    const newN = (newMeterDigits[p] && newMeterDigits[p].nuoc) || 4;
+
+    if (oldD !== newD || oldN !== newN) {
+      meterDigitChanges.push({
+        phong: p,
+        oldDien: oldD,
+        newDien: newD,
+        oldNuoc: oldN,
+        newNuoc: newN
+      });
+    }
+  });
+
+  if (meterDigitChanges.length > 0) {
+    changes.push({
+      field: 'meterDigits',
+      label: 'Số chữ số đồng hồ điện/nước',
+      changedCount: meterDigitChanges.length,
+      details: meterDigitChanges
+    });
+    const sampleText = meterDigitChanges.slice(0, 3).map(c => {
+      const parts = [];
+      if (c.oldDien !== c.newDien) parts.push(`Điện ${c.oldDien}→${c.newDien}`);
+      if (c.oldNuoc !== c.newNuoc) parts.push(`Nước ${c.oldNuoc}→${c.newNuoc}`);
+      return `P.${c.phong} (${parts.join(', ')})`;
+    }).join('; ');
+    summaryParts.push(`Cấu hình chữ số ĐH (${meterDigitChanges.length} phòng: ${sampleText}${meterDigitChanges.length > 3 ? '...' : ''})`);
+  }
+
   if (changes.length === 0) return;
 
   const summaryText = `${summaryParts.join('; ')}.`;

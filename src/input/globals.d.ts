@@ -11,6 +11,7 @@ interface Window {
   round1000?: (val: number) => number;
   round1?: (val: number) => number;
   MAX_DONG_HO_DIEN?: number;
+  getMeterLimitByDigits?: (digits: any, defaultVal?: number) => number;
   DateMaskInput?: any;
   DatePicker?: any;
   formatMoney?: (val: any) => string;
@@ -55,5 +56,6 @@ interface EventTarget {
 
 declare function calcRoom(room: any, settings?: any): any;
 declare function calcAllRooms(rooms: any[], settings?: any): any;
+declare function getMeterLimitByDigits(digits: any, defaultVal?: number): number;
 declare const MAX_DONG_HO_DIEN: number;
 declare var DatePicker: any;

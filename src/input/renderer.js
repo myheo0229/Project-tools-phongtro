@@ -883,10 +883,215 @@ function initSettingsForm() {
 
   setSelectedBank(appSettings.bankName || "");
 
+  // Khởi tạo bảng nhập số chữ số đồng hồ điện & nước cho 12 phòng
+  renderMeterDigitsSettingsList();
+
   isSettingsDirty = false;
   isBankDirty = false;
 
   initFloatingSaveSettingsButton();
+}
+
+/**
+ * Kiểm tra và ép giá trị số chữ số đồng hồ luôn nằm trong khoảng 3 đến 7 trong lúc nhập
+ */
+function validateMeterDigitInputRealtime(inputEl) {
+  if (!inputEl) return;
+  let val = String(inputEl.value || '').replace(/\D/g, '');
+  if (val.length > 1) {
+    val = val.slice(0, 1);
+  }
+  if (val !== '') {
+    let num = Number(val);
+    if (num < 3) num = 3;
+    if (num > 7) num = 7;
+    val = String(num);
+  }
+  inputEl.value = val;
+  markSettingsDirty();
+}
+
+/**
+ * Đảm bảo khi blur nếu ô bị trống thì tự động khôi phục giá trị mặc định (Điện: 5, Nước: 4)
+ */
+function enforceMeterDigitRange(inputEl, defaultVal) {
+  if (!inputEl) return;
+  let num = parseInt(inputEl.value, 10);
+  if (isNaN(num) || num < 3 || num > 7) {
+    inputEl.value = String(defaultVal);
+  } else {
+    inputEl.value = String(num);
+  }
+  markSettingsDirty();
+}
+
+/**
+ * Tăng hoặc giảm 1 đơn vị cho ô cấu hình số chữ số đồng hồ của phòng (3 - 7)
+ */
+function stepMeterDigit(inputId, delta) {
+  const el = /** @type {HTMLInputElement | null} */ (document.getElementById(inputId));
+  if (!el) return;
+  let val = parseInt(el.value, 10);
+  if (isNaN(val)) val = inputId.includes('dien') ? 5 : 4;
+  val = Math.max(3, Math.min(7, val + delta));
+  el.value = String(val);
+  markSettingsDirty();
+}
+
+/**
+ * Tăng hoặc giảm 1 đơn vị cho ô cấu hình trong Modal Áp Dụng Cho 12 Phòng
+ */
+function stepBulkMeterDigits(inputId, delta) {
+  const el = /** @type {HTMLInputElement | null} */ (document.getElementById(inputId));
+  if (!el) return;
+  let val = parseInt(el.value, 10);
+  if (isNaN(val)) val = inputId.includes('dien') ? 5 : 4;
+  val = Math.max(3, Math.min(7, val + delta));
+  el.value = String(val);
+}
+
+/**
+ * Render danh sách ô cấu hình số chữ số đồng hồ cho dãy 1A-6A (trái) và 1B-6B (phải)
+ */
+function renderMeterDigitsSettingsList() {
+  const listA = document.getElementById('meter-digits-list-a');
+  const listB = document.getElementById('meter-digits-list-b');
+  if (!listA || !listB) return;
+
+  listA.innerHTML = '';
+  listB.innerHTML = '';
+
+  const meterDigits = (appSettings && appSettings.meterDigits) || {};
+
+  const colARooms = ['1A', '2A', '3A', '4A', '5A', '6A'];
+  const colBRooms = ['1B', '2B', '3B', '4B', '5B', '6B'];
+
+  const createRoomRow = (roomName) => {
+    const roomConfig = meterDigits[roomName] || {};
+    const dienDigits = (roomConfig.dien && Number(roomConfig.dien) >= 3 && Number(roomConfig.dien) <= 7) ? Number(roomConfig.dien) : 5;
+    const nuocDigits = (roomConfig.nuoc && Number(roomConfig.nuoc) >= 3 && Number(roomConfig.nuoc) <= 7) ? Number(roomConfig.nuoc) : 4;
+
+    const row = document.createElement('div');
+    row.className = 'meter-digit-row';
+    row.innerHTML = `
+      <div class="meter-digit-room-name">
+        <span class="room-badge">${roomName}</span>
+      </div>
+      <div class="meter-digit-input-wrap">
+        <div class="digit-stepper-wrap">
+          <button type="button" class="stepper-btn stepper-btn-minus" onclick="stepMeterDigit('meter-digits-dien-${roomName}', -1)" title="Giảm 1 số" tabindex="-1">−</button>
+          <input type="text" 
+                 inputmode="numeric"
+                 class="meter-stepper-input" 
+                 id="meter-digits-dien-${roomName}" 
+                 data-room="${roomName}" 
+                 data-type="dien"
+                 value="${dienDigits}" 
+                 oninput="validateMeterDigitInputRealtime(this)" 
+                 onblur="enforceMeterDigitRange(this, 5)"
+                 title="Số chữ số đồng hồ Điện phòng ${roomName} (3 - 7 số)">
+          <button type="button" class="stepper-btn stepper-btn-plus" onclick="stepMeterDigit('meter-digits-dien-${roomName}', 1)" title="Tăng 1 số" tabindex="-1">+</button>
+        </div>
+      </div>
+      <div class="meter-digit-input-wrap">
+        <div class="digit-stepper-wrap">
+          <button type="button" class="stepper-btn stepper-btn-minus" onclick="stepMeterDigit('meter-digits-nuoc-${roomName}', -1)" title="Giảm 1 số" tabindex="-1">−</button>
+          <input type="text" 
+                 inputmode="numeric"
+                 class="meter-stepper-input" 
+                 id="meter-digits-nuoc-${roomName}" 
+                 data-room="${roomName}" 
+                 data-type="nuoc"
+                 value="${nuocDigits}" 
+                 oninput="validateMeterDigitInputRealtime(this)" 
+                 onblur="enforceMeterDigitRange(this, 4)"
+                 title="Số chữ số đồng hồ Nước phòng ${roomName} (3 - 7 số)">
+          <button type="button" class="stepper-btn stepper-btn-plus" onclick="stepMeterDigit('meter-digits-nuoc-${roomName}', 1)" title="Tăng 1 số" tabindex="-1">+</button>
+        </div>
+      </div>
+    `;
+    return row;
+  };
+
+  colARooms.forEach(r => listA.appendChild(createRoomRow(r)));
+  colBRooms.forEach(r => listB.appendChild(createRoomRow(r)));
+}
+
+/**
+ * Thu thập cấu hình số chữ số đồng hồ từ giao diện
+ */
+function collectMeterDigitsFromUI() {
+  const result = {};
+  DEFAULT_ROOM_NAMES.forEach(roomName => {
+    const dienInput = /** @type {HTMLInputElement | null} */ (document.getElementById(`meter-digits-dien-${roomName}`));
+    const nuocInput = /** @type {HTMLInputElement | null} */ (document.getElementById(`meter-digits-nuoc-${roomName}`));
+
+    let dienVal = dienInput ? parseInt(dienInput.value, 10) : 5;
+    let nuocVal = nuocInput ? parseInt(nuocInput.value, 10) : 4;
+
+    if (isNaN(dienVal) || dienVal < 3 || dienVal > 7) dienVal = 5;
+    if (isNaN(nuocVal) || nuocVal < 3 || nuocVal > 7) nuocVal = 4;
+
+    result[roomName] = {
+      dien: dienVal,
+      nuoc: nuocVal
+    };
+  });
+  return result;
+}
+
+/**
+ * Mở modal áp dụng cấu hình chữ số nhanh cho toàn bộ 12 phòng
+ */
+function openApplyAllMeterDigitsModal() {
+  const modal = document.getElementById('apply-all-meter-digits-modal');
+  if (modal) {
+    const r1aDien = /** @type {HTMLInputElement | null} */ (document.getElementById('meter-digits-dien-1A'));
+    const r1aNuoc = /** @type {HTMLInputElement | null} */ (document.getElementById('meter-digits-nuoc-1A'));
+    const dienEl = /** @type {HTMLInputElement | null} */ (document.getElementById('bulk-meter-digits-dien'));
+    const nuocEl = /** @type {HTMLInputElement | null} */ (document.getElementById('bulk-meter-digits-nuoc'));
+    if (dienEl) dienEl.value = r1aDien ? r1aDien.value : '5';
+    if (nuocEl) nuocEl.value = r1aNuoc ? r1aNuoc.value : '4';
+    modal.style.display = 'flex';
+  }
+}
+
+/**
+ * Đóng modal áp dụng cấu hình nhanh
+ */
+function closeApplyAllMeterDigitsModal() {
+  const modal = document.getElementById('apply-all-meter-digits-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+/**
+ * Xác nhận áp dụng cấu hình chữ số cho toàn bộ 12 phòng
+ */
+function confirmApplyAllMeterDigits() {
+  const dienEl = /** @type {HTMLInputElement | null} */ (document.getElementById('bulk-meter-digits-dien'));
+  const nuocEl = /** @type {HTMLInputElement | null} */ (document.getElementById('bulk-meter-digits-nuoc'));
+
+  let bulkDien = dienEl ? parseInt(dienEl.value, 10) : 5;
+  let bulkNuoc = nuocEl ? parseInt(nuocEl.value, 10) : 4;
+
+  if (isNaN(bulkDien) || bulkDien < 3 || bulkDien > 7) bulkDien = 5;
+  if (isNaN(bulkNuoc) || bulkNuoc < 3 || bulkNuoc > 7) bulkNuoc = 4;
+
+  DEFAULT_ROOM_NAMES.forEach(roomName => {
+    const dienInput = /** @type {HTMLInputElement | null} */ (document.getElementById(`meter-digits-dien-${roomName}`));
+    const nuocInput = /** @type {HTMLInputElement | null} */ (document.getElementById(`meter-digits-nuoc-${roomName}`));
+    if (dienInput) dienInput.value = String(bulkDien);
+    if (nuocInput) nuocInput.value = String(bulkNuoc);
+  });
+
+  closeApplyAllMeterDigitsModal();
+  markSettingsDirty();
+
+  if (typeof showToast === 'function') {
+    showToast(`Đã áp dụng ${bulkDien} số điện và ${bulkNuoc} số nước cho cả 12 phòng!`, 'success');
+  }
 }
 
 /**
@@ -1325,6 +1530,8 @@ function renderInitialTable() {
     ? 'title="Tháng này đã khóa dữ liệu. Bấm nút Chỉnh Sửa kế bên nút Gửi Zalo để mở khóa."'
     : '';
 
+  const activeSettings = getActiveMonthSettings();
+
   roomsData.forEach((room, index) => {
     const tr = document.createElement('tr');
     tr.setAttribute('data-row-index', String(index));
@@ -1336,6 +1543,10 @@ function renderInitialTable() {
 
     const dienCuReadonly = room.isDienCuLocked || isTableReadonly;
     const nuocCuReadonly = room.isNuocCuLocked || isTableReadonly;
+
+    const roomMeterCfg = (activeSettings && activeSettings.meterDigits && activeSettings.meterDigits[room.phong]) || {};
+    const dienMaxDigits = (roomMeterCfg.dien && Number(roomMeterCfg.dien) >= 3 && Number(roomMeterCfg.dien) <= 7) ? Number(roomMeterCfg.dien) : 5;
+    const nuocMaxDigits = (roomMeterCfg.nuoc && Number(roomMeterCfg.nuoc) >= 3 && Number(roomMeterCfg.nuoc) <= 7) ? Number(roomMeterCfg.nuoc) : 4;
 
     tr.innerHTML = `
       <td class="col-stt">${index + 1}</td>
@@ -1351,7 +1562,7 @@ function renderInitialTable() {
                ${dienCuReadonly ? 'readonly tabindex="-1"' : ''} 
                ${lockedTooltip}
                onmousedown="if (this.readOnly) event.preventDefault()"
-               oninput="handleInputChange(${index}, 'dienCu', this.value)" 
+               oninput="if (this.value.length > ${dienMaxDigits}) this.value = this.value.slice(0, ${dienMaxDigits}); handleInputChange(${index}, 'dienCu', this.value)" 
                onfocus="if (!this.readOnly) this.select()">
       </td>
 
@@ -1367,7 +1578,7 @@ function renderInitialTable() {
                  ${isTableReadonly ? 'readonly tabindex="-1"' : ''} 
                  ${lockedTooltip}
                  onmousedown="if (this.readOnly) event.preventDefault()"
-                 oninput="handleInputChange(${index}, 'dienMoi', this.value)" 
+                 oninput="if (this.value.length > ${dienMaxDigits}) this.value = this.value.slice(0, ${dienMaxDigits}); handleInputChange(${index}, 'dienMoi', this.value)" 
                  onblur="handleDienMoiBlur(${index})"
                  onfocus="if (!this.readOnly) this.select()">
           <button type="button" 
@@ -1393,7 +1604,7 @@ function renderInitialTable() {
                ${nuocCuReadonly ? 'readonly tabindex="-1"' : ''} 
                ${lockedTooltip}
                onmousedown="if (this.readOnly) event.preventDefault()"
-               oninput="handleInputChange(${index}, 'nuocCu', this.value)" 
+               oninput="if (this.value.length > ${nuocMaxDigits}) this.value = this.value.slice(0, ${nuocMaxDigits}); handleInputChange(${index}, 'nuocCu', this.value)" 
                onfocus="if (!this.readOnly) this.select()">
       </td>
 
@@ -1408,7 +1619,7 @@ function renderInitialTable() {
                ${isTableReadonly ? 'readonly tabindex="-1"' : ''} 
                ${lockedTooltip}
                onmousedown="if (this.readOnly) event.preventDefault()"
-               oninput="handleInputChange(${index}, 'nuocMoi', this.value)" 
+               oninput="if (this.value.length > ${nuocMaxDigits}) this.value = this.value.slice(0, ${nuocMaxDigits}); handleInputChange(${index}, 'nuocMoi', this.value)" 
                onfocus="if (!this.readOnly) this.select()">
       </td>
       <!-- Số Nước Tiêu Thụ -->
@@ -1865,6 +2076,11 @@ async function saveSettings(event) {
 
   const tmplInput = document.getElementById('zalo-template-input');
   if (tmplInput) appSettings.zaloMessageTemplate = tmplInput.value;
+
+  // Thu thập và lưu cấu hình số chữ số đồng hồ điện/nước cho 12 phòng
+  if (typeof collectMeterDigitsFromUI === 'function') {
+    appSettings.meterDigits = collectMeterDigitsFromUI();
+  }
 
   const ok = await saveSettingsFile();
 
@@ -2336,7 +2552,10 @@ function showRolloverModal(index) {
 
   const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
   const dienMoiNum = isNotEmpty(room.dienMoi) ? Number(room.dienMoi) : 0;
-  const maxDongHo = typeof MAX_DONG_HO_DIEN !== 'undefined' ? MAX_DONG_HO_DIEN : 10000;
+  const activeSettings = getActiveMonthSettings();
+  const roomMeterCfg = (activeSettings && activeSettings.meterDigits && activeSettings.meterDigits[room.phong]) || {};
+  const dienDigits = (roomMeterCfg.dien && Number(roomMeterCfg.dien) >= 3 && Number(roomMeterCfg.dien) <= 7) ? Number(roomMeterCfg.dien) : 5;
+  const maxDongHo = typeof getMeterLimitByDigits === 'function' ? getMeterLimitByDigits(dienDigits, 100000) : Math.pow(10, dienDigits);
   const dienTieuThu = (maxDongHo + dienMoiNum) - dienCuNum;
 
   currentRolloverIndex = index;
