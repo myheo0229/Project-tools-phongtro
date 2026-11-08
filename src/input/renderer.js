@@ -744,6 +744,13 @@ function forceSwitchTab(tabName) {
     newSection.classList.remove('page-in');
     newSection.style.removeProperty('--dir');
 
+    if (tabName === 'settings' && typeof updateFloatingSaveSettingsPosition === 'function') {
+      updateFloatingSaveSettingsPosition();
+    } else {
+      const floatingBtn = document.getElementById('btn-save-settings-floating');
+      if (floatingBtn) floatingBtn.classList.remove('visible');
+    }
+
     // MỞ KHÓA THANH ĐIỀU HƯỚNG HEADER (hoàn thành chuyển cảnh 100%)
     if (navTabs) navTabs.classList.remove('nav-locked');
     isTabTransitioning = false;
@@ -878,6 +885,57 @@ function initSettingsForm() {
 
   isSettingsDirty = false;
   isBankDirty = false;
+
+  initFloatingSaveSettingsButton();
+}
+
+/**
+ * Tự động cập nhật vị trí và trạng thái hiển thị của Nút Lưu Cài Đặt dạng Floating
+ * Khi nút inline trên đầu Card bị cuộn khuất khỏi tầm nhìn, nút floating sẽ xuất hiện
+ * và neo cố định ở giữa chiều cao (50vh) bên ngoài mép trái của khối bên trái.
+ */
+function updateFloatingSaveSettingsPosition() {
+  const card = document.getElementById('pricing-settings-card');
+  const inlineBtn = document.getElementById('btn-save-settings');
+  const floatingBtn = document.getElementById('btn-save-settings-floating');
+  const appMain = document.querySelector('.app-main');
+
+  if (!card || !inlineBtn || !floatingBtn || !appMain) return;
+
+  // Chỉ hoạt động khi đang ở tab Cài Đặt Chung
+  const settingsSection = document.getElementById('section-settings');
+  if (!settingsSection || !settingsSection.classList.contains('active')) {
+    floatingBtn.classList.remove('visible');
+    return;
+  }
+
+  const inlineRect = inlineBtn.getBoundingClientRect();
+  const mainRect = appMain.getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
+
+  // Nút inline bị khuất khi đỉnh của nó cuộn vượt lên trên mép dưới header (mainRect.top)
+  const isInlineHidden = inlineRect.bottom <= mainRect.top;
+  // Khối Card vẫn còn nằm trong vùng hiển thị (chưa bị cuộn mất hoàn toàn xuống đáy)
+  const isCardVisible = cardRect.bottom > mainRect.top + 80 && cardRect.top < mainRect.bottom;
+
+  if (isInlineHidden && isCardVisible) {
+    // Đặt nút nằm sát bên ngoài mép trái của khối card (cách 14px về bên trái)
+    const targetLeft = Math.max(16, cardRect.left - 14);
+    floatingBtn.style.left = `${targetLeft}px`;
+    floatingBtn.style.transform = 'translateY(-50%) translateX(-100%)';
+    floatingBtn.classList.add('visible');
+  } else {
+    floatingBtn.classList.remove('visible');
+  }
+}
+
+function initFloatingSaveSettingsButton() {
+  const appMain = /** @type {HTMLElement | null} */ (document.querySelector('.app-main'));
+  if (appMain && !appMain.dataset.floatingSaveBound) {
+    appMain.dataset.floatingSaveBound = 'true';
+    appMain.addEventListener('scroll', updateFloatingSaveSettingsPosition, { passive: true });
+    window.addEventListener('resize', updateFloatingSaveSettingsPosition, { passive: true });
+  }
 }
 
 /**

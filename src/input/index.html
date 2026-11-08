@@ -249,11 +249,31 @@
       <section id="section-settings" class="tab-content">
         <div class="settings-cards-wrapper">
           <!-- CARD 1: THIẾT LẬP GIÁ & THÔNG TIN CHUNG -->
-          <div class="settings-card">
-            <div class="settings-card-header">
-              <h2>THIẾT LẬP GIÁ & THÔNG TIN CHUNG</h2>
-              <p>Cấu hình bảng giá mặc định và thư mục lưu xuất phiếu thu</p>
+          <div class="settings-card" id="pricing-settings-card">
+            <div class="settings-card-header settings-card-header-with-action">
+              <div class="settings-card-header-text">
+                <h2>THIẾT LẬP GIÁ & THÔNG TIN CHUNG</h2>
+                <p>Cấu hình bảng giá mặc định và thư mục lưu xuất phiếu thu</p>
+              </div>
+              <button type="submit" form="settings-form" class="btn btn-primary btn-save-settings-inline" id="btn-save-settings">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                <span id="btn-save-settings-text">Lưu Cài Đặt</span>
+              </button>
             </div>
+
+            <!-- Nút Lưu Cài Đặt dạng Floating (Trượt theo bên trái khối khi nút trên đầu khuất tầm nhìn) -->
+            <button type="submit" form="settings-form" class="btn btn-primary btn-save-settings-floating" id="btn-save-settings-floating" aria-label="Lưu Cài Đặt">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              <span>Lưu Cài Đặt</span>
+            </button>
 
             <form id="settings-form" onsubmit="saveSettings(event)" class="settings-form">
               <!-- BỔ SUNG TRƯỜNG "THƯ MỤC LƯU ÁNH/PDF" VỚI NÚT BROWSE -->
@@ -798,17 +818,6 @@
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <div class="form-actions">
-                <button type="submit" class="btn btn-primary btn-lg" id="btn-save-settings">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                    <polyline points="7 3 7 8 15 8"></polyline>
-                  </svg>
-                  <span id="btn-save-settings-text">Lưu Cài Đặt</span>
-                </button>
               </div>
 
               <!-- CẤU HÌNH THÔNG TIN PHIÊN BẢN & CẬP NHẬT -->
