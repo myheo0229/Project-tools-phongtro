@@ -1,6 +1,6 @@
 {
   "name": "project-tools-phongtro",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "description": "Phần mềm quản lý và xuất phiếu thu tiền nhà trọ",
   "main": "electron/main.js",
   "scripts": {

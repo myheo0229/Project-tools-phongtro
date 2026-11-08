@@ -275,3 +275,28 @@ XUẤT DỮ LIỆU BẢNG THÁNG RA FILE EXCEL (.XLSX) - NÚT "XUẤT DỮ LIỆ
    - Giao diện: Cập nhật `src/input/index.html` và `src/input/style.css` (class `.table-card-header-actions .btn-export-excel`, style nút `#btn-open-exported-excel-file`).
    - Nhật Ký: Bổ sung `logExportMonthExcelEvent` trong `src/input/activity-log.js`.
    - Khai báo kiểu: Cập nhật `src/input/globals.d.ts`.
+
+================================================================================
+PHIÊN BẢN CHÍNH THỨC: v4.1.0 (BẢN CẬP NHẬT TÍNH NĂNG & ĐẠI TU GIAO DIỆN)
+================================================================================
+v4.1.0
+1. Khóa Dữ Liệu Tháng & Snapshot Đơn Giá:
+   - Tự động khóa bảng nhập liệu của các tháng đã xuất phiếu thu (lưu vào month-locks.json).
+   - Cơ chế mở khóa có Modal xác nhận bảo vệ, hủy chỉnh sửa khôi phục dữ liệu gốc an toàn, lưu và xuất lại đối chiếu chi tiết.
+   - Snapshot đơn giá tại thời điểm xuất giúp bảo toàn chính xác lịch sử tiền tệ khi Cài Đặt Chung thay đổi.
+2. Hệ Thống Nhật Ký Hoạt Động (Activity Log):
+   - Lưu vết toàn diện theo 6 nhóm nghiệp vụ: PRICING, MONTH_DATA, RESIDENTS, ZALO, BACKUP, SYSTEM.
+   - Hàng đợi tuần tự Single-Writer Queue, ghi file an toàn nguyên tử (.tmp), bảo vệ thông tin PII người thuê (không lưu full CCCD/SĐT).
+   - Modal giao diện tra cứu trực quan, lọc theo danh mục, nút xuất log ra file JSON.
+3. Cấu Hình Số Chữ Số Đồng Hồ Điện & Nước Từng Phòng (3 - 7 Chữ Số):
+   - Cài đặt linh hoạt độ dài đồng hồ điện và nước riêng biệt cho từng phòng (1A - 6B).
+   - Nút tiện ích "Áp dụng tất cả" mở Modal cài đặt nhanh đồng loạt cho toàn bộ 12 phòng.
+   - Tự động áp dụng giới hạn 10^digits vào tính toán và kiểm tra công tơ quay vòng.
+4. Bộ Công Cụ Xuất Báo Cáo Excel (.xlsx) Hai Phân Hệ:
+   - Phần 1: Nút "Xuất dữ liệu" tháng ra file Excel chuẩn OpenXML 16 cột, kèm công thức tính tổng =SUM(...) hàng 14.
+   - Phần 3: Nút "Xuất Excel" danh sách người thuê toàn bộ khu trọ.
+   - Tên file chuẩn hóa an toàn tuyệt đối với Windows: BangDuLieu_MM_YYYY - Output Time YYYY_MM_DD_HH_MM_SS.xlsx.
+   - Nâng cấp Modal kết quả xuất kích thước lớn, chữ to rõ ràng, tích hợp 2 nút hành động: "📂 Mở vị trí lưu file" (Windows Explorer) và "📊 Mở file" (mở trực tiếp bằng Microsoft Excel / WPS / LibreOffice).
+5. Đại Tu & Hoàn Thiện Giao Diện Người Dùng (UI):
+   - Thiết kế scrollbar mảnh hiện đại, tối ưu hiển thị tiêu đề, typography chữ to rõ nét.
+   - Chuẩn hóa các Modal thông báo, cảnh báo và bảng dữ liệu theo quy chuẩn Design System.
