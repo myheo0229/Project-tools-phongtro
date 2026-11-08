@@ -706,13 +706,18 @@ function forceSwitchTab(tabName) {
     initResidentsSection();
   }
 
-  // Lấy vị trí cuộn hiện tại của trang cũ
-  const currentScrollY = window.scrollY || window.pageYOffset || 0;
+  // Lấy vị trí cuộn hiện tại của vùng nội dung chính (.app-main)
+  const appMainEl = document.querySelector('.app-main');
+  const currentScrollY = appMainEl ? appMainEl.scrollTop : (window.scrollY || window.pageYOffset || 0);
 
   // Đưa màn hình về đầu trang tức thì (không có hiệu ứng cuộn kéo lên)
   // để trang mới lập tức hiển thị từ vị trí trên cùng
   if (currentScrollY > 0) {
-    window.scrollTo(0, 0);
+    if (appMainEl) {
+      appMainEl.scrollTop = 0;
+    } else {
+      window.scrollTo(0, 0);
+    }
     // Giữ nguyên vị trí khung nhìn của trang cũ tại vị trí người dùng đang xem trong lúc mờ dần
     oldSection.style.marginTop = `-${currentScrollY}px`;
   }

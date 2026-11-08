@@ -46,7 +46,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Quản Lý Phòng Trọ",
+      "shortcutName": "Quản Lý Phòng\u00A0Trọ",
       "artifactName": "${productName}_Setup_v${version}.${ext}"
     },
     "files": [
