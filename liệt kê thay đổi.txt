@@ -300,3 +300,10 @@ v4.1.0
 5. Đại Tu & Hoàn Thiện Giao Diện Người Dùng (UI):
    - Thiết kế scrollbar mảnh hiện đại, tối ưu hiển thị tiêu đề, typography chữ to rõ nét.
    - Chuẩn hóa các Modal thông báo, cảnh báo và bảng dữ liệu theo quy chuẩn Design System.
+
+================================================================================
+PHIÊN BẢN CHÍNH THỨC: v4.1.1 (HOTFIX HIỂN THỊ LOGO & PHIÊN BẢN)
+================================================================================
+v4.1.1
+- Khắc phục triệt để lỗi trùng lặp thẻ tiêu đề thương hiệu (Header Brand) và nhãn phiên bản hiện tại trong tab Cài Đặt Chung.
+- Đồng bộ hiển thị chuẩn xác số hiệu phiên bản v4.1.1 trên toàn bộ giao diện HTML và cửa sổ ứng dụng.
