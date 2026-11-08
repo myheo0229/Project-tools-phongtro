@@ -349,3 +349,22 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
      + Tiêu đề sự kiện `17.5px` đậm, dòng phụ `CATEGORY · HH:mm:ss`, nội dung tóm tắt `16.5px`, trạng thái kết quả (`Thành công` xanh lá / `Cảnh báo` cam / `Thất bại` đỏ) và mã sự kiện `Mã: log_...`.
      + Nhấn vào dòng sự kiện sẽ mở rộng khung `.alog-item-detail` hiển thị bảng đối chiếu chi tiết (`Trường thông tin | Trước | Sau` hoặc kết quả từng phòng Zalo) và thông tin đầy đủ của thời gian `timeVn` (`HH:mm:ss - DD/MM/YYYY`).
    - **Chân trang (`.alog-footer`)**: Hiển thị bộ đếm `Hiển thị X / Y sự kiện` bên trái và nút đảo chiều sắp xếp `Mới nhất trước / Cũ nhất trước` bên phải.
+
+
+---
+
+## 13. Nút "Xuất dữ liệu" Excel Trên Thanh Tiêu Đề Bảng Chính (Phần 1)
+
+1. **Vị trí & Bố cục**:
+   - Nằm ngay bên trái nút "Gửi Zalo" trong vùng `.table-card-header-actions` (`#btn-export-month-excel`).
+2. **Quy chuẩn Style**:
+   - Thừa hưởng thiết kế từ nút Xuất Excel cư dân ở Phần 3:
+     - Nền: Xanh lá nhạt `#f0fdf4`, hover `#dcfce7`, active `#bbf7d0`.
+     - Viền: `1.5px solid #86efac`, hover `#4ade80`.
+     - Màu chữ: Xanh đậm `#15803d`, hover `#166534`.
+     - Typography: `font-size: 15px`, `font-weight: 600`, `padding: 8px 18px`, `border-radius: 8px`.
+     - Icon: SVG bảng tính Excel `18x18px`.
+     - Label: **"Xuất dữ liệu"**.
+3. **Phản hồi trạng thái (Feedback)**:
+   - Khi đang xử lý xuất: Button chuyển sang `disabled`, chữ chuyển thành `"Đang xuất..."`.
+   - Khi hoàn tất: Hiển thị Toast thông báo và mở Modal `#excel-export-result-modal` kích thước lớn (`max-width: 680px`), kiểu chữ to rõ ràng (`21px` tiêu đề, `15px` phụ đề, `16.5px` trạng thái & số lượng, `15px` tên file, `14px` đường dẫn, `15.5px` nút thao tác, icon badge `52x52px`) kèm nút **"📂 Mở vị trí lưu file"**, nút **"📊 Mở file"** (mở trực tiếp file bằng Excel) và nút **"Đóng"** (áp dụng đồng bộ cho cả Phần 1 và Phần 3).

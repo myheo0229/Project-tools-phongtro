@@ -255,3 +255,23 @@ CẤU HÌNH SỐ CHỮ SỐ ĐỒNG HỒ ĐIỆN & NƯỚC CHO TỪNG PHÒNG (3 
    - `src/input/renderer.js`: Logic render danh sách `renderMeterDigitsSettingsList`, validate realtime `validateMeterDigitInputRealtime`, ép khoảng `enforceMeterDigitRange`, thu thập `collectMeterDigitsFromUI`, xử lý modal áp dụng tất cả và cập nhật `showRolloverModal`.
    - `src/input/activity-log.js`: Đối chiếu và ghi log `meterDigits` trong `logSettingsAndPricingChanges`.
    - `src/input/globals.d.ts`: Khai báo ambient type `getMeterLimitByDigits`.
+================================================================================
+XUẤT DỮ LIỆU BẢNG THÁNG RA FILE EXCEL (.XLSX) - NÚT "XUẤT DỮ LIỆU"
+================================================================================
+1. Mục tiêu & Nghiệp vụ:
+   - Thêm nút "Xuất dữ liệu" trên thanh tiêu đề Bảng nhập dữ liệu (Phần 1), đặt ngay bên trái nút "Gửi Zalo".
+   - Style nút thừa hưởng quy chuẩn thiết kế của nút Xuất Excel cư dân ở Phần 3 (nền xanh lá nhạt #f0fdf4, viền #86efac, chữ xanh đậm #15803d, icon SVG bảng tính).
+   - Tên file xuất tự động lưu vào BaseFolder theo đúng định dạng: `BangDuLieu_MM_YYYY - Output Time YYYY_MM_DD_HH_MM_SS.xlsx` (VD: `BangDuLieu_07_2026 - Output Time 2026_11_08_23_36_15.xlsx`, tuyệt đối không trùng tên, tự động thêm hậu tố _01, _02 nếu phát sinh xuất trùng giây).
+   - Cấu trúc bảng Excel gồm đúng 16 cột tương ứng giao diện (STT, Số Phòng, Điện Cũ, Điện Mới, Số Điện TT, Nước Cũ, Nước Mới, Số Nước TT, Tiền Điện, Tiền Nước, Tiền Phòng, Rác, Internet, Điện Hao Tải, Tiền Hao Tải, Tổng Cộng).
+   - Dòng TỔNG CỘNG ở hàng 14 (dưới 12 phòng) tích hợp sẵn công thức SUM (=SUM(...)) và số tiền tính sẵn cho từng cột tiêu thụ và chi phí, dòng in đậm viền đôi nổi bật.
+   - Định dạng số phân tách hàng nghìn (#,##0) cho toàn bộ tiền và chỉ số, 0.0 cho hao tải; độ rộng cột tự động vừa vặn (Auto-fit width).
+   - Nâng cấp Modal kết quả xuất #excel-export-result-modal: Kích thước mở rộng (max-width: 680px), cỡ chữ to và rõ ràng (tiêu đề 21px, subtitle 15px, trạng thái & số lượng 16.5px, mã tên file 15px, đường dẫn 14px, nút bấm 15.5px, icon badge 52x52px).
+   - Bổ sung nút "📊 Mở file" (#btn-open-exported-excel-file) nằm ngay giữa nút "📂 Mở vị trí lưu file" và nút "Đóng", áp dụng đồng bộ cho cả Phần 1 (Bảng dữ liệu tháng) và Phần 3 (Danh sách người thuê), gọi IPC shell.openPath mở file trực tiếp bằng ứng dụng mặc định (Excel/WPS/Calc).
+   - Ghi nhận vào Nhật Ký Hoạt Động (Activity Log) nhóm MONTH_DATA (action EXPORT_MONTH_EXCEL).
+2. Tách module riêng biệt (Không làm phình to file cũ):
+   - Backend: `electron/month-excel-service.js` (Tạo OpenXML thuần qua zlib, ghi file an toàn nguyên tử).
+   - Frontend: `src/input/month-excel.js` (Gọi IPC, xử lý sự kiện click nút và mở Modal kết quả).
+   - Kênh IPC: `month:export-excel` và `excel:open-file` trong `electron/preload.js` và `electron/main.js`.
+   - Giao diện: Cập nhật `src/input/index.html` và `src/input/style.css` (class `.table-card-header-actions .btn-export-excel`, style nút `#btn-open-exported-excel-file`).
+   - Nhật Ký: Bổ sung `logExportMonthExcelEvent` trong `src/input/activity-log.js`.
+   - Khai báo kiểu: Cập nhật `src/input/globals.d.ts`.

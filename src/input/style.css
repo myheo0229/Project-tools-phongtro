@@ -638,6 +638,50 @@ body {
   transform: translateY(-1px);
 }
 
+/* Nút Xuất dữ liệu Excel trên thanh tiêu đề Bảng chính (Phần 1) */
+.table-card-header-actions .btn-export-excel {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1.5px solid #86efac;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(22, 163, 74, 0.12);
+  white-space: nowrap;
+}
+
+.table-card-header-actions .btn-export-excel:hover:not(:disabled) {
+  background: #dcfce7;
+  border-color: #4ade80;
+  color: #166534;
+  box-shadow: 0 3px 8px rgba(22, 163, 74, 0.18);
+  transform: translateY(-1px);
+}
+
+.table-card-header-actions .btn-export-excel:active:not(:disabled) {
+  background: #bbf7d0;
+  transform: translateY(0);
+}
+
+.table-card-header-actions .btn-export-excel:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.table-card-header-actions .btn-export-excel svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
 /* ============================================================
    KHÓA DỮ LIỆU THÁNG ĐÃ XUẤT & NÚT CHỈNH SỬA
    ============================================================ */
@@ -809,6 +853,161 @@ body {
 
 .modal-notice-box-info p {
   margin: 0;
+}
+
+/* ============================================================
+   MODAL KẾT QUẢ XUẤT EXCEL (KÍCH THƯỚC LỚN & CHỮ TO)
+   Áp dụng cho cả Xuất Bảng Tháng và Xuất Danh Sách Người Thuê
+   ============================================================ */
+#excel-export-result-modal .modal-card,
+.excel-export-result-card {
+  max-width: 680px !important;
+  width: 92% !important;
+  border-radius: 16px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.18);
+}
+
+#excel-export-result-modal .modal-header {
+  padding: 22px 28px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+#excel-export-result-modal .modal-icon-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+#excel-export-result-modal .modal-icon-badge svg {
+  width: 28px;
+  height: 28px;
+}
+
+#excel-export-result-modal .modal-title-group h3 {
+  font-size: 21px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.35;
+  margin: 0;
+}
+
+#excel-export-result-modal .modal-subtitle {
+  font-size: 15px;
+  color: #64748b;
+  margin-top: 5px;
+  line-height: 1.5;
+}
+
+#excel-export-result-modal .modal-body {
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#excel-export-result-modal #excel-export-success-box {
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 15px;
+}
+
+#excel-export-result-modal #excel-export-status-text {
+  color: #15803d;
+  font-size: 16.5px;
+  font-weight: 700;
+}
+
+#excel-export-result-modal #excel-export-count-text {
+  color: #0f172a;
+  font-size: 16.5px;
+  font-weight: 700;
+}
+
+#excel-export-result-modal #excel-export-filename {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 15px;
+  word-break: break-all;
+  line-height: 1.5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+#excel-export-result-modal #excel-export-filepath {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+  word-break: break-all;
+  line-height: 1.5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+#excel-export-result-modal #excel-export-error-box {
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  border-radius: 12px;
+  padding: 18px 20px;
+  color: #991b1b;
+  font-size: 15.5px;
+  line-height: 1.6;
+  white-space: pre-line;
+  font-weight: 500;
+}
+
+#excel-export-result-modal .modal-footer {
+  padding: 18px 28px;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+}
+
+#excel-export-result-modal .modal-footer .btn {
+  padding: 11px 22px;
+  font-size: 15.5px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+#excel-export-result-modal #btn-open-exported-excel-file {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border: 1.5px solid #059669;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#excel-export-result-modal #btn-open-exported-excel-file:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669, #047857);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+
+#excel-export-result-modal #btn-open-exported-excel-file:active:not(:disabled) {
+  background: #047857;
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
 }
 
 .btn-warning,

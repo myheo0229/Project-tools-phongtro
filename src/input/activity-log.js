@@ -550,6 +550,29 @@ async function logAnomalyConfirmedEvent({ monthKey, phong, prevKwh, currKwh, dif
 }
 
 /**
+ * [NHÓM 2 - MONTH_DATA]: Xuất bảng dữ liệu tháng ra file Excel (.xlsx)
+ */
+async function logExportMonthExcelEvent({ monthKey, fileName, totalRevenue, roomCount = 12 }) {
+  const monthLabel = typeof formatMonthLabel === 'function' ? formatMonthLabel(monthKey) : monthKey;
+  const revStr = typeof formatMoneyForLog === 'function' ? formatMoneyForLog(totalRevenue) : `${totalRevenue}đ`;
+  await recordActivityLog({
+    category: 'MONTH_DATA',
+    action: 'EXPORT_MONTH_EXCEL',
+    level: 'info',
+    result: 'success',
+    title: `Xuất Excel dữ liệu ${monthLabel}`,
+    summary: `Đã xuất dữ liệu ${monthLabel} (${roomCount} phòng · Tổng ${revStr}) ra file ${fileName}.`,
+    metadata: {
+      target: `month_${monthKey}`,
+      monthKey,
+      fileName,
+      totalRevenue,
+      roomCount
+    }
+  });
+}
+
+/**
  * [NHÓM 3 - RESIDENTS]: Thêm hồ sơ người thuê mới (Không lưu full CCCD/SĐT)
  */
 async function logAddResidentEvent(resident, roomName = '') {
@@ -1520,6 +1543,7 @@ window.logCancelMonthEditEvent = logCancelMonthEditEvent;
 window.logMonthSaveAndExportEvent = logMonthSaveAndExportEvent;
 window.logRolloverConfirmedEvent = logRolloverConfirmedEvent;
 window.logAnomalyConfirmedEvent = logAnomalyConfirmedEvent;
+window.logExportMonthExcelEvent = logExportMonthExcelEvent;
 window.logAddResidentEvent = logAddResidentEvent;
 window.logUpdateResidentEvent = logUpdateResidentEvent;
 window.logDeleteResidentEvent = logDeleteResidentEvent;

@@ -786,6 +786,7 @@ ipcMain.handle('cccd:read-image', async (event, relativePath) => {
 
 // IPC: Xuất Danh Sách Người Thuê ra file Excel (.xlsx) lưu trực tiếp vào BaseFolder
 const excelService = require('./excel-service');
+const monthExcelService = require('./month-excel-service');
 
 ipcMain.handle('residents:export-excel', async (event, payload = {}) => {
   try {
@@ -806,12 +807,47 @@ ipcMain.handle('residents:export-excel', async (event, payload = {}) => {
   }
 });
 
+// IPC: Xuất Bảng Dữ Liệu Tháng ra file Excel (.xlsx) lưu trực tiếp vào BaseFolder
+ipcMain.handle('month:export-excel', async (event, payload = {}) => {
+  try {
+    const pointer = getPointer();
+    const baseFolder = (pointer && pointer.baseFolder) || (payload && payload.baseFolder) || '';
+    return await monthExcelService.exportMonthDataToExcel({
+      baseFolder,
+      monthKey: payload.monthKey || '',
+      roomsData: payload.roomsData || []
+    });
+  } catch (err) {
+    console.error('Lỗi khi xuất Excel bảng dữ liệu tháng:', err);
+    return {
+      success: false,
+      code: 'UNEXPECTED_ERROR',
+      message: `Lỗi hệ thống khi xuất Excel: ${err && err.message ? err.message : String(err)}`
+    };
+  }
+});
+
 ipcMain.handle('residents:show-excel-in-folder', async (event, filePath) => {
   try {
     if (!filePath || typeof filePath !== 'string' || !fs.existsSync(filePath)) {
       return { ok: false, message: 'Không tìm thấy file Excel trên ổ đĩa.' };
     }
     shell.showItemInFolder(path.normalize(filePath));
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, message: err && err.message ? err.message : String(err) };
+  }
+});
+
+ipcMain.handle('excel:open-file', async (event, filePath) => {
+  try {
+    if (!filePath || typeof filePath !== 'string' || !fs.existsSync(filePath)) {
+      return { ok: false, message: 'Không tìm thấy file Excel trên ổ đĩa để mở.' };
+    }
+    const errMsg = await shell.openPath(path.normalize(filePath));
+    if (errMsg) {
+      return { ok: false, message: `Không thể mở file Excel: ${errMsg}` };
+    }
     return { ok: true };
   } catch (err) {
     return { ok: false, message: err && err.message ? err.message : String(err) };

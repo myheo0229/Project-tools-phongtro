@@ -259,7 +259,9 @@ Các kênh IPC được phơi ra thông qua `window.api` trong `electron/preload
 | `cccd:delete-folder` | `invoke` | `{ roomName, personName, cccd }` | `{ success: true }` | Xóa vĩnh viễn thư mục ảnh CCCD khi xóa người thuê |
 | `cccd:read-image` | `invoke` | `relativePath` (string) | `string` (Base64 Data URL) hoặc `null` | Đọc ảnh CCCD từ đĩa trả về Data URL phục vụ Lightbox |
 | `residents:export-excel` | `invoke` | `{ baseFolder }` | `{ success, fileName, filePath, totalExported }` | Xuất toàn bộ danh sách người thuê ra file `.xlsx` lưu trực tiếp tại `BaseFolder` |
+| `month:export-excel` | `invoke` | `{ baseFolder, monthKey, roomsData }` | `{ success, fileName, filePath, fileSizeFormatted, totalRooms }` | Xuất bảng dữ liệu chỉ số & tính tiền 12 phòng của tháng ra file `.xlsx` lưu trực tiếp tại `BaseFolder` |
 | `residents:show-excel-in-folder` | `invoke` | `filePath` (string) | `{ ok: true }` hoặc `{ ok: false, message }` | Mở Windows Explorer và bôi đen file Excel vừa xuất |
+| `excel:open-file` | `invoke` | `filePath` (string) | `{ ok: true }` hoặc `{ ok: false, message }` | Mở trực tiếp file Excel vừa xuất bằng ứng dụng mặc định (shell.openPath) |
 
 ### 3.4. Nhóm Tích Hợp Zalo (`zca-js`)
 

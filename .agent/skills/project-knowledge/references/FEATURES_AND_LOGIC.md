@@ -38,6 +38,7 @@
 | 26 | Thông báo Toast góc màn hình | Toàn hệ thống | `src/input/renderer.js` (`showToast`) | ✅ Hoàn thành |
 | 27 | Khóa Dữ Liệu Tháng Đã Xuất & 2 Popup Bảo Vệ | Phần 1: Bảng nhập | `electron/main.js`, `src/input/renderer.js` | ✅ Hoàn thành |
 | 28 | Định Dạng Phân Cách Hàng Nghìn Realtime & Chuẩn Hóa Tỷ Lệ Hao Tải | Phần 2: Cài Đặt Chung | `src/input/index.html`, `renderer.js` | ✅ Hoàn thành |
+| 29 | Xuất Dữ Liệu Bảng Tháng Ra File Excel (.xlsx) | Phần 1: Bảng nhập | `electron/month-excel-service.js`, `src/input/month-excel.js` | ✅ Hoàn thành |
 
 ---
 
@@ -393,3 +394,27 @@
   2. **Single-Writer Queue & Atomic Write**: Xếp hàng tuần tự tại Main Process, ghi qua `.tmp`, tự khôi phục từ `.tmp` hoặc đổi tên file lỗi thành `activity-logs.corrupted_<timestamp>.json` (không bao giờ tự xóa file cũ), giới hạn tối đa 2.000 dòng.
   3. **Bảo toàn khi đổi BaseFolder**: Tự động di chuyển và hợp nhất log từ thư mục cũ sang thư mục mới trong `settings:save`.
   4. **Bảo toàn khi Phục hồi Backup**: Hợp nhất log hiện tại và log trong bản sao lưu để không mất lịch sử gần nhất.
+
+---
+
+## 13. Xuất Dữ Liệu Bảng Tháng Ra File Excel (.xlsx)
+
+- **Vị trí**: Nút **"Xuất dữ liệu"** (`#btn-export-month-excel`) trên thanh tiêu đề Bảng chính (Phần 1), nằm ngay **bên trái nút "Gửi Zalo"**.
+- **Style giao diện**: Thừa hưởng quy chuẩn thiết kế của nút Xuất Excel Phần 3 (nền xanh lá nhạt `#f0fdf4`, viền `#86efac`, chữ xanh đậm `#15803d`, icon bảng tính SVG).
+- **Module xử lý**:
+  - Backend: `electron/month-excel-service.js` (Tạo OpenXML thuần qua `zlib`, không phụ thuộc thư viện bên ngoài).
+  - Frontend: `src/input/month-excel.js` (Gọi IPC `month:export-excel`, xử lý UI và ghi Nhật Ký Hoạt Động).
+- **Quy tắc đặt tên file an toàn**:
+  - Định dạng: `BangDuLieu_MM_YYYY - Output Time YYYY_MM_DD_HH_MM_SS.xlsx` (Ví dụ: `BangDuLieu_07_2026 - Output Time 2026_11_08_23_36_15.xlsx`).
+  - Tên file không chứa ký tự cấm của hệ điều hành Windows (`/`, `\`, `:`, `*`, `?`, `"`, `<`, `>`, `|`) tránh tuyệt đối lỗi `ENOENT`.
+  - Nếu đã có file cùng tên trong cùng 1 giây, tự động thêm hậu tố `_01`, `_02`... để tuyệt đối không ghi đè dữ liệu cũ.
+  - Cơ chế ghi file an toàn nguyên tử (Atomic write qua `.tmp` rồi rename).
+- **Cấu trúc bảng tính Excel**:
+  - Gồm đúng **16 cột** tương ứng giao diện: STT, Số Phòng, Điện Cũ, Điện Mới, Số Điện TT, Nước Cũ, Nước Mới, Số Nước TT, Tiền Điện, Tiền Nước, Tiền Phòng, Rác, Internet, Điện Hao Tải, Tiền Hao Tải, Tổng Cộng.
+  - **Dòng TỔNG CỘNG (Footer Row)**: Nằm ở hàng 14 (dưới 12 phòng), tích hợp sẵn công thức tính tổng chuẩn Excel `=SUM(...)` và giá trị tiền tính toán sẵn cho từng cột tiêu thụ và chi phí, dòng in đậm có viền đôi nổi bật.
+  - Định dạng số: Định dạng phân tách hàng nghìn `#,##0` cho toàn bộ số tiền và chỉ số, `0.0` cho hao tải.
+- **Tương tác sau khi xuất**:
+  - Hiển thị Toast thông báo thành công.
+  - Mở Modal kết quả `#excel-export-result-modal`: Kích thước mở rộng (`max-width: 680px`), kiểu chữ to (`21px` tiêu đề, `15px` phụ đề, `16.5px` trạng thái & số lượng, `15px` tên file, `14px` đường dẫn, `15.5px` nút thao tác, icon badge `52x52px`) hiển thị chi tiết tên file, đường dẫn, nút **"📂 Mở vị trí lưu file"**, nút **"📊 Mở file"** (mở trực tiếp bằng Excel/WPS/Calc) và nút **"Đóng"**. Hỗ trợ đồng bộ cho cả Phần 1 và Phần 3.
+  - Tự động ghi 1 bản ghi vào hệ thống Nhật Ký Hoạt Động (`category: 'MONTH_DATA'`, `action: 'EXPORT_MONTH_EXCEL'`).
+

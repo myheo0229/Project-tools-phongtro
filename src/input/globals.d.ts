@@ -18,6 +18,11 @@ interface Window {
   formatDecimalVN?: (val: any) => string;
   getNgayThangNam?: (date?: any) => any;
   toReceiptData?: (room: any, calcResult: any, settings?: any) => any;
+  handleExportMonthExcelClick?: () => Promise<any>;
+  showMonthExcelExportResultModal?: (result: any, monthKey?: string) => void;
+  logExportMonthExcelEvent?: (params: any) => Promise<any>;
+  handleOpenExportedExcelFile?: () => Promise<any>;
+  lastExportedExcelPath?: string;
 }
 
 interface HTMLElement {
@@ -59,3 +64,17 @@ declare function calcAllRooms(rooms: any[], settings?: any): any;
 declare function getMeterLimitByDigits(digits: any, defaultVal?: number): number;
 declare const MAX_DONG_HO_DIEN: number;
 declare var DatePicker: any;
+
+declare var currentLoadedMonth: string;
+declare var roomsData: any[];
+declare var appSettings: any;
+declare function showToast(message: string, type?: string): void;
+declare function getActiveMonthSettings(): any;
+declare function getEffectiveDienStartForRollover(room: any): number;
+declare function getEffectiveNuocStartForRollover(room: any): number;
+declare function showExcelExportResultModal(result: any): void;
+declare function formatMonthLabel(monthKey: string): string;
+declare var lastExportedResidentsExcelPath: string;
+declare function logExportMonthExcelEvent(params: any): Promise<any>;
+declare function handleExportMonthExcelClick(): Promise<any>;
+declare function showMonthExcelExportResultModal(result: any, monthKey?: string): void;

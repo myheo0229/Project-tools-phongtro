@@ -4277,9 +4277,13 @@ function showExcelExportResultModal(result) {
   const fileNameEl = document.getElementById('excel-export-filename');
   const filePathEl = document.getElementById('excel-export-filepath');
   const btnOpenFolder = document.getElementById('btn-open-exported-excel-folder');
+  const btnOpenFile = document.getElementById('btn-open-exported-excel-file');
 
   if (result && result.success) {
     lastExportedResidentsExcelPath = result.filePath || '';
+    if (typeof window !== 'undefined') {
+      window.lastExportedExcelPath = result.filePath || '';
+    }
     if (badge) {
       badge.style.background = '#dcfce7';
       badge.style.color = '#15803d';
@@ -4293,8 +4297,12 @@ function showExcelExportResultModal(result) {
     if (fileNameEl) fileNameEl.textContent = result.fileName || '-';
     if (filePathEl) filePathEl.textContent = result.filePath || '-';
     if (btnOpenFolder) btnOpenFolder.style.display = lastExportedResidentsExcelPath ? 'inline-flex' : 'none';
+    if (btnOpenFile) btnOpenFile.style.display = lastExportedResidentsExcelPath ? 'inline-flex' : 'none';
   } else {
     lastExportedResidentsExcelPath = '';
+    if (typeof window !== 'undefined') {
+      window.lastExportedExcelPath = '';
+    }
     const isEmptyData = result && result.code === 'EMPTY_RESIDENTS';
     if (badge) {
       badge.style.background = isEmptyData ? '#fef3c7' : '#fee2e2';
@@ -4317,6 +4325,7 @@ function showExcelExportResultModal(result) {
       errorBox.textContent = (result && result.message) || 'Đã xảy ra lỗi khi xuất file Excel.';
     }
     if (btnOpenFolder) btnOpenFolder.style.display = 'none';
+    if (btnOpenFile) btnOpenFile.style.display = 'none';
   }
 
   modal.style.display = 'flex';
@@ -4345,6 +4354,40 @@ async function handleOpenExportedExcelFolder() {
   } catch (err) {
     console.error('Lỗi khi mở thư mục chứa file Excel:', err);
   }
+}
+
+/**
+ * Mở trực tiếp file Excel vừa xuất bằng ứng dụng mặc định trên máy tính
+ */
+async function handleOpenExportedExcelFile() {
+  const targetPath = (typeof window !== 'undefined' && window.lastExportedExcelPath)
+    || (typeof lastExportedResidentsExcelPath !== 'undefined' ? lastExportedResidentsExcelPath : '')
+    || document.getElementById('excel-export-filepath')?.textContent;
+
+  if (!targetPath || targetPath === '-' || !window.api || !window.api.openExcelFile) {
+    if (typeof showToast === 'function') {
+      showToast('Không tìm thấy đường dẫn file Excel để mở!', 'warning');
+    }
+    return;
+  }
+  try {
+    const res = await window.api.openExcelFile(targetPath);
+    if (res && !res.ok && res.message) {
+      if (typeof showToast === 'function') {
+        showToast(res.message, 'error');
+      }
+    }
+  } catch (err) {
+    console.error('Lỗi khi mở file Excel:', err);
+    if (typeof showToast === 'function') {
+      showToast(`Không thể mở file Excel: ${err && err.message ? err.message : String(err)}`, 'error');
+    }
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.handleOpenExportedExcelFolder = handleOpenExportedExcelFolder;
+  window.handleOpenExportedExcelFile = handleOpenExportedExcelFile;
 }
 
 /**

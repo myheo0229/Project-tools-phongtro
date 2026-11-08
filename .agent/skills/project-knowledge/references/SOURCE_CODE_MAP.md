@@ -131,6 +131,14 @@ Project-tools-phongtro/
   - `generateUniqueExcelFileName(baseFolder, date)`: Sinh tên file `DanhSachNguoiThue_YYYYMMDD_HHmmss.xlsx` (kèm hậu tố `_01`, `_02` nếu trùng giây).
 - **Dependencies**: `fs`, `path`, `zlib` (Node.js built-ins).
 
+#### 📄 `electron/month-excel-service.js`
+- **Nhiệm vụ**: Tạo và xuất báo cáo bảng dữ liệu chỉ số và tính tiền phòng của tháng ra file Excel chuẩn OpenXML SpreadsheetML (`.xlsx`) độc lập, không phụ thuộc thư viện ngoài.
+- **Các hàm chính**:
+  - `exportMonthDataToExcel({ baseFolder, monthKey, roomsData })`: Kiểm tra `BaseFolder`, tạo buffer `.xlsx` và ghi file an toàn nguyên tử (atomic write qua `.tmp` rồi rename).
+  - `buildMonthDataExcelBuffer(roomsData, monthKey)`: Xây dựng bảng 16 cột chuẩn tương ứng giao diện, định dạng số `#,#00` cho tiền tệ và chỉ số, thêm dòng TỔNG CỘNG tích hợp sẵn công thức `=SUM(...)`, định dạng màu header xanh lá `#E2EFDA` và viền đôi cho dòng tổng.
+  - `generateMonthExcelFileName(baseFolder, monthKey, date)`: Sinh tên file theo định dạng `BangDuLieu_MM_YYYY - Output Time YYYY_MM_DD_HH_MM_SS.xlsx` (kèm hậu tố `_01`, `_02` nếu phát sinh xuất trùng giây).
+- **Dependencies**: `fs`, `path`, `zlib` (Node.js built-ins).
+
 ---
 
 ### 2.2. Phân Hệ Giao Diện Người Dùng (`src/input/`)
@@ -170,6 +178,13 @@ Project-tools-phongtro/
   - **Tùy chọn Gửi & Soạn thảo Mẫu Tin Nhắn Zalo**: `toggleZaloSendOption()`, `onZaloOptionCheckboxChange()`, `onZaloOptionChange()`, `insertVariableIntoTemplate()`, `onZaloTemplateInput()`, `syncZaloEditorScroll()`, `validateZaloTemplateVariables()`, `resetZaloTemplateToDefault()`, `initZaloTemplateCustomizerUI()`, `updateZaloLivePreview()`, cùng hằng số `DEFAULT_ZALO_TEMPLATE`, `ZALO_VALID_VARIABLES`.
   - **Auto Updater**: `initAutoUpdaterListeners()`, `checkUpdateManual()`, `startDownloadUpdateNow()`, `updateDownloadProgressUI()`.
 - **Tác động nếu sửa**: File chứa rất nhiều logic tương tác chặt chẽ. Cần lưu ý các biến trạng thái toàn cục (`roomsData`, `residentsList`, `roomsList`, `isSettingsDirty`, `isBankDirty`, `selectedZaloRooms`).
+
+#### 📄 `src/input/month-excel.js`
+- **Nhiệm vụ**: Phân hệ xử lý sự kiện bấm nút "Xuất dữ liệu" trên thanh tác vụ Bảng nhập chỉ số (Phần 1), tách file độc lập chống phình to `renderer.js`.
+- **Các hàm chính**:
+  - `handleExportMonthExcelClick()`: Tính toán lại dữ liệu 12 phòng qua `calcRoom`, kiểm tra `BaseFolder`, gọi IPC `month:export-excel`, xử lý Toast và mở Modal kết quả.
+  - `showMonthExcelExportResultModal(result, monthKey)`: Tái sử dụng modal `#excel-export-result-modal` để hiển thị tên file, đường dẫn, nút mở file và nút mở thư mục chứa file.
+  - `handleOpenExportedExcelFile()`: Mở trực tiếp file Excel vừa xuất bằng ứng dụng mặc định trên máy tính qua IPC `excel:open-file` (`shell.openPath`).
 
 #### 📄 `src/input/style.css` (3570 dòng)
 - **Nhiệm vụ**: Toàn bộ hệ thống giao diện trực quan, định nghĩa biến màu sắc, kích thước, hiệu ứng đổ bóng, responsive breakpoints và hiệu ứng chuyển động.
