@@ -1728,7 +1728,7 @@ body {
 }
 
 .modal-subtitle {
-  font-size: 15px;
+  font-size: 16px;
   color: var(--text-muted);
   margin: 0;
 }
@@ -3831,7 +3831,7 @@ mark.search-hl {
    MODAL CHỌN PHÒNG GỬI PHIẾU THU QUA ZALO
    ============================================================ */
 .zalo-select-modal-card {
-  max-width: 780px;
+  max-width: 920px;
   width: 94%;
   background: #ffffff;
   border-radius: 16px;
@@ -3839,7 +3839,7 @@ mark.search-hl {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  max-height: 95vh;
 }
 
 .zalo-select-toolbar {
@@ -3860,7 +3860,7 @@ mark.search-hl {
 }
 
 .zalo-select-stats {
-  font-size: 13.5px;
+  font-size: 15px;
   color: #475569;
   font-weight: 500;
 }
@@ -3874,7 +3874,7 @@ mark.search-hl {
 .zalo-select-body {
   padding: 18px 24px;
   overflow-y: auto;
-  max-height: 56vh;
+  max-height: 80vh;
 }
 
 .zalo-rooms-grid {
@@ -3954,14 +3954,14 @@ mark.search-hl {
 }
 
 .zalo-room-amount {
-  font-size: 13.5px;
+  font-size: 16px;
   font-weight: 700;
   color: #059669;
   white-space: nowrap;
 }
 
 .zalo-room-guest {
-  font-size: 12.5px;
+  font-size: 15px;
   color: #475569;
   white-space: nowrap;
   overflow: hidden;
@@ -3969,7 +3969,7 @@ mark.search-hl {
 }
 
 .zalo-room-phone {
-  font-size: 12px;
+  font-size: 15px;
   color: #64748b;
   display: flex;
   align-items: center;
@@ -4747,7 +4747,7 @@ input[type="number"] {
 
 .btn-sm {
   padding: 6px 12px;
-  font-size: 12.5px;
+  font-size: 15px;
   gap: 6px;
 }
 
