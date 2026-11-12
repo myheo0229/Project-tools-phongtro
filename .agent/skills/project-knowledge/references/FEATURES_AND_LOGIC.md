@@ -418,3 +418,18 @@
   - Mở Modal kết quả `#excel-export-result-modal`: Kích thước mở rộng (`max-width: 680px`), kiểu chữ to (`21px` tiêu đề, `15px` phụ đề, `16.5px` trạng thái & số lượng, `15px` tên file, `14px` đường dẫn, `15.5px` nút thao tác, icon badge `52x52px`) hiển thị chi tiết tên file, đường dẫn, nút **"📂 Mở vị trí lưu file"**, nút **"📊 Mở file"** (mở trực tiếp bằng Excel/WPS/Calc) và nút **"Đóng"**. Hỗ trợ đồng bộ cho cả Phần 1 và Phần 3.
   - Tự động ghi 1 bản ghi vào hệ thống Nhật Ký Hoạt Động (`category: 'MONTH_DATA'`, `action: 'EXPORT_MONTH_EXCEL'`).
 
+---
+
+## 14. Giao Diện Modal Ghi Nhận Thay Đổi Đồng Hồ Điện / Nước (UI/UX Preview)
+
+- **Vị trí**: Nút **"Thay đổi đồng hồ"** (`#btn-open-meter-change-modal`) trên thanh tiêu đề Bảng chính (Phần 1), đặt ở **ngoài cùng bên trái** (vị trí cuối cùng tính từ phải sang trái trên hàng nút tác vụ cùng với `Xuất dữ liệu` và `Gửi Zalo`).
+- **Module xử lý độc lập**: `src/input/meter-change-modal.js` (không can thiệp `renderer.js` hay `calc.js`).
+- **Trạng thái hiện tại**: Hoàn thiện giao diện, hiệu ứng chuyển trang và tương tác kiểm tra hợp lệ UI (chưa ghi xuống database). Đọc trực tiếp danh sách 12 phòng (`1A` – `6B`) và trạng thái chốt tháng trước từ `roomsData` ở chế độ chỉ đọc.
+- **Quy trình 2 bước với hiệu ứng đẩy ngang (`--dir: 1 / -1`)**:
+  1. **Bước 1 (Chọn phòng & loại đồng hồ)**: Lưới 12 thẻ phòng kiểu radio (chọn duy nhất 1 phòng, hiển thị rõ số cũ tháng trước hoặc `"Chưa có dữ liệu cũ"`), tích chọn Điện và/hoặc Nước.
+  2. **Bước 2 (60% Nhập liệu — 40% Hướng dẫn trực quan)**:
+     - Cột trái 60%: Topbar tên phòng + nút `"Quay lại chọn phòng"`, khối `box-shadow: inset` căn giữa chứa các khối Điện/Nước, nút `"+ Thêm lần thay"` (tự đánh số `Lần 1, Lần 2...`), `<input type="date">` tùy chọn và bố cục 4 ô màu trên 1 hàng (`[Ô 1: Đầu kỳ] ; [Ô 2: Cuối ĐH cũ] ---> [Ô 3: Đầu ĐH mới = 0] ; [Ô 4: Cuối tháng (tùy chọn)]`).
+     - Tự động khóa Ô 1 khi phòng đã có số tháng trước (`isDienCuLocked`/`isNuocCuLocked`), mở khóa nền vàng khi phòng chưa có dữ liệu cũ; từ Lần 2 trở đi Ô 1 tự động nối tiếp theo Ô 3 của lần trước theo thời gian thực.
+     - Tự động kiểm tra `Ô 2 >= Ô 1` và `Ô 4 >= Ô 3` (nếu nhập Ô 4), hiển thị trạng thái **`⏳ Đang theo dõi`** (khi bỏ trống Ô 4) hoặc **`✅ Hoàn tất`** (khi đã chốt Ô 4).
+     - Cột phải 40%: Khung hướng dẫn trực quan sơ đồ màu 4 ô, công thức cộng dồn và giải thích 2 trạng thái.
+

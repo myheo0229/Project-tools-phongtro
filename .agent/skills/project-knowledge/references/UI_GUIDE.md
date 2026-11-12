@@ -368,3 +368,15 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
 3. **Phản hồi trạng thái (Feedback)**:
    - Khi đang xử lý xuất: Button chuyển sang `disabled`, chữ chuyển thành `"Đang xuất..."`.
    - Khi hoàn tất: Hiển thị Toast thông báo và mở Modal `#excel-export-result-modal` kích thước lớn (`max-width: 680px`), kiểu chữ to rõ ràng (`21px` tiêu đề, `15px` phụ đề, `16.5px` trạng thái & số lượng, `15px` tên file, `14px` đường dẫn, `15.5px` nút thao tác, icon badge `52x52px`) kèm nút **"📂 Mở vị trí lưu file"**, nút **"📊 Mở file"** (mở trực tiếp file bằng Excel) và nút **"Đóng"** (áp dụng đồng bộ cho cả Phần 1 và Phần 3).
+
+---
+
+## 13. Modal Ghi Nhận Thay Đổi Đồng Hồ Điện / Nước (2 Bước)
+
+1. **Nút kích hoạt tại Phần 1**:
+   - Đặt tại vị trí đầu tiên (bên trái nhất) trong `.table-card-header-actions`: `#btn-open-meter-change-modal` (`.btn.btn-meter-change`), màu vàng hổ phách nhạt với nhãn **"Thay đổi đồng hồ"**.
+2. **Cấu trúc Modal (`#meter-change-modal`)**:
+   - Kích thước rộng `min(1180px, 94vw)`, cao `min(690px, 90vh)`, bo góc `20px`, hiệu ứng trượt ngang 2 bước bằng biến `--dir` (`1` tiến, `-1` lùi) và keyframes `mc-push-out` / `mc-push-in` (`700ms cubic-bezier(.65,0,.35,1)`).
+   - **Bước 1 (`#mc-step-1`)**: Lưới 12 card phòng chọn duy nhất 1 phòng (hiển thị trạng thái có dữ liệu tháng trước hay chưa) + checkbox chọn loại đồng hồ (`Điện`, `Nước`) + nút `"Tiếp theo"`.
+   - **Bước 2 (`#mc-step-2`)**: Chia 2 cột `60%` trái (vùng nhập liệu căn giữa trong khối `box-shadow: inset`, hỗ trợ `+ Thêm lần thay`, đánh số `- Lần 1`, `- Lần 2`..., `<input type="date">` tùy chọn và xóa từ lần 2 trở đi) và `40%` phải (khung hướng dẫn trực quan theo 4 màu).
+   - **Quy ước màu 4 ô nhập ngang**: Xám (Ô 1: Đầu kỳ — tự động/khóa nếu có tháng trước, mở nếu phòng mới hoặc nối từ Ô 3 lần trước), Cam nhạt (Ô 2: Cuối ĐH cũ lúc tháo), Xanh dương nhạt (Ô 3: Đầu ĐH mới mặc định `0`), Xanh lá nhạt (Ô 4: Chốt cuối tháng tùy chọn). Có tooltip giải thích khi hover, badge báo lỗi và trạng thái `"Đang theo dõi"` / `"Hoàn tất"`.

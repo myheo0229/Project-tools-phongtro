@@ -186,6 +186,16 @@ Project-tools-phongtro/
   - `showMonthExcelExportResultModal(result, monthKey)`: Tái sử dụng modal `#excel-export-result-modal` để hiển thị tên file, đường dẫn, nút mở file và nút mở thư mục chứa file.
   - `handleOpenExportedExcelFile()`: Mở trực tiếp file Excel vừa xuất bằng ứng dụng mặc định trên máy tính qua IPC `excel:open-file` (`shell.openPath`).
 
+#### 📄 `src/input/meter-change-modal.js`
+- **Nhiệm vụ**: Phân hệ UI/UX độc lập cho Modal **"Ghi nhận thay đổi đồng hồ Điện / Nước"** 2 bước (`#meter-change-modal`), đọc trạng thái 12 phòng và chỉ số khóa từ `roomsData` mà không can thiệp `renderer.js` hay `calc.js` (giai đoạn hoàn thiện giao diện, chưa lưu database).
+- **Các hàm chính**:
+  - `getRoomsForMeterChangeModal()`, `openMeterChangeModal()`, `closeMeterChangeModal()`: Đọc danh sách phòng và trạng thái khóa đầu kỳ từ `roomsData`, mở/đóng modal và đặt lại trạng thái về Bước 1.
+  - `renderMeterChangeRoomGrid()`, `toggleMeterChangeType(type)`, `validateMeterChangeStep1()`: Hiển thị lưới chọn 1 trong 12 phòng và checkbox Điện/Nước, bật/tắt nút "Tiếp theo".
+  - `goToMeterChangeStep(targetStep, dir)`: Điều hướng qua lại giữa Bước 1 và Bước 2 với animation trượt trang (`mc-push-out` / `mc-push-in`, `--dir`).
+  - `addMeterChangeRow(type)`, `removeMeterChangeRow(type, idx)`, `renderMeterChangeStep2Form()`: Quản lý danh sách nhiều lần thay đồng hồ, tự động đánh số `- Lần 1`, `- Lần 2`, khóa/mở Ô 1 đầu kỳ và liên kết Ô 1 của lần sau theo Ô 3 của lần trước.
+  - `onMeterChangeNumInput(type, idx, field, value)`, `evaluateMeterChangeSection(type)`, `updateMeterChangeLiveSection(type)`: Kiểm tra tính hợp lệ thời gian thực (`Số cuối ĐH cũ >= Đầu kỳ`, `Chốt cuối tháng >= Đầu ĐH mới`), cộng dồn tiêu thụ qua $n$ lần thay và cập nhật nhãn trạng thái `"Đang theo dõi"` / `"Hoàn tất"`.
+  - `handleSaveMeterChangeUI()`: Kiểm tra toàn bộ dữ liệu đang nhập trên giao diện modal và hiển thị thông báo tóm tắt kết quả xem trước.
+
 #### 📄 `src/input/style.css` (3570 dòng)
 - **Nhiệm vụ**: Toàn bộ hệ thống giao diện trực quan, định nghĩa biến màu sắc, kích thước, hiệu ứng đổ bóng, responsive breakpoints và hiệu ứng chuyển động.
 - **Tác động nếu sửa**: Không sửa các biến `:root` đã được định nghĩa nếu không có yêu cầu rõ ràng từ người dùng.

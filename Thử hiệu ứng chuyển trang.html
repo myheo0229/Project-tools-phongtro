@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Thử hiệu ứng chuyển trang</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+:root{--bg:#f3f5f7;--surface:#fff;--text:#15191e;--muted:#5d6670;--line:#dbe0e5;--accent:#2447d6;--on-accent:#fff;--soft:#e6ecff;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1216;--surface:#181c22;--text:#eef1f4;--muted:#9aa3ad;--line:#2a3038;--accent:#7f9bff;--on-accent:#0f1216;--soft:#1f2a4a}}
+:root[data-theme="dark"]{--bg:#0f1216;--surface:#181c22;--text:#eef1f4;--muted:#9aa3ad;--line:#2a3038;--accent:#7f9bff;--on-accent:#0f1216;--soft:#1f2a4a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 "Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 40px}
+h1{margin:0 0 4px;font-size:clamp(1.3rem,3vw,1.75rem);font-weight:800;line-height:1.2}
+.sub{margin:0 0 18px;color:var(--muted);max-width:60ch}
+.grid{display:grid;gap:20px;align-items:start;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);grid-template-areas:"main side" "code side"}
+.main{grid-area:main}.side{grid-area:side}.codebox{grid-area:code}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"main" "side" "code"}}
+
+.stage{--dir:1;--clip-from:inset(0 0 0 100%);position:relative;aspect-ratio:16/10;border-radius:14px;overflow:hidden;perspective:1400px;background:#0b0d10;container-type:inline-size;isolation:isolate}
+.stage.back{--dir:-1;--clip-from:inset(0 100% 0 0)}
+.page{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:clamp(8px,2cqw,16px);padding:clamp(16px,5cqw,56px);color:#fff;visibility:hidden;overflow:hidden}
+.page.active{visibility:visible;z-index:1}
+.page.out,.page.in{visibility:visible;animation-duration:var(--dur);animation-timing-function:var(--ease);animation-fill-mode:both}
+.p1{background:linear-gradient(135deg,#1d2a5b,#3b5bdb)}
+.p2{background:linear-gradient(135deg,#9d2f4b,#e8590c)}
+.p3{background:linear-gradient(135deg,#0b5d5a,#2f9e6f)}
+.chip{align-self:flex-start;font-size:clamp(.65rem,1.8cqw,.82rem);font-weight:600;padding:.3em .9em;border-radius:99px;background:rgba(255,255,255,.2)}
+.page h2{margin:0;font-size:clamp(1.3rem,5.2cqw,3rem);line-height:1.1;font-weight:800;max-width:14em}
+.page p{margin:0;max-width:34em;font-size:clamp(.72rem,2.2cqw,1rem);opacity:.92}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(6px,1.6cqw,14px);margin-top:clamp(2px,1.5cqw,12px)}
+.tile{border-radius:10px;padding:clamp(8px,2cqw,16px);background:rgba(255,255,255,.16);font-size:clamp(.65rem,1.8cqw,.85rem)}
+.tile b{display:block;font-size:1.25em;margin-bottom:.15em}
+.big{position:absolute;right:4cqw;bottom:-6cqw;font-size:34cqw;font-weight:800;line-height:1;opacity:.14;pointer-events:none}
+@container (max-width:520px){.tiles{display:none}}
+
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+.btn{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--text);padding:.55em 1.1em;border-radius:10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.dots{display:flex;gap:8px;align-items:center}
+.dot{width:10px;height:10px;padding:0;border:0;border-radius:99px;background:var(--line);cursor:pointer;transition:width .25s,background .25s}
+.dot[aria-current="true"]{width:26px;background:var(--accent)}
+.now{margin-top:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.now b{display:block}
+.now span{color:var(--muted);font-size:.9rem}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px}
+.card h2{margin:0 0 10px;font-size:1rem}
+.fxlist{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grp{grid-column:1/-1;margin:8px 0 0;font-size:.8rem;font-weight:600;color:var(--muted)}
+.grp:first-child{margin-top:0}
+.fxbtn{font:inherit;font-size:.88rem;text-align:left;padding:.55em .75em;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;cursor:pointer}
+.fxbtn:hover{border-color:var(--accent)}
+.fxbtn[aria-pressed="true"]{border-color:var(--accent);background:var(--soft);font-weight:600}
+.row{display:flex;justify-content:space-between;font-size:.88rem;margin:0 0 6px}
+.row output{color:var(--muted)}
+input[type=range]{width:100%;margin:0 0 14px;accent-color:var(--accent)}
+select{width:100%;font:inherit;font-size:.9rem;padding:.5em .6em;margin-bottom:14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text)}
+#all{width:100%}
+
+.codebox{background:#14171c;border-radius:12px;overflow:hidden;min-width:0}
+.codehead{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;color:#aab3bd;font-size:.85rem;border-bottom:1px solid #262b33}
+.codehead .btn{padding:.3em .8em;font-size:.8rem;background:#20252d;color:#e6eaee;border-color:#323945}
+pre{margin:0;padding:14px;max-height:340px;overflow:auto;color:#e2e7ec;font:.78rem/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Thử hiệu ứng chuyển trang</h1>
+  <p class="sub">Mỗi hiệu ứng áp dụng lên cả khối trang, không phải từng phần tử. Bấm một hiệu ứng bên phải để xem nó chạy, rồi dùng nút Trước và Sau để thử cả chiều tiến lẫn lùi.</p>
+
+  <div class="grid">
+    <section class="main">
+      <div class="stage" id="stage" data-fx="fade">
+        <article class="page p1 active">
+          <span class="chip">Trang chủ</span>
+          <h2>Chào mừng đến trang một</h2>
+          <p>Toàn bộ khối này chuyển động cùng nhau khi bạn đổi trang: tiêu đề, đoạn văn và các ô bên dưới đi chung một hiệu ứng.</p>
+          <div class="tiles"><div class="tile"><b>Mục A</b>Nội dung mẫu</div><div class="tile"><b>Mục B</b>Nội dung mẫu</div><div class="tile"><b>Mục C</b>Nội dung mẫu</div></div>
+          <span class="big">1</span>
+        </article>
+        <article class="page p2">
+          <span class="chip">Giới thiệu</span>
+          <h2>Đây là trang hai</h2>
+          <p>Nền khác màu để bạn nhìn rõ trang cũ rời đi và trang mới đi vào như thế nào ở từng hiệu ứng.</p>
+          <div class="tiles"><div class="tile"><b>Mục D</b>Nội dung mẫu</div><div class="tile"><b>Mục E</b>Nội dung mẫu</div><div class="tile"><b>Mục F</b>Nội dung mẫu</div></div>
+          <span class="big">2</span>
+        </article>
+        <article class="page p3">
+          <span class="chip">Liên hệ</span>
+          <h2>Cuối cùng là trang ba</h2>
+          <p>Từ trang ba bấm Sau sẽ quay lại trang một, nên bạn có thể xem hiệu ứng liên tục mà không phải dừng.</p>
+          <div class="tiles"><div class="tile"><b>Mục G</b>Nội dung mẫu</div><div class="tile"><b>Mục H</b>Nội dung mẫu</div><div class="tile"><b>Mục I</b>Nội dung mẫu</div></div>
+          <span class="big">3</span>
+        </article>
+      </div>
+      <div class="bar">
+        <button class="btn" id="prev" type="button">Trước</button>
+        <div class="dots" id="dots"></div>
+        <button class="btn" id="next" type="button">Sau</button>
+      </div>
+      <div class="now"><b id="nowName"></b><span id="nowDesc"></span></div>
+    </section>
+
+    <aside class="side">
+      <div class="card">
+        <h2>Hiệu ứng</h2>
+        <div class="fxlist" id="fxlist"></div>
+      </div>
+      <div class="card">
+        <label class="row" for="dur"><span>Thời lượng</span><output id="durOut">700 ms</output></label>
+        <input type="range" id="dur" min="250" max="1800" step="50" value="700">
+        <label class="row" for="ease"><span>Đường cong chuyển động</span></label>
+        <select id="ease">
+          <option value="cubic-bezier(.65,0,.35,1)">Mượt hai đầu</option>
+          <option value="ease">Ease mặc định</option>
+          <option value="linear">Đều (linear)</option>
+          <option value="cubic-bezier(.16,1,.3,1)">Nhanh rồi chậm dần</option>
+          <option value="cubic-bezier(.34,1.56,.64,1)">Nảy nhẹ</option>
+        </select>
+        <button class="btn primary" id="all" type="button">Chạy lần lượt tất cả</button>
+      </div>
+    </aside>
+
+    <section class="codebox">
+      <div class="codehead"><span>CSS của hiệu ứng đang chọn</span><button class="btn" id="copy" type="button">Chép CSS</button></div>
+      <pre><code id="code"></code></pre>
+    </section>
+  </div>
+</main>
+
+<style id="fxcss"></style>
+<script>
+const FX=[
+{g:'Mờ và thu phóng',id:'fade',n:'Mờ dần',d:'Trang mới mờ hiện lên đè lên trang cũ. Nhẹ nhàng, an toàn.',out:'0%,100%{opacity:1}',inn:'from{opacity:0}to{opacity:1}'},
+{id:'fslide',n:'Mờ và trượt nhẹ',d:'Cả hai trang vừa mờ vừa lệch nhẹ sang bên.',out:'to{opacity:0;transform:translateX(calc(-8% * var(--dir)))}',inn:'from{opacity:0;transform:translateX(calc(8% * var(--dir)))}'},
+{id:'zin',n:'Phóng to',d:'Trang cũ phóng to rồi tan đi, trang mới từ nhỏ hiện ra.',out:'to{opacity:0;transform:scale(1.2)}',inn:'from{opacity:0;transform:scale(.8)}'},
+{id:'zout',n:'Thu nhỏ',d:'Trang cũ thu nhỏ rồi tan đi, trang mới từ lớn thu về.',out:'to{opacity:0;transform:scale(.8)}',inn:'from{opacity:0;transform:scale(1.2)}'},
+{id:'blur',n:'Nhòe mờ',d:'Trang cũ nhòe dần và tan đi, trang mới rõ nét dần lên.',out:'to{opacity:0;filter:blur(24px)}',inn:'from{opacity:0;filter:blur(24px)}'},
+{id:'spin',n:'Xoay thu nhỏ',d:'Trang cũ xoay và co lại, trang mới xoay vào rồi nở ra.',out:'to{opacity:0;transform:rotate(calc(-20deg * var(--dir))) scale(.4)}',inn:'from{opacity:0;transform:rotate(calc(20deg * var(--dir))) scale(.4)}'},
+
+{g:'Trượt',id:'push',n:'Đẩy ngang',d:'Trang cũ bị đẩy ra, trang mới tiến vào cùng lúc.',out:'to{transform:translateX(calc(-100% * var(--dir)))}',inn:'from{transform:translateX(calc(100% * var(--dir)))}'},
+{id:'pushv',n:'Đẩy dọc',d:'Giống đẩy ngang nhưng theo chiều dọc.',out:'to{transform:translateY(calc(-100% * var(--dir)))}',inn:'from{transform:translateY(calc(100% * var(--dir)))}'},
+{id:'cover',n:'Phủ lên',d:'Trang mới trượt đè lên, trang cũ lùi nhẹ và tối đi phía sau.',out:'to{transform:translateX(calc(-25% * var(--dir)));filter:brightness(.6)}',inn:'from{transform:translateX(calc(100% * var(--dir)))}',io:'box-shadow:0 0 80px rgba(0,0,0,.5)'},
+{id:'reveal',n:'Lộ ra',d:'Trang cũ trượt đi để lộ trang mới nằm sẵn bên dưới.',top:'out',out:'to{transform:translateX(calc(-100% * var(--dir)))}',inn:'from{transform:translateX(calc(25% * var(--dir)));filter:brightness(.6)}',oo:'box-shadow:0 0 80px rgba(0,0,0,.5)'},
+{id:'stack',n:'Chồng thẻ',d:'Trang mới trượt từ dưới lên đè lên, trang cũ co lại và tối đi.',out:'to{transform:scale(.9) translateY(-6%);filter:brightness(.5)}',inn:'from{transform:translateY(calc(105% * var(--dir)))}',io:'box-shadow:0 0 80px rgba(0,0,0,.5)'},
+{id:'skew',n:'Trượt nghiêng',d:'Hai trang trượt ngang và nghiêng nhẹ theo hướng chạy.',out:'to{transform:translateX(calc(-100% * var(--dir))) skewX(calc(-15deg * var(--dir)))}',inn:'from{transform:translateX(calc(100% * var(--dir))) skewX(calc(-15deg * var(--dir)))}'},
+
+{g:'Không gian 3D',id:'flip',n:'Lật 3D',d:'Trang cũ lật nghiêng đến khi biến mất, rồi trang mới lật ra.',out:'0%{transform:rotateY(0);opacity:1}50%{transform:rotateY(calc(90deg * var(--dir)));opacity:1}50.1%,100%{transform:rotateY(calc(90deg * var(--dir)));opacity:0}',inn:'0%,49.9%{transform:rotateY(calc(-90deg * var(--dir)));opacity:0}50%{transform:rotateY(calc(-90deg * var(--dir)));opacity:1}100%{transform:rotateY(0);opacity:1}'},
+{id:'cube',n:'Khối lập phương',d:'Hai trang là hai mặt của một khối đang xoay quanh cạnh chung.',out:'to{transform:translateX(calc(-100% * var(--dir))) rotateY(calc(-90deg * var(--dir)));filter:brightness(.5)}',inn:'from{transform:translateX(calc(100% * var(--dir))) rotateY(calc(90deg * var(--dir)));filter:brightness(.5)}',oo:'transform-origin:calc(50% + 50% * var(--dir)) 50%',io:'transform-origin:calc(50% - 50% * var(--dir)) 50%'},
+
+{g:'Quét (clip-path)',id:'circle',n:'Mở vòng tròn',d:'Trang mới nở ra từ tâm thành một vòng tròn lớn dần.',out:'0%,100%{opacity:1}',inn:'from{clip-path:circle(0% at 50% 50%)}to{clip-path:circle(75% at 50% 50%)}'},
+{id:'curtain',n:'Mở rèm từ giữa',d:'Trang mới mở ra từ đường giữa sang hai bên.',out:'0%,100%{opacity:1}',inn:'from{clip-path:inset(0 50% 0 50%)}to{clip-path:inset(0 0 0 0)}'},
+{id:'wipe',n:'Quét ngang',d:'Trang mới được kéo ra từ một mép, như kéo tấm màn.',out:'0%,100%{opacity:1}',inn:'from{clip-path:var(--clip-from)}to{clip-path:inset(0 0 0 0)}'},
+{id:'diag',n:'Quét chéo',d:'Một dải chéo quét qua và để lộ trang mới.',out:'0%,100%{opacity:1}',inn:'from{clip-path:polygon(0 0,0 0,-100% 100%,0 100%)}to{clip-path:polygon(0 0,200% 0,100% 100%,0 100%)}'}
+];
+
+const $=s=>document.querySelector(s);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const stage=$('#stage'),pages=[...stage.querySelectorAll('.page')];
+let cur=0,busy=false,auto=false,fx=FX[0],durMs=700,easeV=$('#ease').value;
+
+$('#fxcss').textContent=FX.map(f=>{
+  const zi=f.top==='out'?1:2,zo=3-zi;
+  return `@keyframes ${f.id}-out{${f.out}}
+@keyframes ${f.id}-in{${f.inn}}
+.stage[data-fx="${f.id}"] .page.out{animation-name:${f.id}-out;z-index:${zo};${f.oo?f.oo+';':''}}
+.stage[data-fx="${f.id}"] .page.in{animation-name:${f.id}-in;z-index:${zi};${f.io?f.io+';':''}}`;
+}).join('\n');
+
+const list=$('#fxlist');
+FX.forEach(f=>{
+  if(f.g){const h=document.createElement('h3');h.className='grp';h.textContent=f.g;list.appendChild(h);}
+  const b=document.createElement('button');
+  b.type='button';b.className='fxbtn';b.dataset.id=f.id;b.textContent=f.n;b.setAttribute('aria-pressed','false');
+  b.onclick=()=>{auto=false;pick(f.id,true);};
+  list.appendChild(b);
+});
+
+const dotsEl=$('#dots');
+const dots=pages.map((_,i)=>{
+  const d=document.createElement('button');
+  d.type='button';d.className='dot';d.setAttribute('aria-label','Trang '+(i+1));
+  d.onclick=()=>go(i,i>cur?1:-1);
+  dotsEl.appendChild(d);return d;
+});
+function updateDots(){dots.forEach((d,i)=>d.setAttribute('aria-current',String(i===cur)));}
+
+const pretty=s=>s.replace(/([^{};]+)\{([^}]*)\}/g,(m,sel,body)=>'  '+sel.trim()+' { '+body.trim().replace(/;\s*/g,'; ').replace(/;\s*$/,'')+' }\n');
+function showCode(){
+  const f=fx,zi=f.top==='out'?1:2,zo=3-zi;
+  $('#code').textContent=
+`/* ${f.n} | --dir = 1 (tiến) hoặc -1 (lùi) */
+.page-out { animation: ${f.id}-out ${durMs}ms ${easeV} both; z-index: ${zo};${f.oo?' '+f.oo+';':''} }
+.page-in  { animation: ${f.id}-in ${durMs}ms ${easeV} both; z-index: ${zi};${f.io?' '+f.io+';':''} }
+
+@keyframes ${f.id}-out {
+${pretty(f.out)}}
+@keyframes ${f.id}-in {
+${pretty(f.inn)}}`;
+}
+
+function pick(id,play){
+  fx=FX.find(f=>f.id===id);
+  list.querySelectorAll('.fxbtn').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.id===id)));
+  $('#nowName').textContent=fx.n;$('#nowDesc').textContent=fx.d;
+  showCode();
+  if(play) go((cur+1)%pages.length,1);
+}
+
+function go(to,d){
+  if(busy||to===cur) return Promise.resolve();
+  busy=true;
+  stage.classList.toggle('back',d<0);
+  stage.dataset.fx=fx.id;
+  const a=pages[cur],b=pages[to];
+  a.classList.remove('active');a.classList.add('out');b.classList.add('in');
+  return sleep(durMs+60).then(()=>{
+    a.classList.remove('out');b.classList.remove('in');b.classList.add('active');
+    cur=to;busy=false;updateDots();
+  });
+}
+
+$('#next').onclick=()=>{auto=false;go((cur+1)%pages.length,1);};
+$('#prev').onclick=()=>{auto=false;go((cur-1+pages.length)%pages.length,-1);};
+document.addEventListener('keydown',e=>{
+  if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+  if(e.key==='ArrowRight') $('#next').click();
+  if(e.key==='ArrowLeft') $('#prev').click();
+});
+
+$('#dur').oninput=e=>{
+  durMs=+e.target.value;
+  stage.style.setProperty('--dur',durMs+'ms');
+  $('#durOut').textContent=durMs+' ms';showCode();
+};
+$('#ease').onchange=e=>{
+  easeV=e.target.value;
+  stage.style.setProperty('--ease',easeV);showCode();
+};
+
+const allBtn=$('#all');
+allBtn.onclick=async()=>{
+  if(auto){auto=false;return;}
+  auto=true;allBtn.textContent='Dừng';
+  for(let k=0;auto&&k<FX.length;k++){
+    pick(FX[k].id,false);
+    await go((cur+1)%pages.length,1);
+    await sleep(700);
+  }
+  auto=false;allBtn.textContent='Chạy lần lượt tất cả';
+};
+
+$('#copy').onclick=async()=>{
+  const b=$('#copy');
+  try{await navigator.clipboard.writeText($('#code').textContent);b.textContent='Đã chép';}
+  catch(err){b.textContent='Không chép được';}
+  setTimeout(()=>{b.textContent='Chép CSS';},1500);
+};
+
+stage.style.setProperty('--dur',durMs+'ms');
+stage.style.setProperty('--ease',easeV);
+updateDots();
+pick('fade',false);
+</script>
+</body>
+</html>

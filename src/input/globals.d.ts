@@ -23,6 +23,15 @@ interface Window {
   logExportMonthExcelEvent?: (params: any) => Promise<any>;
   handleOpenExportedExcelFile?: () => Promise<any>;
   lastExportedExcelPath?: string;
+  openMeterChangeModal?: () => void;
+  closeMeterChangeModal?: () => void;
+  toggleMeterChangeType?: (labelId: string, checkbox: any) => void;
+  goToMeterChangeStep?: (step: number, dir: number) => void;
+  addMeterChangeRow?: (type: string) => void;
+  removeMeterChangeRow?: (type: string, idx: number) => void;
+  onMeterChangeDateInput?: (type: string, idx: number, val: string) => void;
+  onMeterChangeNumInput?: (type: string, idx: number, field: string, inputEl: any) => void;
+  handleSaveMeterChangeUI?: () => void;
 }
 
 interface HTMLElement {

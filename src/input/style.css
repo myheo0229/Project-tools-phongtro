@@ -367,7 +367,7 @@ body {
   padding: 10px 18px;
   border-radius: var(--radius-sm);
   font-weight: 600;
-  font-size: 13px;
+  font-size: 16px;
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -636,6 +636,43 @@ body {
   background: linear-gradient(135deg, #0052CC, #003E99);
   box-shadow: 0 4px 12px rgba(0, 104, 255, 0.35);
   transform: translateY(-1px);
+}
+
+/* Nút Thay đổi đồng hồ trên thanh tiêu đề Bảng chính (Phần 1 - ngoài cùng bên trái) */
+.table-card-header-actions .btn-meter-change {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1.5px solid #fcd34d;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(217, 119, 6, 0.12);
+  white-space: nowrap;
+}
+
+.table-card-header-actions .btn-meter-change:hover:not(:disabled) {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+  box-shadow: 0 3px 8px rgba(217, 119, 6, 0.18);
+  transform: translateY(-1px);
+}
+
+.table-card-header-actions .btn-meter-change:active:not(:disabled) {
+  background: #fde68a;
+  transform: translateY(0);
+}
+
+.table-card-header-actions .btn-meter-change svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 /* Nút Xuất dữ liệu Excel trên thanh tiêu đề Bảng chính (Phần 1) */
@@ -6709,4 +6746,816 @@ input[type="number"] {
 .alog-footer-sort:hover {
   background: #f1f5f9;
   color: #0f172a;
+}
+
+/* ============================================================
+   MODAL GHI NHẬN THAY ĐỔI ĐỒNG HỒ ĐIỆN / NƯỚC (2 BƯỚC)
+   Tối ưu cho màn hình 1920x1080, scoped dưới #meter-change-modal
+   ============================================================ */
+#meter-change-modal {
+  z-index: 1150;
+}
+
+#meter-change-modal .mc-modal-container {
+  width: 80vw;
+  max-width: 95vw;
+  height: 80vh;
+  max-height: 92vh;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.45);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+#meter-change-modal .mc-modal-header {
+  padding: 18px 28px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+#meter-change-modal .mc-modal-header h2 {
+  font-size: 19px;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+}
+
+#meter-change-modal .mc-badge-step {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-weight: 600;
+}
+
+#meter-change-modal .mc-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748b;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+#meter-change-modal .mc-close-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Viewport chứa 2 trang chuyển tiếp */
+#meter-change-modal .mc-pages-viewport {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  background: #ffffff;
+  --dir: 1;
+}
+
+#meter-change-modal .mc-page {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  display: none;
+}
+
+#meter-change-modal .mc-page.active {
+  display: flex;
+}
+
+/* Hiệu ứng chuyển tiếp push-in / push-out dùng --dir */
+#meter-change-modal .mc-page.page-out {
+  display: flex !important;
+  grid-area: unset;
+  animation: mc-push-out 700ms cubic-bezier(.65, 0, .35, 1) both;
+  z-index: 1;
+  pointer-events: none;
+}
+
+#meter-change-modal .mc-page.page-in {
+  display: flex !important;
+  grid-area: unset;
+  animation: mc-push-in 700ms cubic-bezier(.65, 0, .35, 1) both;
+  z-index: 2;
+}
+
+@keyframes mc-push-out {
+  to {
+    transform: translateX(calc(-100% * var(--dir)));
+  }
+}
+
+@keyframes mc-push-in {
+  from {
+    transform: translateX(calc(100% * var(--dir)));
+  }
+}
+
+/* ================= BƯỚC 1: CHỌN PHÒNG & LOẠI ĐỒNG HỒ ================= */
+#meter-change-modal .mc-step1-wrapper {
+  width: 100%;
+  height: 100%;
+  padding: 28px 44px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow-y: auto;
+}
+
+#meter-change-modal .mc-section-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+
+#meter-change-modal .mc-section-label {
+  font-size: 19px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 14px;
+  display: block;
+}
+
+#meter-change-modal .mc-section-head-row .mc-section-label {
+  margin-bottom: 0;
+}
+
+#meter-change-modal .mc-month-pill {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0369a1;
+  background: #e0f2fe;
+  border: 1px solid #bae6fd;
+  padding: 4px 12px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+#meter-change-modal .mc-room-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+#meter-change-modal .mc-room-card {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  background: #f8fafc;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+#meter-change-modal .mc-room-card:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  transform: translateY(-1px);
+}
+
+#meter-change-modal .mc-room-card.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.18);
+}
+
+#meter-change-modal .mc-room-card .mc-r-name {
+  font-weight: 700;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+#meter-change-modal .mc-room-card .mc-r-status {
+  font-size: 17px;
+  color: #475569;
+  line-height: 1.35;
+}
+
+#meter-change-modal .mc-room-card .mc-r-status.new {
+  color: #b45309;
+  font-weight: 600;
+  background: #fef3c7;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+#meter-change-modal .mc-room-card .mc-r-status.partial {
+  color: #0369a1;
+  font-weight: 600;
+}
+
+#meter-change-modal .mc-meter-type-group {
+  display: flex;
+  gap: 20px;
+}
+
+#meter-change-modal .mc-type-checkbox {
+  flex: 1;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  background: #ffffff;
+}
+
+#meter-change-modal .mc-type-checkbox:hover {
+  border-color: #93c5fd;
+  background: #f8fafc;
+}
+
+#meter-change-modal .mc-type-checkbox.checked {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.1);
+}
+
+#meter-change-modal .mc-type-checkbox input {
+  width: 20px;
+  height: 20px;
+  accent-color: #2563eb;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#meter-change-modal .mc-type-info strong {
+  display: block;
+  font-size: 16px;
+  color: #0f172a;
+  margin-bottom: 3px;
+}
+
+#meter-change-modal .mc-type-info span {
+  font-size: 16px;
+  color: #64748b;
+}
+
+#meter-change-modal .mc-step1-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 18px;
+  border-top: 1px solid #e2e8f0;
+  gap: 12px;
+}
+
+#meter-change-modal .mc-step1-hint {
+  font-size: 13.5px;
+  color: #64748b;
+}
+
+#meter-change-modal .mc-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#meter-change-modal .btn-mc-close {
+  padding: 13px 20px;
+  font-size: 19px;
+}
+
+#meter-change-modal .btn-mc-primary {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  padding: 13px 20px;
+  border-radius: 10px;
+  font-size: 19px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+#meter-change-modal .btn-mc-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  transform: translateY(-1px);
+}
+
+#meter-change-modal .btn-mc-primary:disabled {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ================= BƯỚC 2: 60% TRÁI - 40% PHẢI ================= */
+#meter-change-modal .mc-step2-layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+#meter-change-modal .mc-left-panel {
+  width: 60%;
+  padding: 20px 28px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e2e8f0;
+  min-width: 0;
+}
+
+#meter-change-modal .mc-room-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+#meter-change-modal .mc-room-title-badge {
+  font-size: 19px;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#meter-change-modal .mc-room-prev-badge {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 99px;
+}
+
+#meter-change-modal .mc-room-prev-badge.has-data {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+#meter-change-modal .mc-room-prev-badge.no-data {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+#meter-change-modal .mc-btn-back {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+#meter-change-modal .mc-btn-back:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* Khối Inset căn giữa nội dung bên dưới Phòng */
+#meter-change-modal .mc-inset-center-box {
+  flex: 1;
+  background: #f8fafc;
+  border-radius: 14px;
+  box-shadow: inset 0 2px 10px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e2e8f0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+#meter-change-modal .mc-dynamic-form-area {
+  width: 100%;
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+#meter-change-modal .mc-meter-section {
+  width: 100%;
+  background: #ffffff;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+#meter-change-modal .mc-meter-main-title {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+#meter-change-modal .mc-meter-title-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#meter-change-modal .mc-btn-add-change {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px dashed #2563eb;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+#meter-change-modal .mc-btn-add-change:hover {
+  background: #dbeafe;
+}
+
+#meter-change-modal .mc-change-row-block {
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+#meter-change-modal .mc-change-row-block:last-of-type {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+#meter-change-modal .mc-sub-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #475569;
+}
+
+#meter-change-modal .mc-date-input {
+  padding: 4px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 15px;
+  color: #334155;
+  background: #ffffff;
+}
+
+#meter-change-modal .mc-btn-remove {
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: auto;
+  transition: all 0.15s ease;
+}
+
+#meter-change-modal .mc-btn-remove:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+
+/* Sơ đồ 4 ô ngang: Ô 1 ; Ô 2 -> Ô 3 ; Ô 4 */
+#meter-change-modal .mc-four-boxes-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+#meter-change-modal .mc-box-unit {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 105px;
+  max-width: 135px;
+}
+
+#meter-change-modal .mc-box-unit label {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #475569;
+  white-space: nowrap;
+}
+
+#meter-change-modal .mc-box-unit input {
+  width: 100%;
+  padding: 9px 8px;
+  border-radius: 8px;
+  font-size: 14.5px;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+  transition: all 0.15s ease;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Phân biệt màu sắc rõ ràng 4 ô */
+#meter-change-modal .mc-box-1 input {
+  background: #f1f5f9;
+  border: 1.5px solid #94a3b8;
+  color: #475569;
+  cursor: default;
+}
+
+#meter-change-modal .mc-box-1 input:not([readonly]) {
+  background: #fefce8;
+  border: 1.5px solid #eab308;
+  color: #854d0e;
+  cursor: text;
+}
+
+#meter-change-modal .mc-box-1 input:not([readonly]):focus {
+  box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.2);
+}
+
+#meter-change-modal .mc-box-2 input {
+  background: #fffbeb;
+  border: 1.5px solid #f59e0b;
+  color: #b45309;
+}
+
+#meter-change-modal .mc-box-2 input:focus {
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+
+#meter-change-modal .mc-box-3 input {
+  background: #eff6ff;
+  border: 1.5px solid #3b82f6;
+  color: #1d4ed8;
+}
+
+#meter-change-modal .mc-box-3 input:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+#meter-change-modal .mc-box-4 input {
+  background: #ecfdf5;
+  border: 1.5px solid #10b981;
+  color: #047857;
+}
+
+#meter-change-modal .mc-box-4 input:focus:not(:disabled) {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+#meter-change-modal .mc-box-4 input:disabled {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+#meter-change-modal .mc-box-unit input.mc-input-error {
+  border-color: #dc2626 !important;
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.16) !important;
+}
+
+#meter-change-modal .mc-separator-semi {
+  font-weight: 800;
+  color: #94a3b8;
+  font-size: 18px;
+  padding-top: 18px;
+}
+
+#meter-change-modal .mc-separator-arrow {
+  font-weight: 800;
+  color: #2563eb;
+  font-size: 19px;
+  padding-top: 18px;
+  padding-inline: 2px;
+}
+
+#meter-change-modal .mc-row-feedback {
+  margin-top: 8px;
+  font-size: 12px;
+  min-height: 16px;
+  text-align: right;
+  color: #64748b;
+}
+
+#meter-change-modal .mc-row-feedback.error {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+#meter-change-modal .mc-row-feedback.valid {
+  color: #047857;
+  font-weight: 600;
+}
+
+/* Tóm tắt kết quả tính toán ở cuối mỗi khối Điện / Nước */
+#meter-change-modal .mc-section-summary {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+#meter-change-modal .mc-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+#meter-change-modal .mc-status-pill.tracking {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+#meter-change-modal .mc-status-pill.done {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+#meter-change-modal .mc-status-pill.error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+#meter-change-modal .mc-summary-val {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+#meter-change-modal .mc-left-footer {
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+#meter-change-modal .mc-preview-note {
+  font-size: 12.5px;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* Cột phải 40% - Hướng dẫn trực quan */
+#meter-change-modal .mc-right-panel {
+  width: 40%;
+  background: #f8fafc;
+  padding: 24px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+#meter-change-modal .mc-guide-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 10px;
+}
+
+#meter-change-modal .mc-legend-card {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#meter-change-modal .mc-legend-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 16px;
+  color: #334155;
+  line-height: 1.45;
+}
+
+#meter-change-modal .mc-dot-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+#meter-change-modal .mc-visual-formula {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 13px 14px;
+  font-size: 13px;
+  color: #1e3a8a;
+  line-height: 1.5;
+}
+
+#meter-change-modal .mc-visual-formula strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 17px;
+}
+
+#meter-change-modal .mc-formula-line {
+  font-weight: 700;
+  font-size: 15px;
+  color: #1d4ed8;
+  margin-bottom: 4px;
+}
+
+#meter-change-modal .mc-formula-sub {
+  font-size: 15px;
+  color: #1e40af;
+}
+
+#meter-change-modal .mc-status-guide {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12.8px;
+  color: #334155;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#meter-change-modal .mc-status-guide strong {
+  font-size: 17px;
+  color: #0f172a;
+}
+
+#meter-change-modal .mc-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+#meter-change-modal .mc-note-box {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 16px;
+  color: #92400e;
+  line-height: 1.5;
 }

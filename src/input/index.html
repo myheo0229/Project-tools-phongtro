@@ -158,6 +158,17 @@
                 tiền</span>
             </div>
             <div class="table-card-header-actions">
+              <button type="button" class="btn btn-meter-change" id="btn-open-meter-change-modal"
+                onclick="openMeterChangeModal()" title="Ghi nhận thay đổi đồng hồ Điện / Nước trong tháng">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                  <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                  <path d="M16 16h5v5" />
+                </svg>
+                <span>Thay đổi đồng hồ</span>
+              </button>
               <span id="month-lock-status-badge" class="month-lock-badge" style="display: none;"></span>
               <button type="button" class="btn btn-edit-month" id="btn-toggle-edit-month"
                 onclick="handleToggleEditMonthClick()" style="display: none;">
@@ -2553,6 +2564,141 @@
     </div>
   </div>
 
+  <!-- MODAL GHI NHẬN THAY ĐỔI ĐỒNG HỒ ĐIỆN / NƯỚC (2 BƯỚC) -->
+  <div id="meter-change-modal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true"
+    aria-labelledby="mc-modal-heading">
+    <div class="mc-modal-container">
+      <div class="mc-modal-header">
+        <h2 id="mc-modal-heading">
+          <span>⚡ Ghi nhận thay đổi đồng hồ Điện / Nước</span>
+          <span class="mc-badge-step" id="mc-step-badge">Bước 1/2: Chọn phòng &amp; loại</span>
+        </h2>
+        <button type="button" class="mc-close-btn" onclick="closeMeterChangeModal()" title="Đóng (Esc)"
+          aria-label="Đóng">&times;</button>
+      </div>
+
+      <div class="mc-pages-viewport" id="mc-viewport">
+        <!-- ================= TRANG 1: CHỌN PHÒNG & LOẠI ĐỒNG HỒ ================= -->
+        <div class="mc-page active" id="mc-page1">
+          <div class="mc-step1-wrapper">
+            <div class="mc-step1-body">
+              <div class="mc-section-head-row">
+                <span class="mc-section-label">1. Chọn phòng cần thay đồng hồ (Chỉ chọn duy nhất 1 phòng):</span>
+                <span class="mc-month-pill" id="mc-current-month-label">Tháng hiện tại</span>
+              </div>
+              <div class="mc-room-grid" id="mc-room-grid" role="radiogroup" aria-label="Danh sách 12 phòng"></div>
+
+              <span class="mc-section-label">2. Chọn loại đồng hồ thay đổi (Có thể chọn 1 hoặc cả 2):</span>
+              <div class="mc-meter-type-group">
+                <label class="mc-type-checkbox checked" id="mc-lbl-elec">
+                  <input type="checkbox" id="mc-chk-elec" checked onchange="toggleMeterChangeType('mc-lbl-elec', this)">
+                  <div class="mc-type-info">
+                    <strong>⚡ Đồng hồ Điện (kWh)</strong>
+                    <span>Ghi nhận chỉ số tháo đồng hồ điện cũ và lắp đồng hồ điện mới</span>
+                  </div>
+                </label>
+                <label class="mc-type-checkbox" id="mc-lbl-water">
+                  <input type="checkbox" id="mc-chk-water" onchange="toggleMeterChangeType('mc-lbl-water', this)">
+                  <div class="mc-type-info">
+                    <strong>💧 Đồng hồ Nước (m³)</strong>
+                    <span>Ghi nhận chỉ số tháo đồng hồ nước cũ và lắp đồng hồ nước mới</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div class="mc-step1-footer">
+              <span class="mc-step1-hint">💡 Dữ liệu đầu kỳ được đọc trực tiếp từ tháng đang hiển thị trên bảng
+                chính.</span>
+              <div class="mc-footer-actions">
+                <button type="button" class="btn btn-mc-close btn-secondary"
+                  onclick="closeMeterChangeModal()">Đóng</button>
+                <button type="button" class="btn-mc-primary" id="mc-btn-next" disabled
+                  onclick="goToMeterChangeStep(2, 1)">Tiếp theo ➔</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= TRANG 2: NHẬP LIỆU (60%) & HƯỚNG DẪN (40%) ================= -->
+        <div class="mc-page" id="mc-page2">
+          <div class="mc-step2-layout">
+            <!-- CỘT TRÁI 60% -->
+            <div class="mc-left-panel">
+              <div class="mc-room-topbar">
+                <div class="mc-room-title-badge" id="mc-selected-room-title">🏠 Phòng 1A</div>
+                <button type="button" class="mc-btn-back" onclick="goToMeterChangeStep(1, -1)">⬅ Quay lại chọn
+                  phòng</button>
+              </div>
+
+              <!-- Khối Inset căn giữa toàn bộ vùng nhập liệu -->
+              <div class="mc-inset-center-box">
+                <div class="mc-dynamic-form-area" id="mc-dynamic-form-area"></div>
+              </div>
+
+              <div class="mc-left-footer">
+                <span class="mc-preview-note">Chế độ giao diện &amp; kiểm tra trực quan (chưa ghi vào database)</span>
+                <div class="mc-footer-actions">
+                  <button type="button" class="btn btn-secondary" onclick="closeMeterChangeModal()">Hủy</button>
+                  <button type="button" class="btn-mc-primary" id="mc-btn-save" onclick="handleSaveMeterChangeUI()">💾
+                    Lưu ghi nhận</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- CỘT PHẢI 40% - HƯỚNG DẪN TRỰC QUAN -->
+            <div class="mc-right-panel">
+              <div class="mc-guide-title">📖 Hướng dẫn nhập liệu trực quan</div>
+
+              <div class="mc-legend-card">
+                <div class="mc-legend-item">
+                  <span class="mc-dot-color" style="background:#cbd5e1; border:1px solid #64748b;"></span>
+                  <div><strong>Ô 1 — Chỉ số đầu kỳ:</strong> Tự động lấy từ chốt cuối tháng trước và <b>khóa</b>. Nếu
+                    phòng mới chưa có dữ liệu cũ (viền vàng), bạn được mở khóa để nhập tay số ban đầu.</div>
+                </div>
+                <div class="mc-legend-item">
+                  <span class="mc-dot-color" style="background:#fde68a; border:1px solid #f59e0b;"></span>
+                  <div><strong>Ô 2 — Số cuối ĐH cũ:</strong> Chỉ số trên mặt đồng hồ cũ ngay lúc thợ tháo xuống (bắt
+                    buộc <b>≥ Ô 1</b>).</div>
+                </div>
+                <div class="mc-legend-item">
+                  <span class="mc-dot-color" style="background:#bfdbfe; border:1px solid #3b82f6;"></span>
+                  <div><strong>Ô 3 — Số đầu ĐH mới:</strong> Số khởi điểm của đồng hồ mới ngay lúc lắp (mặc định là
+                    <code>0</code>).</div>
+                </div>
+                <div class="mc-legend-item">
+                  <span class="mc-dot-color" style="background:#a7f3d0; border:1px solid #10b981;"></span>
+                  <div><strong>Ô 4 — Số chốt cuối tháng (Tùy chọn):</strong> Có thể <b>để trống</b> nếu mới thay giữa
+                    tháng để theo dõi, cuối tháng quay lại điền sau (nếu nhập phải <b>≥ Ô 3</b>).</div>
+                </div>
+              </div>
+
+              <div class="mc-visual-formula">
+                <strong>🧮 Nguyên tắc cộng dồn tiêu thụ:</strong>
+                <div class="mc-formula-line">Tổng tiêu thụ = (Ô 2 − Ô 1) + (Ô 4 − Ô 3)</div>
+                <div class="mc-formula-sub">* Nếu thay nhiều lần trong tháng, bấm <b>"+ Thêm lần thay"</b>. Hệ thống tự
+                  đánh số <i>Lần 1, Lần 2...</i> và lấy <b>Ô 1</b> của lần sau bằng <b>Ô 3</b> của lần trước.</div>
+              </div>
+
+              <div class="mc-status-guide">
+                <strong>📌 Hai trạng thái ghi nhận:</strong>
+                <div class="mc-status-row"><span class="mc-status-pill tracking">⏳ Đang theo dõi</span> Khi để trống Ô 4
+                  (tạm tính phần đã tháo).</div>
+                <div class="mc-status-row"><span class="mc-status-pill done">✅ Hoàn tất</span> Khi đã nhập Ô 4 hợp lệ
+                  đến cuối tháng.</div>
+              </div>
+
+              <div class="mc-note-box">
+                <strong>💡 Mẹo nhanh:</strong> Rê chuột trực tiếp vào từng ô nhập liệu bên trái để xem tooltip giải
+                thích. Ô chọn ngày thay đổi là không bắt buộc.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Shared Calc & Format Scripts -->
   <script src="../shared/calc.js"></script>
   <script src="../shared/format.js"></script>
@@ -2562,6 +2708,8 @@
   <script src="activity-log.js"></script>
   <!-- Month Excel Export Module -->
   <script src="month-excel.js"></script>
+  <!-- Meter Change Modal UI Module -->
+  <script src="meter-change-modal.js"></script>
   <!-- Renderer Script -->
   <script src="renderer.js"></script>
 </body>
