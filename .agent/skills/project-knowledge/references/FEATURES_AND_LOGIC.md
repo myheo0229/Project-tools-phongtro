@@ -420,16 +420,23 @@
 
 ---
 
-## 14. Giao Diện Modal Ghi Nhận Thay Đổi Đồng Hồ Điện / Nước (UI/UX Preview)
+## 14. Modal & Backend Ghi Nhận Thay Đổi Đồng Hồ Điện / Nước
 
-- **Vị trí**: Nút **"Thay đổi đồng hồ"** (`#btn-open-meter-change-modal`) trên thanh tiêu đề Bảng chính (Phần 1), đặt ở **ngoài cùng bên trái** (vị trí cuối cùng tính từ phải sang trái trên hàng nút tác vụ cùng với `Xuất dữ liệu` và `Gửi Zalo`).
-- **Module xử lý độc lập**: `src/input/meter-change-modal.js` (không can thiệp `renderer.js` hay `calc.js`).
-- **Trạng thái hiện tại**: Hoàn thiện giao diện, hiệu ứng chuyển trang và tương tác kiểm tra hợp lệ UI (chưa ghi xuống database). Đọc trực tiếp danh sách 12 phòng (`1A` – `6B`) và trạng thái chốt tháng trước từ `roomsData` ở chế độ chỉ đọc.
-- **Quy trình 2 bước với hiệu ứng đẩy ngang (`--dir: 1 / -1`)**:
-  1. **Bước 1 (Chọn phòng & loại đồng hồ)**: Lưới 12 thẻ phòng kiểu radio (chọn duy nhất 1 phòng, hiển thị rõ số cũ tháng trước hoặc `"Chưa có dữ liệu cũ"`), tích chọn Điện và/hoặc Nước.
-  2. **Bước 2 (60% Nhập liệu — 40% Hướng dẫn trực quan)**:
-     - Cột trái 60%: Topbar tên phòng + nút `"Quay lại chọn phòng"`, khối `box-shadow: inset` căn giữa chứa các khối Điện/Nước, nút `"+ Thêm lần thay"` (tự đánh số `Lần 1, Lần 2...`), `<input type="date">` tùy chọn và bố cục 4 ô màu trên 1 hàng (`[Ô 1: Đầu kỳ] ; [Ô 2: Cuối ĐH cũ] ---> [Ô 3: Đầu ĐH mới = 0] ; [Ô 4: Cuối tháng (tùy chọn)]`).
-     - Tự động khóa Ô 1 khi phòng đã có số tháng trước (`isDienCuLocked`/`isNuocCuLocked`), mở khóa nền vàng khi phòng chưa có dữ liệu cũ; từ Lần 2 trở đi Ô 1 tự động nối tiếp theo Ô 3 của lần trước theo thời gian thực.
-     - Tự động kiểm tra `Ô 2 >= Ô 1` và `Ô 4 >= Ô 3` (nếu nhập Ô 4), hiển thị trạng thái **`⏳ Đang theo dõi`** (khi bỏ trống Ô 4) hoặc **`✅ Hoàn tất`** (khi đã chốt Ô 4).
-     - Cột phải 40%: Khung hướng dẫn trực quan sơ đồ màu 4 ô, công thức cộng dồn và giải thích 2 trạng thái.
+- **Vị trí kích hoạt**: Nút **"Thay đổi đồng hồ"** (`#btn-open-meter-change-modal`) trên thanh tiêu đề Bảng chính (Phần 1), hoặc bấm trực tiếp vào thẻ trạng thái ngay trên ô nhập liệu của phòng đang thay đồng hồ.
+- **Kiến trúc lưu trữ tách biệt (`<baseFolder>/data/meter-changes.json`)**:
+  - Lưu độc lập theo `months[monthKey][phong] = { elec, water }` thông qua các IPC `meter-changes:load`, `meter-changes:save-room`, `meter-changes:save-month` (ghi atomic `.tmp`), giữ nguyên 100% cấu trúc mảng JSON 12 phòng của `history/YYYY-MM.json`.
+  - Hỗ trợ đọc qua [calc.js](file:///d:/2.%20GauGau/Project-tools-phongtro/src/shared/calc.js) bằng tham số tùy chọn `dienKwhOverride` / `nuocKhoiOverride` để toàn bộ bảng, tổng doanh thu và kiểm tra bất thường tính đúng theo tổng tiêu thụ thực tế qua $n$ lần thay.
+- **3 Cấp độ trạng thái & Luồng nhập tuần tự số nguyên**:
+  1. **`⏳ Đang theo dõi`** *(nền cam)*: Chưa nhập Ô 2 hoặc chưa đủ đến Ô 3.
+  2. **`📝 Hãy nhập ô 4`** *(nền xanh lá nhạt `#dcfce7`)*: Đã nhập đủ & hợp lệ tới Ô 3, chờ chốt số cuối tháng ở Ô 4.
+  3. **`✅ Đã đủ`** *(nền xanh lá đậm `#16a34a`)*: Đã nhập đủ & hợp lệ Ô 2, Ô 3 và Ô 4.
+  - Chỉ cho nhập **số nguyên không âm (`0–9`)**, khóa tuần tự Ô 1 (nếu mở) $\rightarrow$ Ô 2 $\rightarrow$ Ô 3 $\rightarrow$ Ô 4. Ô 3 là ngoại lệ giữ mặc định `0` để không cần bấm vào gõ lại khi ĐH mới bắt đầu từ 0.
+- **Các popup con xử lý nghiệp vụ thực tế**:
+  - **Thiếu dữ liệu tháng trước (`#mc-missing-prev-modal`)**: Từ tháng `2026-08` trở đi nếu tháng trước phòng chưa có số (phòng nghỉ hoặc quên nhập), hiển thị dấu **`!`** tím chàm (`#4f46e5`, khác hoàn toàn màu vàng) cho phép chọn **"Quay lại tháng trước"** để điền bổ sung hoặc **"Tự nhập đầu kỳ"** tại chỗ.
+  - **Đồng hồ quay vòng (`#mc-rollover-modal`)**: Khi Ô 2 `<` Ô 1 (hoặc Ô 4 `<` Ô 3), bật popup xác nhận tính theo giới hạn chữ số $10^d$.
+  - **Xác nhận số chữ số ĐH mới (`#mc-digits-modal`)**: Khi rời Ô 2 hợp lệ lần đầu, hỏi nhanh số chữ số ĐH mới (control `- / +` giống Cài Đặt Chung) và tự động đồng bộ sang `appSettings.meterDigits` + `settings.json` (Cài Đặt Chung) nếu có thay đổi.
+- **Đồng bộ Bảng Phần 1, Khóa tháng & Quy tắc Gửi Zalo**:
+  - Khóa `readonly` cặp ô của loại ĐH đang ghi nhận thay ở phòng đó trên bảng chính; cho phép gỡ bỏ (`✕ Gỡ` / `🗑️ Hủy thay đổi ĐH`) để hoàn tác về nhập tay bình thường; đồng bộ snapshot khi khóa/mở khóa chỉnh sửa tháng và ghi Nhật ký hoạt động (`MONTH_DATA`).
+  - **Chặn Lưu & Xuất + Mở tháng mới**: Không cho xuất phiếu thu/mở tháng kế tiếp khi vẫn còn phòng ở mức `Đang theo dõi` hoặc `Hãy nhập ô 4`.
+  - **Quy tắc nút Gửi Zalo (`#btn-send-zalo-month`)**: Chỉ kích hoạt ở các tháng **đã Lưu & Xuất (đang khóa)** và **không trong chế độ đang Chỉnh Sửa** (`isCurrentMonthLocked && !isCurrentMonthEditing`).
 

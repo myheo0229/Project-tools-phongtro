@@ -12,6 +12,11 @@ contextBridge.exposeInMainWorld('api', {
   loadMonthLocks: () => ipcRenderer.invoke('month-locks:load'),
   saveMonthLocks: (data) => ipcRenderer.invoke('month-locks:save', data),
 
+  // Quản lý lịch sử thay đổi đồng hồ Điện / Nước (meter-changes.json)
+  loadMeterChanges: () => ipcRenderer.invoke('meter-changes:load'),
+  saveRoomMeterChange: (payload) => ipcRenderer.invoke('meter-changes:save-room', payload),
+  saveMonthMeterChanges: (payload) => ipcRenderer.invoke('meter-changes:save-month', payload),
+
   // Quản lý lưu/đọc cài đặt giá & thư mục gốc
   saveSettings: (data) => ipcRenderer.invoke('settings:save', data),
   loadSettings: () => ipcRenderer.invoke('settings:load'),

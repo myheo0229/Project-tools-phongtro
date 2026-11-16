@@ -20,3 +20,6 @@ BackupData/
 backup-tokens.enc
 backup-config.json
 electron/google-oauth-client.json
+
+#e2e sinh test
+e2e/test-meter-change-e2e.js

@@ -245,6 +245,9 @@ Các kênh IPC được phơi ra thông qua `window.api` trong `electron/preload
 | `export:progress` | `on (event)` | Callback | `{ current, total }` | Stream tiến trình xuất file (1 đến 12) |
 | `month-locks:load` | `invoke` | Không | `{ ok, data, exportedMonths }` | Đọc trạng thái khóa các tháng + danh sách tháng đã xuất |
 | `month-locks:save` | `invoke` | `data` (Object) | `{ success: true }` hoặc `{ error }` | Lưu trạng thái khóa và snapshot đơn giá (ghi atomic qua .tmp) |
+| `meter-changes:load` | `invoke` | Không | `{ ok, data }` | Đọc toàn bộ lịch sử thay đổi đồng hồ từ `<BaseFolder>/data/meter-changes.json` |
+| `meter-changes:save-room` | `invoke` | `{ monthKey, phong, roomData }` | `{ ok, success, data }` hoặc `{ error }` | Lưu hoặc gỡ bản ghi thay đổi ĐH Điện/Nước của 1 phòng (ghi atomic `.tmp`) |
+| `meter-changes:save-month` | `invoke` | `{ monthKey, monthData }` | `{ ok, success, data }` hoặc `{ error }` | Ghi đè lịch sử thay đổi ĐH của 1 tháng (phục vụ hoàn tác khi hủy sửa tháng đã khóa) |
 
 ### 3.3. Nhóm Quản Lý Phòng, Cư Dân & Ảnh CCCD
 

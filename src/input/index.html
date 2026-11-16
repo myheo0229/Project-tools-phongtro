@@ -2573,7 +2573,8 @@
           <span>⚡ Ghi nhận thay đổi đồng hồ Điện / Nước</span>
           <span class="mc-badge-step" id="mc-step-badge">Bước 1/2: Chọn phòng &amp; loại</span>
         </h2>
-        <button type="button" class="mc-close-btn" onclick="closeMeterChangeModal()" title="Đóng (Esc)"
+        <button type="button" class="mc-close-btn" onmousedown="suppressMcBlurBriefly()"
+          onclick="closeMeterChangeModal()" title="Đóng (Esc)"
           aria-label="Đóng">&times;</button>
       </div>
 
@@ -2627,8 +2628,13 @@
             <div class="mc-left-panel">
               <div class="mc-room-topbar">
                 <div class="mc-room-title-badge" id="mc-selected-room-title">🏠 Phòng 1A</div>
-                <button type="button" class="mc-btn-back" onclick="goToMeterChangeStep(1, -1)">⬅ Quay lại chọn
+                <button type="button" class="mc-btn-back" onmousedown="suppressMcBlurBriefly()"
+                  onclick="goToMeterChangeStep(1, -1)">⬅ Quay lại chọn
                   phòng</button>
+              </div>
+
+              <div class="mc-locked-banner" id="mc-locked-banner" style="display: none;">
+                <span>🔒 Tháng này đã khóa dữ liệu (chỉ xem). Bấm nút <strong>Chỉnh Sửa</strong> ngoài bảng chính nếu muốn thay đổi.</span>
               </div>
 
               <!-- Khối Inset căn giữa toàn bộ vùng nhập liệu -->
@@ -2637,10 +2643,14 @@
               </div>
 
               <div class="mc-left-footer">
-                <span class="mc-preview-note">Chế độ giao diện &amp; kiểm tra trực quan (chưa ghi vào database)</span>
+                <span class="mc-preview-note" id="mc-left-footer-note">Chỉ nhập số nguyên không âm (0–9) lần lượt từ Ô 2 ➔ Ô 3 ➔ Ô 4.</span>
                 <div class="mc-footer-actions">
-                  <button type="button" class="btn btn-secondary" onclick="closeMeterChangeModal()">Hủy</button>
-                  <button type="button" class="btn-mc-primary" id="mc-btn-save" onclick="handleSaveMeterChangeUI()">💾
+                  <button type="button" class="btn btn-danger-outline" id="mc-btn-delete-all" style="display: none;"
+                    onmousedown="suppressMcBlurBriefly()" onclick="handleDeleteRoomMeterChanges()">🗑️ Hủy thay đổi ĐH</button>
+                  <button type="button" class="btn btn-secondary" onmousedown="suppressMcBlurBriefly()"
+                    onclick="closeMeterChangeModal()">Đóng</button>
+                  <button type="button" class="btn-mc-primary" id="mc-btn-save" onmousedown="suppressMcBlurBriefly()"
+                    onclick="handleSaveMeterChange()">💾
                     Lưu ghi nhận</button>
                 </div>
               </div>
@@ -2653,48 +2663,181 @@
               <div class="mc-legend-card">
                 <div class="mc-legend-item">
                   <span class="mc-dot-color" style="background:#cbd5e1; border:1px solid #64748b;"></span>
-                  <div><strong>Ô 1 — Chỉ số đầu kỳ:</strong> Tự động lấy từ chốt cuối tháng trước và <b>khóa</b>. Nếu
-                    phòng mới chưa có dữ liệu cũ (viền vàng), bạn được mở khóa để nhập tay số ban đầu.</div>
+                  <div><strong>Ô 1 — Chỉ số đầu kỳ:</strong> Tự lấy từ chốt cuối tháng trước và <b>khóa</b>. Nếu tháng
+                    trước chưa có số (biểu tượng <strong style="color:#4f46e5;">!</strong> tím chàm), bấm vào để chọn quay
+                    lại tháng trước hoặc tự nhập tay.</div>
                 </div>
                 <div class="mc-legend-item">
                   <span class="mc-dot-color" style="background:#fde68a; border:1px solid #f59e0b;"></span>
-                  <div><strong>Ô 2 — Số cuối ĐH cũ:</strong> Chỉ số trên mặt đồng hồ cũ ngay lúc thợ tháo xuống (bắt
-                    buộc <b>≥ Ô 1</b>).</div>
+                  <div><strong>Ô 2 — Số cuối ĐH cũ:</strong> Chỉ số trên mặt ĐH cũ ngay lúc tháo. Hỗ trợ <b>đồng hồ quay
+                      vòng</b> nếu nhỏ hơn Ô 1; sau khi nhập xong sẽ hỏi xác nhận số chữ số ĐH mới.</div>
                 </div>
                 <div class="mc-legend-item">
                   <span class="mc-dot-color" style="background:#bfdbfe; border:1px solid #3b82f6;"></span>
-                  <div><strong>Ô 3 — Số đầu ĐH mới:</strong> Số khởi điểm của đồng hồ mới ngay lúc lắp (mặc định là
-                    <code>0</code>).</div>
+                  <div><strong>Ô 3 — Số đầu ĐH mới (Ngoại lệ):</strong> Mặc định sẵn <code>0</code> để có thể bỏ qua không
+                    cần bấm nếu ĐH mới bắt đầu từ 0, hoặc sửa lại nếu khác 0.</div>
                 </div>
                 <div class="mc-legend-item">
                   <span class="mc-dot-color" style="background:#a7f3d0; border:1px solid #10b981;"></span>
-                  <div><strong>Ô 4 — Số chốt cuối tháng (Tùy chọn):</strong> Có thể <b>để trống</b> nếu mới thay giữa
-                    tháng để theo dõi, cuối tháng quay lại điền sau (nếu nhập phải <b>≥ Ô 3</b>).</div>
+                  <div><strong>Ô 4 — Số chốt cuối tháng:</strong> Mở khóa ngay sau khi Ô 2 &amp; Ô 3 hợp lệ. Có thể để
+                    trống lúc thay giữa tháng và quay lại điền cuối tháng.</div>
                 </div>
               </div>
 
               <div class="mc-visual-formula">
                 <strong>🧮 Nguyên tắc cộng dồn tiêu thụ:</strong>
                 <div class="mc-formula-line">Tổng tiêu thụ = (Ô 2 − Ô 1) + (Ô 4 − Ô 3)</div>
-                <div class="mc-formula-sub">* Nếu thay nhiều lần trong tháng, bấm <b>"+ Thêm lần thay"</b>. Hệ thống tự
-                  đánh số <i>Lần 1, Lần 2...</i> và lấy <b>Ô 1</b> của lần sau bằng <b>Ô 3</b> của lần trước.</div>
+                <div class="mc-formula-sub">* Khi bấm <b>"+ Thêm lần thay"</b>, hệ thống tự đánh số <i>Lần 1, Lần 2...</i>
+                  và nối <b>Ô 1</b> của lần sau bằng <b>Ô 3</b> của lần trước.</div>
               </div>
 
               <div class="mc-status-guide">
-                <strong>📌 Hai trạng thái ghi nhận:</strong>
-                <div class="mc-status-row"><span class="mc-status-pill tracking">⏳ Đang theo dõi</span> Khi để trống Ô 4
-                  (tạm tính phần đã tháo).</div>
-                <div class="mc-status-row"><span class="mc-status-pill done">✅ Hoàn tất</span> Khi đã nhập Ô 4 hợp lệ
-                  đến cuối tháng.</div>
+                <strong>📌 3 cấp độ trạng thái:</strong>
+                <div class="mc-status-row"><span class="mc-status-pill tracking">⏳ Đang theo dõi</span> Chưa nhập Ô 2
+                  hoặc chưa đủ đến Ô 3.</div>
+                <div class="mc-status-row"><span class="mc-status-pill need-box4">📝 Hãy nhập ô 4</span> Đã xong đến Ô 3,
+                  chỉ còn thiếu chốt cuối tháng (Ô 4).</div>
+                <div class="mc-status-row"><span class="mc-status-pill completed">✅ Đã đủ</span> Đã nhập đủ &amp; hợp lệ
+                  Ô 2, Ô 3 và Ô 4.</div>
               </div>
 
               <div class="mc-note-box">
-                <strong>💡 Mẹo nhanh:</strong> Rê chuột trực tiếp vào từng ô nhập liệu bên trái để xem tooltip giải
-                thích. Ô chọn ngày thay đổi là không bắt buộc.
+                <strong>💡 Lưu ý an toàn:</strong> Tháng chỉ được phép <b>Lưu &amp; Xuất</b> và <b>Gửi Zalo</b> khi các
+                phòng thay đồng hồ đã chuyển sang trạng thái <b>"Đã đủ"</b>.
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP CON 1: XỬ LÝ THIẾU DỮ LIỆU THÁNG TRƯỚC (BIỂU TƯỢNG ! TÍM CHÀM, KHÔNG PHẢI MÀU VÀNG) -->
+  <div id="mc-missing-prev-modal" class="modal-overlay mc-child-overlay" style="display: none;">
+    <div class="modal-card mc-child-card">
+      <div class="modal-header">
+        <div class="modal-icon mc-icon-indigo">
+          <span class="mc-bang-symbol">!</span>
+        </div>
+        <div class="modal-title-group">
+          <h3>Chưa có dữ liệu chốt tháng trước</h3>
+          <p class="modal-subtitle" id="mc-missing-prev-subtitle">Phòng - chưa có số cuối kỳ trước</p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p id="mc-missing-prev-desc">Tháng trước chưa có chỉ số chốt của phòng này (có thể do tháng trước phòng nghỉ hoặc chưa nhập liệu).</p>
+        <div class="modal-info-box mc-indigo-info-box">
+          <div class="info-row">
+            <span>Phòng / Loại đồng hồ:</span>
+            <strong id="mc-missing-prev-target">-</strong>
+          </div>
+          <div class="info-row">
+            <span>Tháng trước cần kiểm tra:</span>
+            <strong id="mc-missing-prev-month">-</strong>
+          </div>
+        </div>
+        <p class="modal-question">Bạn muốn tự nhập chỉ số đầu kỳ tại đây (nếu tháng trước phòng nghỉ) hay quay lại tháng trước để điền đầy đủ?</p>
+      </div>
+      <div class="modal-footer" style="gap: 10px; flex-wrap: wrap;">
+        <button type="button" class="btn btn-secondary" onclick="closeMcMissingPrevModal()">Để sau</button>
+        <button type="button" class="btn btn-mc-indigo-outline" id="mc-btn-go-prev-month"
+          onclick="confirmGoToPrevMonthFromMc()">⬅ Quay lại tháng trước</button>
+        <button type="button" class="btn btn-primary" onclick="confirmManualInitFromMc()">✏️ Tự nhập đầu kỳ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP CON 2: XÁC NHẬN ĐỒNG HỒ QUAY VÒNG TRONG MODAL THAY ĐỒNG HỒ -->
+  <div id="mc-rollover-modal" class="modal-overlay mc-child-overlay" style="display: none;">
+    <div class="modal-card mc-child-card">
+      <div class="modal-header">
+        <div class="modal-icon warning">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div class="modal-title-group">
+          <h3 id="mc-rollover-title">Xác nhận số chỉ số (Đồng hồ quay vòng)</h3>
+          <p class="modal-subtitle" id="mc-rollover-subtitle">Chỉ số sau nhỏ hơn chỉ số đầu</p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p id="mc-rollover-desc">-</p>
+        <div class="modal-info-box">
+          <div class="info-row">
+            <span>Phương pháp tính:</span>
+            <strong id="mc-rollover-formula">-</strong>
+          </div>
+          <div class="info-row">
+            <span>Lượng tiêu thụ chặng này:</span>
+            <strong id="mc-rollover-calc-val" class="text-success">0</strong>
+          </div>
+        </div>
+        <p class="modal-question">Bạn có chắc chắn muốn áp dụng phương pháp tính đồng hồ quay vòng cho chặng này không?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="cancelMcRolloverModal()">Hủy (Nhập lại)</button>
+        <button type="button" class="btn btn-primary" onclick="confirmMcRolloverModal()">Xác nhận (Áp dụng)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP CON 3: XÁC NHẬN SỐ CHỮ SỐ ĐỒNG HỒ MỚI (ĐỒNG BỘ CÀI ĐẶT CHUNG) -->
+  <div id="mc-digits-modal" class="modal-overlay mc-child-overlay" style="display: none;">
+    <div class="modal-card meter-digits-modal-card mc-digits-child-card">
+      <div class="meter-digits-modal-header">
+        <div class="meter-digits-modal-title-wrap">
+          <div class="meter-digits-modal-badge">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 7v5l3 3"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="meter-digits-modal-title" id="mc-digits-modal-title">Xác nhận số chữ số đồng hồ mới</h3>
+            <p class="meter-digits-modal-subtitle" id="mc-digits-modal-subtitle">Đồng hồ mới lắp có cùng số chữ số như tháng trước không?</p>
+          </div>
+        </div>
+      </div>
+      <div class="meter-digits-modal-body">
+        <p class="mc-digits-question-text" id="mc-digits-question-text"></p>
+        <div class="mc-digits-picker-box">
+          <label class="meter-digits-modal-label" for="mc-new-meter-digits-input">
+            <span class="meter-dot meter-dot-dien" id="mc-digits-dot"></span>
+            <span id="mc-digits-input-label">Số chữ số đồng hồ mới (3 - 7):</span>
+          </label>
+          <div class="digit-stepper-wrap digit-stepper-wrap-modal">
+            <button type="button" class="stepper-btn stepper-btn-minus"
+              onclick="stepMcNewMeterDigits(-1)" title="Giảm 1 số" tabindex="-1">−</button>
+            <input type="text" inputmode="numeric" id="mc-new-meter-digits-input"
+              class="meter-stepper-input meter-stepper-input-modal" value="5"
+              oninput="validateMcDigitInputRealtime(this)" onblur="enforceMcDigitRange(this)">
+            <button type="button" class="stepper-btn stepper-btn-plus"
+              onclick="stepMcNewMeterDigits(1)" title="Tăng 1 số" tabindex="-1">+</button>
+          </div>
+          <div class="meter-digits-modal-hint" id="mc-digits-max-hint"></div>
+        </div>
+        <div class="meter-digits-modal-info">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <div>Nếu bạn giữ nguyên thì hệ thống dùng lại cấu hình cũ. Nếu thay đổi số khác, hệ thống sẽ <strong>tự động cập nhật vào Cài Đặt Chung</strong> của phòng này.</div>
+        </div>
+      </div>
+      <div class="meter-digits-modal-footer">
+        <button type="button" class="btn btn-primary" onclick="confirmMcNewMeterDigits()">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span>OK (Áp dụng)</span>
+        </button>
       </div>
     </div>
   </div>

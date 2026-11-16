@@ -187,14 +187,14 @@ Project-tools-phongtro/
   - `handleOpenExportedExcelFile()`: Mở trực tiếp file Excel vừa xuất bằng ứng dụng mặc định trên máy tính qua IPC `excel:open-file` (`shell.openPath`).
 
 #### 📄 `src/input/meter-change-modal.js`
-- **Nhiệm vụ**: Phân hệ UI/UX độc lập cho Modal **"Ghi nhận thay đổi đồng hồ Điện / Nước"** 2 bước (`#meter-change-modal`), đọc trạng thái 12 phòng và chỉ số khóa từ `roomsData` mà không can thiệp `renderer.js` hay `calc.js` (giai đoạn hoàn thiện giao diện, chưa lưu database).
+- **Nhiệm vụ**: Phân hệ UI & Backend Logic cho Modal **"Ghi nhận thay đổi đồng hồ Điện / Nước"** 2 bước (`#meter-change-modal`), kết nối `<baseFolder>/data/meter-changes.json` qua IPC, đồng bộ 2 chiều với bảng Phần 1 (`roomsData`), Cài Đặt Chung (`meterDigits`) và Nhật ký hoạt động.
 - **Các hàm chính**:
-  - `getRoomsForMeterChangeModal()`, `openMeterChangeModal()`, `closeMeterChangeModal()`: Đọc danh sách phòng và trạng thái khóa đầu kỳ từ `roomsData`, mở/đóng modal và đặt lại trạng thái về Bước 1.
-  - `renderMeterChangeRoomGrid()`, `toggleMeterChangeType(type)`, `validateMeterChangeStep1()`: Hiển thị lưới chọn 1 trong 12 phòng và checkbox Điện/Nước, bật/tắt nút "Tiếp theo".
-  - `goToMeterChangeStep(targetStep, dir)`: Điều hướng qua lại giữa Bước 1 và Bước 2 với animation trượt trang (`mc-push-out` / `mc-push-in`, `--dir`).
-  - `addMeterChangeRow(type)`, `removeMeterChangeRow(type, idx)`, `renderMeterChangeStep2Form()`: Quản lý danh sách nhiều lần thay đồng hồ, tự động đánh số `- Lần 1`, `- Lần 2`, khóa/mở Ô 1 đầu kỳ và liên kết Ô 1 của lần sau theo Ô 3 của lần trước.
-  - `onMeterChangeNumInput(type, idx, field, value)`, `evaluateMeterChangeSection(type)`, `updateMeterChangeLiveSection(type)`: Kiểm tra tính hợp lệ thời gian thực (`Số cuối ĐH cũ >= Đầu kỳ`, `Chốt cuối tháng >= Đầu ĐH mới`), cộng dồn tiêu thụ qua $n$ lần thay và cập nhật nhãn trạng thái `"Đang theo dõi"` / `"Hoàn tất"`.
-  - `handleSaveMeterChangeUI()`: Kiểm tra toàn bộ dữ liệu đang nhập trên giao diện modal và hiển thị thông báo tóm tắt kết quả xem trước.
+  - `loadMeterChangesStore()`, `getRoomMeterChangeRecord()`, `getUnfinishedMeterChangesForMonth()`, `persistRoomMeterChange()`: Quản lý kho `meterChangesStore` trong bộ nhớ và ghi/đọc atomic xuống `meter-changes.json`.
+  - `openMeterChangeModal(preselectPhong, preselectType)`, `closeMeterChangeModal()`, `renderMeterChangeRoomGrid()`: Nạp 12 phòng kèm trạng thái tháng trước/trạng thái thay ĐH đang lưu, hỗ trợ mở thẳng Bước 2 khi bấm badge trên bảng chính.
+  - `goToMeterChangeStep(step, dir)`, `addMeterChangeRow(type)`, `removeMeterChangeRow(type, idx)`: Chuyển trang trượt ngang (`--dir`), quản lý chuỗi $n$ lần thay.
+  - `onMcIntKeyDown()`, `onMeterChangeNumInput()`, `onMcOldEndBlur()`, `onMcMonthEndBlur()`: Ràng buộc chỉ số nguyên không âm `0–9`, tuần tự Ô 1 $\rightarrow$ Ô 2 $\rightarrow$ Ô 3 (mặc định `0`) $\rightarrow$ Ô 4, xử lý quay vòng và bật popup xác nhận số chữ số ĐH mới.
+  - `evaluateMeterChangeSection(type)`, `updateMeterChangeLiveSection(type)`: Tính tiêu thụ qua $n$ lần thay (kể cả quay vòng) và cập nhật 3 cấp độ (`⏳ Đang theo dõi` / `📝 Hãy nhập ô 4` / `✅ Đã đủ`).
+  - `handleSaveMeterChange()`, `handleDeleteSectionMeterChange(type)`, `handleDeleteRoomMeterChanges()`, `syncMeterChangeToMainTable()`: Lưu/gỡ thay đổi ĐH, đồng bộ `dienKwhOverride` / `nuocKhoiOverride` ra bảng Phần 1, `history/YYYY-MM.json` và ghi `activity-logs`.
 
 #### 📄 `src/input/style.css` (3570 dòng)
 - **Nhiệm vụ**: Toàn bộ hệ thống giao diện trực quan, định nghĩa biến màu sắc, kích thước, hiệu ứng đổ bóng, responsive breakpoints và hiệu ứng chuyển động.

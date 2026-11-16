@@ -235,14 +235,22 @@ function hasMonthEnteredNewData(monthData) {
 
 /**
  * Kiểm tra xem 1 tháng đã nhập đủ dữ liệu 12 phòng hay chưa
+ * (và không còn phòng nào đang theo dõi / chưa nhập Ô 4 thay đổi đồng hồ)
  */
-function isMonthFullyComplete(monthData) {
+function isMonthFullyComplete(monthData, monthKey) {
   if (!monthData) return false;
   const rooms = Array.isArray(monthData) ? monthData : (monthData && monthData.rooms ? monthData.rooms : null);
   if (!rooms || !Array.isArray(rooms) || rooms.length !== 12) {
     return false;
   }
-  return rooms.every(r => r.dienMoi != null && r.nuocMoi != null && r.dienMoi !== '' && r.nuocMoi !== '');
+  const allEntered = rooms.every(r => r.dienMoi != null && r.nuocMoi != null && r.dienMoi !== '' && r.nuocMoi !== '');
+  if (!allEntered) return false;
+
+  if (monthKey && typeof getUnfinishedMeterChangesForMonth === 'function') {
+    const unfinished = getUnfinishedMeterChangesForMonth(monthKey);
+    if (unfinished && unfinished.length > 0) return false;
+  }
+  return true;
 }
 
 /**
@@ -259,7 +267,7 @@ function nextMonthKey(monthKey) {
  */
 async function computeMaxSelectableMonth() {
   let month = MIN_MONTH;
-  while (isMonthFullyComplete(await readHistoryFile(month))) {
+  while (isMonthFullyComplete(await readHistoryFile(month), month)) {
     month = nextMonthKey(month);
   }
   return month;
@@ -348,7 +356,8 @@ async function loadSettingsFile() {
             zaloSendPaymentQr: data.zaloSendPaymentQr !== undefined ? data.zaloSendPaymentQr : true,
             zaloSendMessageText: data.zaloSendMessageText !== undefined ? data.zaloSendMessageText : true,
             zaloMessageTemplate: data.zaloMessageTemplate !== undefined ? data.zaloMessageTemplate : "",
-            confirmedAlerts: data.confirmedAlerts || {}
+            confirmedAlerts: data.confirmedAlerts || {},
+            meterDigits: (data.meterDigits && typeof data.meterDigits === 'object') ? data.meterDigits : (appSettings.meterDigits || {})
           };
           return;
         }
@@ -395,7 +404,8 @@ async function saveSettingsFile(isSilent = false) {
     zaloSendPaymentQr: appSettings.zaloSendPaymentQr !== undefined ? appSettings.zaloSendPaymentQr : true,
     zaloSendMessageText: appSettings.zaloSendMessageText !== undefined ? appSettings.zaloSendMessageText : true,
     zaloMessageTemplate: appSettings.zaloMessageTemplate || "",
-    confirmedAlerts: appSettings.confirmedAlerts || {}
+    confirmedAlerts: appSettings.confirmedAlerts || {},
+    meterDigits: (appSettings.meterDigits && typeof appSettings.meterDigits === 'object') ? appSettings.meterDigits : {}
   };
 
   if (window.api) {
@@ -528,6 +538,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (baseFolderInput) baseFolderInput.classList.remove('input-error');
   }
 
+  if (typeof loadMeterChangesStore === 'function') {
+    await loadMeterChangesStore();
+  }
   await populateMonthSelect();
   await loadRoomsForMonth(document.getElementById('month-year-select').value);
   await loadResidentsData();
@@ -1472,14 +1485,19 @@ async function loadRoomsForMonth(currentMonthYearStr) {
     }
 
     let prevDienKwh = 0;
-    if (prevRoom) {
+    const prevMcRec = (prevMonthStr && typeof getRoomMeterChangeRecord === 'function')
+      ? getRoomMeterChangeRecord(prevMonthStr, phongName)
+      : null;
+    if (prevMcRec && prevMcRec.elec && prevMcRec.elec.status === 'completed' && isNotEmpty(prevMcRec.elec.totalConsumption)) {
+      prevDienKwh = Number(prevMcRec.elec.totalConsumption) || 0;
+    } else if (prevRoom) {
       if (isNotEmpty(prevRoom.dienKwh)) {
         prevDienKwh = Number(prevRoom.dienKwh);
       } else if (isNotEmpty(prevRoom.dienMoi) && isNotEmpty(prevRoom.dienCu)) {
         const dienCuP = Number(prevRoom.dienCu);
         const dienMoiP = Number(prevRoom.dienMoi);
         if (typeof calcRoom === 'function') {
-          const res = calcRoom({ dienCu: dienCuP, dienMoi: dienMoiP }, activeSettings);
+          const res = calcRoom({ phong: phongName, dienCu: dienCuP, dienMoi: dienMoiP }, activeSettings);
           prevDienKwh = res ? res.dienKwh : Math.max(0, dienMoiP - dienCuP);
         } else {
           prevDienKwh = Math.max(0, dienMoiP - dienCuP);
@@ -1499,18 +1517,68 @@ async function loadRoomsForMonth(currentMonthYearStr) {
     const isConfirmedRollover = (alertConfig.rollover === true) || (currRoom && currRoom.confirmedRollover === true) || false;
     const isConfirmedAnomaly = (alertConfig.anomaly === true) || (currRoom && currRoom.confirmedAnomaly === true) || false;
 
+    // Áp dụng trạng thái thay đổi đồng hồ (nếu có bản ghi trong meter-changes.json)
+    const mcRec = typeof getRoomMeterChangeRecord === 'function'
+      ? getRoomMeterChangeRecord(currentMonthYearStr, phongName)
+      : null;
+
+    let hasMcElec = false;
+    let mcElecStatus = null;
+    let dienKwhOverride = null;
+    let finalConfirmedRollover = isConfirmedRollover;
+
+    if (mcRec && mcRec.elec) {
+      hasMcElec = true;
+      mcElecStatus = mcRec.elec.status || 'tracking';
+      finalConfirmedRollover = false;
+      if (!isDienCuLocked && mcRec.elec.initialIndex !== null && mcRec.elec.initialIndex !== undefined) {
+        dienCu = Number(mcRec.elec.initialIndex);
+      }
+      if (mcElecStatus === 'completed' && mcRec.elec.monthEndIndex !== null && mcRec.elec.monthEndIndex !== undefined) {
+        dienMoi = Number(mcRec.elec.monthEndIndex);
+        dienKwhOverride = Number(mcRec.elec.totalConsumption) || 0;
+      } else {
+        dienMoi = '';
+      }
+    }
+
+    let finalNuocMoi = nuocMoi;
+    let hasMcWater = false;
+    let mcWaterStatus = null;
+    let nuocKhoiOverride = null;
+
+    if (mcRec && mcRec.water) {
+      hasMcWater = true;
+      mcWaterStatus = mcRec.water.status || 'tracking';
+      if (!isNuocCuLocked && mcRec.water.initialIndex !== null && mcRec.water.initialIndex !== undefined) {
+        nuocCu = Number(mcRec.water.initialIndex);
+      }
+      if (mcWaterStatus === 'completed' && mcRec.water.monthEndIndex !== null && mcRec.water.monthEndIndex !== undefined) {
+        finalNuocMoi = Number(mcRec.water.monthEndIndex);
+        nuocKhoiOverride = Number(mcRec.water.totalConsumption) || 0;
+      } else {
+        finalNuocMoi = '';
+      }
+    }
+
     return {
       phong: phongName,
       dienCu: dienCu,
       dienMoi: dienMoi,
       nuocCu: nuocCu,
-      nuocMoi: nuocMoi,
+      nuocMoi: finalNuocMoi,
       prevDienKwh: prevDienKwh,
       tienPhong: activeSettings.giaPhong,
       isDienCuLocked,
       isNuocCuLocked,
-      confirmedRollover: isConfirmedRollover,
-      confirmedAnomaly: isConfirmedAnomaly
+      confirmedRollover: finalConfirmedRollover,
+      confirmedAnomaly: isConfirmedAnomaly,
+      hasMcElec,
+      mcElecStatus,
+      dienKwhOverride,
+      hasMcWater,
+      mcWaterStatus,
+      nuocKhoiOverride
     };
   });
 
@@ -1541,76 +1609,74 @@ function renderInitialTable() {
     const dienMoiVal = room.dienMoi !== undefined && room.dienMoi !== null ? room.dienMoi : '';
     const nuocMoiVal = room.nuocMoi !== undefined && room.nuocMoi !== null ? room.nuocMoi : '';
 
-    const dienCuReadonly = room.isDienCuLocked || isTableReadonly;
-    const nuocCuReadonly = room.isNuocCuLocked || isTableReadonly;
+    const dienCuReadonly = room.isDienCuLocked || Boolean(room.hasMcElec) || isTableReadonly;
+    const nuocCuReadonly = room.isNuocCuLocked || Boolean(room.hasMcWater) || isTableReadonly;
 
     const roomMeterCfg = (activeSettings && activeSettings.meterDigits && activeSettings.meterDigits[room.phong]) || {};
     const dienMaxDigits = (roomMeterCfg.dien && Number(roomMeterCfg.dien) >= 3 && Number(roomMeterCfg.dien) <= 7) ? Number(roomMeterCfg.dien) : 5;
     const nuocMaxDigits = (roomMeterCfg.nuoc && Number(roomMeterCfg.nuoc) >= 3 && Number(roomMeterCfg.nuoc) <= 7) ? Number(roomMeterCfg.nuoc) : 4;
 
-    tr.innerHTML = `
-      <td class="col-stt">${index + 1}</td>
-      <td class="col-phong"><span class="room-badge">${room.phong}</span></td>
-      
-      <!-- Điện Cũ (Tự động điền & khóa nếu có lịch sử tháng trước hoặc tháng đã khóa) -->
-      <td class="col-meter">
-        <input type="number" 
-               class="table-input ${room.isDienCuLocked ? 'locked-input' : ''} ${isTableReadonly ? 'month-locked-input' : ''}" 
-               data-row="${index}" 
-               data-field="dienCu" 
-               value="${dienCuVal}" 
-               ${dienCuReadonly ? 'readonly tabindex="-1"' : ''} 
-               ${lockedTooltip}
-               onmousedown="if (this.readOnly) event.preventDefault()"
-               oninput="if (this.value.length > ${dienMaxDigits}) this.value = this.value.slice(0, ${dienMaxDigits}); handleInputChange(${index}, 'dienCu', this.value)" 
-               onfocus="if (!this.readOnly) this.select()">
-      </td>
+    const mcElecStatusCls = room.mcElecStatus === 'need_box4' ? 'need-box4' : (room.mcElecStatus === 'completed' ? 'completed' : 'tracking');
+    const mcElecStatusLabel = room.mcElecStatus === 'need_box4' ? '📝 Nhập Ô 4' : '⏳ Theo dõi';
+    const mcElecCellHtml = room.hasMcElec
+      ? (room.mcElecStatus === 'completed'
+        ? `<div class="meter-input-wrap">
+             <input type="number"
+                    class="table-input mc-locked-input ${isTableReadonly ? 'month-locked-input' : ''}"
+                    data-row="${index}"
+                    data-field="dienMoi"
+                    value="${dienMoiVal}"
+                    readonly tabindex="-1"
+                    onmousedown="event.preventDefault()"
+                    title="Đã đủ số liệu thay đồng hồ Điện. Bấm nút 🔄 bên cạnh để xem hoặc sửa trong Modal.">
+             <button type="button" class="meter-mc-pill completed" onclick="openMeterChangeModal('${room.phong}', 'elec')" title="Đã đủ · Xem / sửa thay đồng hồ Điện">🔄</button>
+             <button type="button" class="meter-alert-badge" id="alert-badge-${index}" onclick="handleAlertBadgeClick(${index})" style="display: none;" title="Xem lại cảnh báo bất thường">!</button>
+           </div>`
+        : `<button type="button" class="meter-mc-cell-btn ${mcElecStatusCls}" onclick="openMeterChangeModal('${room.phong}', 'elec')" title="Phòng đang thay đồng hồ Điện (${room.mcElecStatus === 'need_box4' ? 'Hãy nhập ô 4' : 'Đang theo dõi'}). Bấm để nhập tiếp.">
+             <span>${mcElecStatusLabel}</span>
+           </button>`)
+      : `<div class="meter-input-wrap">
+           <input type="number" 
+                  class="table-input editable-meter ${isTableReadonly ? 'month-locked-input' : ''}" 
+                  data-row="${index}" 
+                  data-field="dienMoi" 
+                  placeholder="Nhập số mới"
+                  value="${dienMoiVal}" 
+                  ${isTableReadonly ? 'readonly tabindex="-1"' : ''} 
+                  ${lockedTooltip}
+                  onmousedown="if (this.readOnly) event.preventDefault()"
+                  oninput="if (this.value.length > ${dienMaxDigits}) this.value = this.value.slice(0, ${dienMaxDigits}); handleInputChange(${index}, 'dienMoi', this.value)" 
+                  onblur="handleDienMoiBlur(${index})"
+                  onfocus="if (!this.readOnly) this.select()">
+           <button type="button" 
+                   class="meter-alert-badge" 
+                   id="alert-badge-${index}" 
+                   onclick="handleAlertBadgeClick(${index})" 
+                   style="display: none;" 
+                   title="Xem lại cảnh báo bất thường">
+             !
+           </button>
+         </div>`;
 
-      <!-- Điện Mới -->
-      <td class="col-meter">
-        <div class="meter-input-wrap">
-          <input type="number" 
-                 class="table-input editable-meter ${isTableReadonly ? 'month-locked-input' : ''}" 
-                 data-row="${index}" 
-                 data-field="dienMoi" 
-                 placeholder="Nhập số mới"
-                 value="${dienMoiVal}" 
-                 ${isTableReadonly ? 'readonly tabindex="-1"' : ''} 
-                 ${lockedTooltip}
-                 onmousedown="if (this.readOnly) event.preventDefault()"
-                 oninput="if (this.value.length > ${dienMaxDigits}) this.value = this.value.slice(0, ${dienMaxDigits}); handleInputChange(${index}, 'dienMoi', this.value)" 
-                 onblur="handleDienMoiBlur(${index})"
-                 onfocus="if (!this.readOnly) this.select()">
-          <button type="button" 
-                  class="meter-alert-badge" 
-                  id="alert-badge-${index}" 
-                  onclick="handleAlertBadgeClick(${index})" 
-                  style="display: none;" 
-                  title="Xem lại cảnh báo bất thường">
-            !
-          </button>
-        </div>
-      </td>
-      <!-- Số Điện Tiêu Thụ -->
-      <td class="col-kwh val-calc cell-dien-kwh">-</td>
-
-      <!-- Nước Cũ (Tự động điền & khóa nếu có lịch sử tháng trước hoặc tháng đã khóa) -->
-      <td class="col-meter">
-        <input type="number" 
-               class="table-input ${room.isNuocCuLocked ? 'locked-input' : ''} ${isTableReadonly ? 'month-locked-input' : ''}" 
-               data-row="${index}" 
-               data-field="nuocCu" 
-               value="${nuocCuVal}" 
-               ${nuocCuReadonly ? 'readonly tabindex="-1"' : ''} 
-               ${lockedTooltip}
-               onmousedown="if (this.readOnly) event.preventDefault()"
-               oninput="if (this.value.length > ${nuocMaxDigits}) this.value = this.value.slice(0, ${nuocMaxDigits}); handleInputChange(${index}, 'nuocCu', this.value)" 
-               onfocus="if (!this.readOnly) this.select()">
-      </td>
-
-      <!-- Nước Mới -->
-      <td class="col-meter">
-        <input type="number" 
+    const mcWaterStatusCls = room.mcWaterStatus === 'need_box4' ? 'need-box4' : (room.mcWaterStatus === 'completed' ? 'completed' : 'tracking');
+    const mcWaterStatusLabel = room.mcWaterStatus === 'need_box4' ? '📝 Nhập Ô 4' : '⏳ Theo dõi';
+    const mcWaterCellHtml = room.hasMcWater
+      ? (room.mcWaterStatus === 'completed'
+        ? `<div class="meter-input-wrap">
+             <input type="number"
+                    class="table-input mc-locked-input ${isTableReadonly ? 'month-locked-input' : ''}"
+                    data-row="${index}"
+                    data-field="nuocMoi"
+                    value="${nuocMoiVal}"
+                    readonly tabindex="-1"
+                    onmousedown="event.preventDefault()"
+                    title="Đã đủ số liệu thay đồng hồ Nước. Bấm nút 🔄 bên cạnh để xem hoặc sửa trong Modal.">
+             <button type="button" class="meter-mc-pill completed" onclick="openMeterChangeModal('${room.phong}', 'water')" title="Đã đủ · Xem / sửa thay đồng hồ Nước">🔄</button>
+           </div>`
+        : `<button type="button" class="meter-mc-cell-btn ${mcWaterStatusCls}" onclick="openMeterChangeModal('${room.phong}', 'water')" title="Phòng đang thay đồng hồ Nước (${room.mcWaterStatus === 'need_box4' ? 'Hãy nhập ô 4' : 'Đang theo dõi'}). Bấm để nhập tiếp.">
+             <span>${mcWaterStatusLabel}</span>
+           </button>`)
+      : `<input type="number" 
                class="table-input editable-meter ${isTableReadonly ? 'month-locked-input' : ''}" 
                data-row="${index}" 
                data-field="nuocMoi" 
@@ -1620,7 +1686,50 @@ function renderInitialTable() {
                ${lockedTooltip}
                onmousedown="if (this.readOnly) event.preventDefault()"
                oninput="if (this.value.length > ${nuocMaxDigits}) this.value = this.value.slice(0, ${nuocMaxDigits}); handleInputChange(${index}, 'nuocMoi', this.value)" 
+               onfocus="if (!this.readOnly) this.select()">`;
+
+    tr.innerHTML = `
+      <td class="col-stt">${index + 1}</td>
+      <td class="col-phong"><span class="room-badge">${room.phong}</span></td>
+      
+      <!-- Điện Cũ (Tự động điền & khóa nếu có lịch sử tháng trước hoặc thay ĐH hoặc tháng đã khóa) -->
+      <td class="col-meter">
+        <input type="number" 
+               class="table-input ${room.isDienCuLocked ? 'locked-input' : ''} ${room.hasMcElec ? 'mc-locked-input' : ''} ${isTableReadonly ? 'month-locked-input' : ''}" 
+               data-row="${index}" 
+               data-field="dienCu" 
+               value="${dienCuVal}" 
+               ${dienCuReadonly ? 'readonly tabindex="-1"' : ''} 
+               ${room.hasMcElec ? 'title="Ô này đang quản lý qua Modal Thay đổi đồng hồ Điện."' : lockedTooltip}
+               onmousedown="if (this.readOnly) event.preventDefault()"
+               oninput="if (this.value.length > ${dienMaxDigits}) this.value = this.value.slice(0, ${dienMaxDigits}); handleInputChange(${index}, 'dienCu', this.value)" 
                onfocus="if (!this.readOnly) this.select()">
+      </td>
+
+      <!-- Điện Mới -->
+      <td class="col-meter">
+        ${mcElecCellHtml}
+      </td>
+      <!-- Số Điện Tiêu Thụ -->
+      <td class="col-kwh val-calc cell-dien-kwh">-</td>
+
+      <!-- Nước Cũ (Tự động điền & khóa nếu có lịch sử tháng trước hoặc thay ĐH hoặc tháng đã khóa) -->
+      <td class="col-meter">
+        <input type="number" 
+               class="table-input ${room.isNuocCuLocked ? 'locked-input' : ''} ${room.hasMcWater ? 'mc-locked-input' : ''} ${isTableReadonly ? 'month-locked-input' : ''}" 
+               data-row="${index}" 
+               data-field="nuocCu" 
+               value="${nuocCuVal}" 
+               ${nuocCuReadonly ? 'readonly tabindex="-1"' : ''} 
+               ${room.hasMcWater ? 'title="Ô này đang quản lý qua Modal Thay đổi đồng hồ Nước."' : lockedTooltip}
+               onmousedown="if (this.readOnly) event.preventDefault()"
+               oninput="if (this.value.length > ${nuocMaxDigits}) this.value = this.value.slice(0, ${nuocMaxDigits}); handleInputChange(${index}, 'nuocCu', this.value)" 
+               onfocus="if (!this.readOnly) this.select()">
+      </td>
+
+      <!-- Nước Mới -->
+      <td class="col-meter">
+        ${mcWaterCellHtml}
       </td>
       <!-- Số Nước Tiêu Thụ -->
       <td class="col-kwh val-calc cell-nuoc-khoi">-</td>
@@ -1655,7 +1764,7 @@ function handleInputChange(index, field, value) {
   const numVal = isNotEmpty(value) ? Number(value) : '';
   roomsData[index][field] = numVal;
 
-  if (field === 'dienMoi') {
+  if (field === 'dienMoi' && !roomsData[index].hasMcElec) {
     const dienCuNum = isNotEmpty(roomsData[index].dienCu) ? Number(roomsData[index].dienCu) : 0;
     const targetMonth = currentLoadedMonth || document.getElementById('month-year-select')?.value;
     let shouldSaveSettings = false;
@@ -1722,21 +1831,22 @@ function updateRowUI(index) {
 
   const activeSettings = getActiveMonthSettings();
   const room = roomsData[index];
-  const hasDienMoiInput = isNotEmpty(room.dienMoi);
-  const hasNuocMoi = isNotEmpty(room.nuocMoi);
+  const hasDienMoiInput = room.hasMcElec ? (room.mcElecStatus === 'completed') : isNotEmpty(room.dienMoi);
+  const hasNuocMoi = room.hasMcWater ? (room.mcWaterStatus === 'completed') : isNotEmpty(room.nuocMoi);
 
   const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
   const dienMoiNum = hasDienMoiInput ? Number(room.dienMoi) : dienCuNum;
   const nuocCuNum = isNotEmpty(room.nuocCu) ? Number(room.nuocCu) : 0;
   const nuocMoiNum = hasNuocMoi ? Number(room.nuocMoi) : nuocCuNum;
 
-  // Nếu điện mới nhỏ hơn điện cũ và chưa xác nhận quay vòng -> tạm thời chưa tính
-  const isRolloverUnconfirmed = (appSettings.enableRolloverPopup !== false) && hasDienMoiInput && (dienMoiNum < dienCuNum) && !room.confirmedRollover;
+  // Nếu có thay đồng hồ Điện -> bỏ qua kiểm tra quay vòng giả ở bảng chính
+  // Nếu không thay ĐH và điện mới nhỏ hơn điện cũ chưa xác nhận quay vòng -> tạm thời chưa tính
+  const isRolloverUnconfirmed = !room.hasMcElec && (appSettings.enableRolloverPopup !== false) && hasDienMoiInput && (dienMoiNum < dienCuNum) && !room.confirmedRollover;
 
-  // Kiểm tra bất thường >= 40% so với tháng trước (nếu đã qua bước quay vòng)
+  // Kiểm tra bất thường >= 40% so với tháng trước (nếu không thay đồng hồ và đã qua bước quay vòng)
   const prevKwh = Number(room.prevDienKwh) || 0;
   let isAnomalyUnconfirmed = false;
-  if ((appSettings.enableAnomalyPopup !== false) && hasDienMoiInput && prevKwh > 0 && !isRolloverUnconfirmed) {
+  if (!room.hasMcElec && (appSettings.enableAnomalyPopup !== false) && hasDienMoiInput && prevKwh > 0 && !isRolloverUnconfirmed) {
     const surrogateR = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
     const rCalc = typeof calcRoom === 'function' ? calcRoom(surrogateR, activeSettings) : null;
     const currKwh = rCalc ? rCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
@@ -1836,19 +1946,19 @@ function updateFooterTotals() {
   const activeSettings = getActiveMonthSettings();
 
   roomsData.forEach(room => {
-    const hasDienMoiInput = isNotEmpty(room.dienMoi);
-    const hasNuocMoi = isNotEmpty(room.nuocMoi);
+    const hasDienMoiInput = room.hasMcElec ? (room.mcElecStatus === 'completed') : isNotEmpty(room.dienMoi);
+    const hasNuocMoi = room.hasMcWater ? (room.mcWaterStatus === 'completed') : isNotEmpty(room.nuocMoi);
 
     const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
     const dienMoiNum = hasDienMoiInput ? Number(room.dienMoi) : dienCuNum;
     const nuocCuNum = isNotEmpty(room.nuocCu) ? Number(room.nuocCu) : 0;
     const nuocMoiNum = hasNuocMoi ? Number(room.nuocMoi) : nuocCuNum;
 
-    const isRolloverUnconfirmed = (appSettings.enableRolloverPopup !== false) && hasDienMoiInput && (dienMoiNum < dienCuNum) && !room.confirmedRollover;
+    const isRolloverUnconfirmed = !room.hasMcElec && (appSettings.enableRolloverPopup !== false) && hasDienMoiInput && (dienMoiNum < dienCuNum) && !room.confirmedRollover;
 
     const prevKwh = Number(room.prevDienKwh) || 0;
     let isAnomalyUnconfirmed = false;
-    if ((appSettings.enableAnomalyPopup !== false) && hasDienMoiInput && prevKwh > 0 && !isRolloverUnconfirmed) {
+    if (!room.hasMcElec && (appSettings.enableAnomalyPopup !== false) && hasDienMoiInput && prevKwh > 0 && !isRolloverUnconfirmed) {
       const surrogateR = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
       const rCalc = typeof calcRoom === 'function' ? calcRoom(surrogateR, activeSettings) : null;
       const currKwh = rCalc ? rCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
@@ -2134,6 +2244,21 @@ async function saveAndExport() {
   const btn = document.getElementById('btn-save-export');
   const btnText = document.getElementById('btn-save-export-text');
   const currentMonthYear = document.getElementById('month-year-select').value;
+
+  // Chặn Lưu & Xuất nếu vẫn còn phòng đang theo dõi thay đồng hồ chưa chốt Ô 4
+  if (typeof getUnfinishedMeterChangesForMonth === 'function') {
+    const unfinishedList = getUnfinishedMeterChangesForMonth(currentMonthYear);
+    if (unfinishedList.length > 0) {
+      const firstItem = unfinishedList[0];
+      const summaryNames = unfinishedList.map(x => `Phòng ${x.phong} (${x.typeLabel}: ${x.statusLabel})`).join(', ');
+      showToast(`Chưa thể Lưu & Xuất vì còn phòng chưa chốt Ô 4: ${summaryNames}.`, 'warning');
+      if (typeof openMeterChangeModal === 'function') {
+        openMeterChangeModal(firstItem.phong, firstItem.type);
+      }
+      return false;
+    }
+  }
+
   const activeSettings = getActiveMonthSettings();
   const wasEditingLockedMonth = Boolean(isCurrentMonthLocked && isCurrentMonthEditing);
   const backupRoomsBeforeEdit = (lockedMonthBackupState && Array.isArray(lockedMonthBackupState.rooms))
@@ -2276,7 +2401,10 @@ async function saveAndExport() {
 
           showToast(`Đã lưu và xuất thành công ${res.jpgCount} ảnh JPG + 1 file PDF (${res.pdfFile})!`, 'success');
         }
-        await populateMonthSelect();
+        if (typeof loadMeterChangesStore === 'function') {
+    await loadMeterChangesStore();
+  }
+  await populateMonthSelect();
         return true;
       }
     } else {
@@ -2302,6 +2430,20 @@ function updateMonthLockUI() {
   const btnEditEl = document.getElementById('btn-toggle-edit-month');
   const btnEditTextEl = document.getElementById('btn-toggle-edit-month-text');
   const btnSaveExport = document.getElementById('btn-save-export');
+  const btnZalo = /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-send-zalo-month'));
+
+  if (btnZalo) {
+    if (isCurrentMonthLocked && !isCurrentMonthEditing) {
+      btnZalo.disabled = false;
+      btnZalo.title = 'Gửi phiếu thu qua Zalo cho các phòng của tháng này';
+    } else if (isCurrentMonthLocked && isCurrentMonthEditing) {
+      btnZalo.disabled = true;
+      btnZalo.title = 'Đang chỉnh sửa dữ liệu. Hãy bấm "Lưu & Xuất" hoặc "Hủy thay đổi" trước khi gửi Zalo!';
+    } else {
+      btnZalo.disabled = true;
+      btnZalo.title = 'Vui lòng bấm "Lưu & Xuất" để khóa dữ liệu tháng trước khi dùng chức năng Gửi Zalo!';
+    }
+  }
 
   if (!badgeEl || !btnEditEl) return;
 
@@ -2379,9 +2521,13 @@ function closeUnlockMonthModal() {
 
 function confirmUnlockMonthForEditing() {
   closeUnlockMonthModal();
+  const currMcSnapshot = (window.meterChangesStore && window.meterChangesStore.months && currentLoadedMonth && window.meterChangesStore.months[currentLoadedMonth])
+    ? JSON.parse(JSON.stringify(window.meterChangesStore.months[currentLoadedMonth]))
+    : {};
   lockedMonthBackupState = {
     rooms: JSON.parse(JSON.stringify(roomsData)),
-    snapshot: currentMonthSnapshotSettings ? { ...currentMonthSnapshotSettings } : createPricingSnapshot(appSettings)
+    snapshot: currentMonthSnapshotSettings ? { ...currentMonthSnapshotSettings } : createPricingSnapshot(appSettings),
+    meterChanges: currMcSnapshot
   };
   isCurrentMonthEditing = true;
   renderInitialTable();
@@ -2396,6 +2542,21 @@ function restoreLockedMonthFromBackup() {
   if (lockedMonthBackupState && lockedMonthBackupState.rooms) {
     roomsData = JSON.parse(JSON.stringify(lockedMonthBackupState.rooms));
     currentMonthSnapshotSettings = lockedMonthBackupState.snapshot ? { ...lockedMonthBackupState.snapshot } : currentMonthSnapshotSettings;
+    if (window.meterChangesStore && window.meterChangesStore.months && currentLoadedMonth) {
+      const restoredMc = lockedMonthBackupState.meterChanges && typeof lockedMonthBackupState.meterChanges === 'object'
+        ? JSON.parse(JSON.stringify(lockedMonthBackupState.meterChanges))
+        : {};
+      if (Object.keys(restoredMc).length > 0) {
+        window.meterChangesStore.months[currentLoadedMonth] = restoredMc;
+      } else {
+        delete window.meterChangesStore.months[currentLoadedMonth];
+      }
+      if (window.api && typeof window.api.saveMonthMeterChanges === 'function') {
+        window.api.saveMonthMeterChanges({ monthKey: currentLoadedMonth, monthData: restoredMc }).catch(e => {
+          console.warn('Lỗi khôi phục meter-changes:', e);
+        });
+      }
+    }
   }
   isCurrentMonthEditing = false;
   lockedMonthBackupState = null;
@@ -2510,7 +2671,7 @@ let currentRolloverIndex = null;
 function handleDienMoiBlur(index) {
   if (isCurrentMonthLocked && !isCurrentMonthEditing) return;
   const room = roomsData[index];
-  if (!room) return;
+  if (!room || room.hasMcElec) return;
 
   const hasDienMoi = isNotEmpty(room.dienMoi);
   if (!hasDienMoi) return;
@@ -5236,10 +5397,28 @@ let eligibleZaloRooms = [];
  * Kích hoạt gửi phiếu thu qua Zalo cho tháng đang chọn
  */
 async function handleSendZaloMonthClick() {
+  if (!isCurrentMonthLocked) {
+    showToast('Vui lòng bấm "Lưu & Xuất" để khóa dữ liệu tháng trước khi dùng chức năng Gửi Zalo!', 'warning');
+    return;
+  }
+
   if (isCurrentMonthLocked && isCurrentMonthEditing) {
     pendingActionAfterMonthEditModal = () => handleSendZaloMonthClick();
     showUnsavedMonthEditModal();
     return;
+  }
+
+  if (typeof getUnfinishedMeterChangesForMonth === 'function') {
+    const activeMonthKey = currentLoadedMonth || document.getElementById('month-year-select')?.value;
+    const unfinishedList = getUnfinishedMeterChangesForMonth(activeMonthKey);
+    if (unfinishedList.length > 0) {
+      const firstItem = unfinishedList[0];
+      showToast(`Phòng ${firstItem.phong} chưa chốt Ô 4 thay đồng hồ. Vui lòng hoàn tất trước khi gửi Zalo!`, 'warning');
+      if (typeof openMeterChangeModal === 'function') {
+        openMeterChangeModal(firstItem.phong, firstItem.type);
+      }
+      return;
+    }
   }
 
   if (isSettingsDirty || isBankDirty) {

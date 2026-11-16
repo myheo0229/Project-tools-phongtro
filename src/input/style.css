@@ -7420,10 +7420,17 @@ input[type="number"] {
   border: 1px solid #fde68a;
 }
 
-#meter-change-modal .mc-status-pill.done {
+#meter-change-modal .mc-status-pill.need-box4 {
   background: #dcfce7;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  color: #15803d;
+  border: 1.5px solid #4ade80;
+}
+
+#meter-change-modal .mc-status-pill.completed,
+#meter-change-modal .mc-status-pill.done {
+  background: #16a34a;
+  color: #ffffff;
+  border: 1.5px solid #15803d;
 }
 
 #meter-change-modal .mc-status-pill.error {
@@ -7558,4 +7565,308 @@ input[type="number"] {
   font-size: 16px;
   color: #92400e;
   line-height: 1.5;
+}
+
+/* Bổ sung styles Backend & Luồng 3 trạng thái, Khóa tuần tự, Badge bảng chính & Popup con */
+#meter-change-modal .mc-locked-banner {
+  padding: 9px 14px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 13.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#meter-change-modal .mc-box-unit input:disabled {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed !important;
+  opacity: 0.78;
+}
+
+#meter-change-modal .mc-btn-add-change:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-color: #cbd5e1;
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+#meter-change-modal .mc-section-actions-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#meter-change-modal .mc-digits-badge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 7px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+#meter-change-modal .mc-digits-badge-btn:hover:not(:disabled) {
+  background: #e0f2fe;
+  border-color: #38bdf8;
+}
+
+#meter-change-modal .mc-btn-clear-section {
+  padding: 4px 10px;
+  border-radius: 7px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #be123c;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+#meter-change-modal .mc-btn-clear-section:hover:not(:disabled) {
+  background: #ffe4e6;
+  border-color: #fda4af;
+}
+
+#meter-change-modal .mc-box-1-label-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+}
+
+/* Nút dấu ! màu tím chàm (khác biệt hoàn toàn màu vàng quay vòng/bất thường) */
+#meter-change-modal .mc-missing-prev-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1.5px solid #4338ca;
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 900;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+
+#meter-change-modal .mc-missing-prev-btn:hover {
+  background: #4338ca;
+  transform: scale(1.08);
+}
+
+#meter-change-modal .mc-box-2-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+#meter-change-modal .mc-rollover-tag-btn {
+  margin-left: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid #f59e0b;
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#meter-change-modal .mc-room-card .mc-r-mc-pill {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+#meter-change-modal .mc-room-card .mc-r-mc-pill.tracking {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+#meter-change-modal .mc-room-card .mc-r-mc-pill.need-box4 {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+#meter-change-modal .mc-room-card .mc-r-mc-pill.completed {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+/* Popup con xếp tầng trên #meter-change-modal */
+.mc-child-overlay {
+  z-index: 1260 !important;
+}
+
+.mc-child-card {
+  max-width: 560px !important;
+}
+
+.mc-digits-child-card {
+  max-width: 520px !important;
+}
+
+.mc-icon-indigo {
+  background: #eef2ff !important;
+  color: #4f46e5 !important;
+  border: 1.5px solid #c7d2fe;
+}
+
+.mc-bang-symbol {
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  color: #4f46e5;
+}
+
+.mc-indigo-info-box {
+  background: #f5f3ff !important;
+  border-color: #ddd6fe !important;
+}
+
+.btn-mc-indigo-outline {
+  background: #ffffff;
+  color: #4338ca;
+  border: 1.5px solid #818cf8;
+}
+
+.btn-mc-indigo-outline:hover {
+  background: #eef2ff;
+  border-color: #4f46e5;
+}
+
+.mc-digits-question-text {
+  font-size: 15.5px;
+  color: #1e293b;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.mc-digits-picker-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 14px;
+}
+
+/* Badge & trạng thái khóa ô trên bảng Phần 1 khi phòng có thay đồng hồ */
+.table-input.mc-locked-input {
+  background: #f0f9ff !important;
+  border-color: #7dd3fc !important;
+  color: #0369a1 !important;
+  font-weight: 700;
+  cursor: default !important;
+}
+
+.meter-mc-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.meter-mc-pill:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.96);
+}
+
+.meter-mc-pill.tracking {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.meter-mc-pill.need-box4 {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #4ade80;
+}
+
+.meter-mc-pill.completed {
+  background: #16a34a;
+  color: #ffffff;
+  border-color: #15803d;
+  padding: 2px 6px;
+  font-size: 10.5px;
+}
+
+.meter-mc-cell-btn {
+  width: 100%;
+  padding: 6px 6px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px dashed;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.meter-mc-cell-btn.tracking {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #f59e0b;
+}
+
+.meter-mc-cell-btn.need-box4 {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #22c55e;
+}
+
+.meter-mc-cell-btn:hover {
+  filter: brightness(0.95);
+}
+
+#btn-send-zalo-month:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  filter: grayscale(0.35);
 }

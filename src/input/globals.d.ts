@@ -23,15 +23,37 @@ interface Window {
   logExportMonthExcelEvent?: (params: any) => Promise<any>;
   handleOpenExportedExcelFile?: () => Promise<any>;
   lastExportedExcelPath?: string;
-  openMeterChangeModal?: () => void;
+  meterChangesStore?: { version: number; months: Record<string, Record<string, any>> };
+  loadMeterChangesStore?: () => Promise<any>;
+  getRoomMeterChangeRecord?: (monthKey: string, phong: string) => any;
+  getUnfinishedMeterChangesForMonth?: (monthKey: string) => any[];
+  openMeterChangeModal?: (preselectPhong?: string, preselectType?: string) => void;
   closeMeterChangeModal?: () => void;
   toggleMeterChangeType?: (labelId: string, checkbox: any) => void;
   goToMeterChangeStep?: (step: number, dir: number) => void;
   addMeterChangeRow?: (type: string) => void;
   removeMeterChangeRow?: (type: string, idx: number) => void;
+  onMcIntKeyDown?: (event: any) => boolean;
   onMeterChangeDateInput?: (type: string, idx: number, val: string) => void;
   onMeterChangeNumInput?: (type: string, idx: number, field: string, inputEl: any) => void;
-  handleSaveMeterChangeUI?: () => void;
+  onMcOldEndBlur?: (type: string, idx: number) => void;
+  onMcMonthEndBlur?: (type: string, idx: number) => void;
+  openMcMissingPrevModal?: (type: string) => void;
+  closeMcMissingPrevModal?: () => void;
+  confirmManualInitFromMc?: () => void;
+  confirmGoToPrevMonthFromMc?: () => Promise<void>;
+  openMcRolloverForRow?: (type: string, idx: number) => void;
+  cancelMcRolloverModal?: () => void;
+  confirmMcRolloverModal?: () => void;
+  openMcDigitsModalManual?: (type: string) => void;
+  stepMcNewMeterDigits?: (delta: number) => void;
+  validateMcDigitInputRealtime?: (inputEl: any) => void;
+  enforceMcDigitRange?: (inputEl: any) => void;
+  confirmMcNewMeterDigits?: () => Promise<void>;
+  handleSaveMeterChange?: () => Promise<void>;
+  handleDeleteSectionMeterChange?: (type: string) => Promise<void>;
+  handleDeleteRoomMeterChanges?: () => Promise<void>;
+  suppressMcBlurBriefly?: (ms?: number) => void;
 }
 
 interface HTMLElement {
@@ -68,22 +90,31 @@ interface EventTarget {
   getAttribute?: (qualifiedName: string) => string | null;
 }
 
-declare function calcRoom(room: any, settings?: any): any;
+declare function calcRoom(room?: any, settings?: any): any;
 declare function calcAllRooms(rooms: any[], settings?: any): any;
 declare function getMeterLimitByDigits(digits: any, defaultVal?: number): number;
 declare const MAX_DONG_HO_DIEN: number;
 declare var DatePicker: any;
 
-declare var currentLoadedMonth: string;
-declare var roomsData: any[];
-declare var appSettings: any;
 declare function showToast(message: string, type?: string): void;
 declare function getActiveMonthSettings(): any;
 declare function getEffectiveDienStartForRollover(room: any): number;
 declare function getEffectiveNuocStartForRollover(room: any): number;
 declare function showExcelExportResultModal(result: any): void;
 declare function formatMonthLabel(monthKey: string): string;
-declare var lastExportedResidentsExcelPath: string;
 declare function logExportMonthExcelEvent(params: any): Promise<any>;
 declare function handleExportMonthExcelClick(): Promise<any>;
 declare function showMonthExcelExportResultModal(result: any, monthKey?: string): void;
+declare function isMcReadonlyMode(): boolean;
+declare function renderInitialTable(): void;
+declare function populateMonthSelect(): Promise<void>;
+declare function loadRoomsForMonth(monthKey: string): Promise<void>;
+declare function onMonthYearChange(): Promise<void>;
+declare function autoSaveCurrentMonthData(monthKey?: string): Promise<void>;
+declare function renderMeterDigitsSettingsList(): void;
+declare function saveSettingsFile(isSilent?: boolean): Promise<boolean>;
+declare function recordActivityLog(payload: any, immediate?: boolean): Promise<any>;
+declare function loadMeterChangesStore(): Promise<any>;
+declare function getRoomMeterChangeRecord(monthKey: string, phong: string): any;
+declare function getUnfinishedMeterChangesForMonth(monthKey: string): any[];
+declare function openMeterChangeModal(preselectPhong?: string, preselectType?: string): void;

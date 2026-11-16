@@ -309,9 +309,12 @@ v4.1.1
 - Đồng bộ hiển thị chuẩn xác số hiệu phiên bản v4.1.1 trên toàn bộ giao diện HTML và cửa sổ ứng dụng.
 
 ================================================================================
-GIAO DIỆN MODAL GHI NHẬN THAY ĐỔI ĐỒNG HỒ ĐIỆN / NƯỚC (UI/UX PREVIEW)
+TÍNH NĂNG THAY ĐỔI ĐỒNG HỒ ĐIỆN / NƯỚC (GIAO DIỆN + BACKEND NHẬP LIỆU PHẦN 1)
 ================================================================================
-- Thêm nút "Thay đổi đồng hồ" (#btn-open-meter-change-modal) tại đầu thanh tác vụ Phần 1 (cùng hàng với Xuất dữ liệu và Gửi Zalo).
-- Xây dựng Modal 2 bước (#meter-change-modal, file mới src/input/meter-change-modal.js) với hiệu ứng trượt trang 700ms (mc-push-out / mc-push-in dùng biến --dir):
-  + Bước 1: Lưới 12 phòng lấy trực tiếp từ roomsData (phân biệt phòng đã có số tháng trước và phòng mới chưa có dữ liệu) + checkbox chọn Điện / Nước.
-  + Bước 2: Bố cục 60% vùng nhập liệu căn giữa (box-shadow inset) / 40% hướng dẫn trực quan 4 màu; hỗ trợ "+ Thêm lần thay" tự động đánh số Lần 1, Lần 2..., ngày thay tùy chọn, khóa/mở Ô 1 đầu kỳ linh hoạt, tính tổng tiêu thụ qua n lần thay và trạng thái "Đang theo dõi" / "Hoàn tất" (hiện ở mức giao diện xem trước, chưa ghi xuống database).
+- Bổ sung hệ thống lưu trữ tách biệt <baseFolder>/data/meter-changes.json qua các kênh IPC (meter-changes:load, meter-changes:save-room, meter-changes:save-month) với ghi atomic .tmp.
+- Nâng cấp nhẹ src/shared/calc.js hỗ trợ dienKwhOverride / nuocKhoiOverride khi phòng có thay đồng hồ đã chốt Ô 4 (bảo toàn 100% công thức cũ).
+- Hoàn thiện Modal 2 bước (#meter-change-modal, src/input/meter-change-modal.js):
+  + 3 cấp độ trạng thái: "Đang theo dõi" (cam) -> "Hãy nhập ô 4" (nền xanh) -> "Đã đủ" (xanh lá đậm).
+  + Ràng buộc chỉ nhập số nguyên không âm (0-9) tuần tự Ô 1 -> Ô 2 -> Ô 3 (ngoại lệ mặc định 0) -> Ô 4.
+  + Hỗ trợ xác nhận đồng hồ quay vòng cho Ô 2 / Ô 4 (#mc-rollover-modal), xử lý thiếu dữ liệu tháng trước bằng biểu tượng ! tím chàm (#mc-missing-prev-modal: tự nhập đầu kỳ hoặc quay lại tháng trước) và popup xác nhận số chữ số ĐH mới tự đồng bộ sang Cài Đặt Chung (#mc-digits-modal).
+- Đồng bộ 2 chiều với bảng Phần 1 (renderer.js): khóa ô đã khai báo thay ĐH kèm pill mở nhanh Modal, hỗ trợ gỡ thay đổi ĐH, chặn Lưu & Xuất / mở tháng mới khi chưa chốt Ô 4, ghi Nhật ký hoạt động, và chỉ cho phép dùng nút Gửi Zalo khi tháng đã Lưu & Xuất (đang khóa, không ở chế độ Chỉnh Sửa).
