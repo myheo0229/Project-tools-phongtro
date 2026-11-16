@@ -372,3 +372,19 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
    - **Cài đặt Zalo**: Copy nguyên mẫu `.zalo-option-row` bổ sung `#opt-row-mc-note` (`#set-zaloIncludeMeterChangeNote`, mặc định tắt) và nhóm chip biến thứ 5 (`Thay ĐH`) chỉ gồm **2 chip** `{ghiChuThayDien}`, `{ghiChuThayNuoc}` trong Trình soạn thảo mẫu tin nhắn (không tự chèn khi mẫu không đặt biến).
    - **Nút Lưu Cài Đặt & Ngân Hàng chưa lưu**: `#btn-save-settings`, `#btn-save-settings-floating` và `#btn-save-bank-settings` giữ màu xanh mặc định, chuyển sang `.btn-save-dirty` (nền đỏ + rung lắc nhẹ chỉnh bằng biến `:root` duy nhất `--save-btn-shake-intensity`) khi có chỉnh sửa chưa lưu và bật tooltip `"Đừng quên lưu cài đặt nhé!"` sau 5s đứng yên.
    - **Xuất Excel tháng**: Cột thứ 17 (`Q: Ghi Chú`) ngoài cùng bên phải dùng style bình thường (`Calibri 11`, viền mỏng, căn trái + `wrapText="1"`, tự giãn `ht`, không emoji).
+
+---
+
+## 14. Modal Break Chỉ Số Điện / Nước (2 Bước, Màu Tím Chàm)
+
+1. **Nút mở tại Header Bảng chính**:
+   - Đặt ngay bên **trái** nút `#btn-open-meter-change-modal` (`Thay đổi đồng hồ`) trong `.table-card-header-actions`: `#btn-open-meter-break-modal` (`.btn.btn-meter-break`) nhãn **"Break chỉ số"**, bảng màu tím chàm (`#eef2ff` nền, `#4338ca` chữ, `#c7d2fe` viền, `font-size: 15px`).
+2. **Cấu trúc Modal (`#meter-break-modal`) & Quy chuẩn cỡ chữ >= 16px**:
+   - Khung `.mb-modal-container` (`width: min(1260px, 96vw)`, `height: min(760px, 92vh)`), hiệu ứng trượt ngang 2 trang (`#mb-viewport`, `#mb-page1`, `#mb-page2`). Toàn bộ văn bản hiển thị trong `#meter-break-modal` và 3 popup con (`.mb-child-card`: `#mb-missing-prev-modal`, `#mb-rollover-modal`, `#mb-unlock-edit-modal`) bắt buộc tối thiểu **`16px`**.
+   - **Trang 1 (`#mb-page1`, 1 thanh cuộn ngoài `.mb-step1-wrapper`)**:
+     - Lưới 12 phòng (`#mb-room-grid`), chọn loại đồng hồ (`#mb-lbl-elec`, `#mb-lbl-water`) có trạng thái disable + dòng cảnh báo `#mb-conflict-elec` / `#mb-conflict-water` khi phòng/loại ĐH đang dùng Thay đổi đồng hồ (Phương án 1).
+     - Mục 3 (`#mb-history-section`, `#mb-history-list`): Liệt kê lịch sử đã Break theo thứ tự **Mới nhất → Cũ nhất**, nhấn vào thẻ mở thẳng Bước 2.
+   - **Trang 2 (`#mb-page2`, chia đôi 60% / 40%)**:
+     - Cột trái 60% (`.mb-left-panel`): Topbar tên phòng + badge khóa (`🔒 Đã khóa dữ liệu` / `✏️ Đang mở chỉnh sửa`) + nút `⬅ Quay lại`; thẻ nhập tuần tự **Ô 1: Đầu kỳ gốc** (kèm nút `!` tím chàm `.mb-missing-prev-btn` nếu thiếu tháng trước) → **Ô 2: Break kết thúc** → **Ô 3: Break bắt đầu** + thẻ tổng hợp live `.mb-live-summary` + tag quay vòng `.mb-rollover-tag-btn`; Footer gồm `🗑️ Hủy Break`, `⬅ Quay lại`, `✏️ Chỉnh Sửa` / `Hủy thay đổi & Giữ nguyên`, `💾 Lưu ghi nhận`.
+     - Cột phải 40% (`.mb-right-panel`): Hướng dẫn sử dụng ngắn gọn, giải thích rõ Ô 1 / Ô 2 / Ô 3, công thức tính tiền cuối tháng, quy tắc xác nhận quay vòng và khóa tự động.
+   - **Ô trên Bảng chính (Phần 1)**: Khi phòng có Break đang hiệu lực, ô `Số cũ` nhận giá trị `Break bắt đầu`, khóa nền tím chàm nhạt (`.mb-locked-input`) kèm badge pill `✂️` (`.meter-mb-pill`) cho phép bấm mở nhanh sang Break.

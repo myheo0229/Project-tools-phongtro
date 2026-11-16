@@ -17,6 +17,11 @@ contextBridge.exposeInMainWorld('api', {
   saveRoomMeterChange: (payload) => ipcRenderer.invoke('meter-changes:save-room', payload),
   saveMonthMeterChanges: (payload) => ipcRenderer.invoke('meter-changes:save-month', payload),
 
+  // Quản lý lịch sử Break chỉ số Điện / Nước giữa tháng (meter-breaks.json)
+  loadMeterBreaks: () => ipcRenderer.invoke('meter-breaks:load'),
+  saveRoomMeterBreak: (payload) => ipcRenderer.invoke('meter-breaks:save-room', payload),
+  saveMonthMeterBreaks: (payload) => ipcRenderer.invoke('meter-breaks:save-month', payload),
+
   // Quản lý lưu/đọc cài đặt giá & thư mục gốc
   saveSettings: (data) => ipcRenderer.invoke('settings:save', data),
   loadSettings: () => ipcRenderer.invoke('settings:load'),

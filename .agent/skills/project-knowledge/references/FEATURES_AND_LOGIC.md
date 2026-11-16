@@ -451,3 +451,26 @@
   - **Cảnh báo trực quan chưa lưu ở Cài Đặt (`#btn-save-settings`, `#btn-save-settings-floating`, `#btn-save-bank-settings`)**: Khi người dùng sửa trường trong Cài đặt chung (`isSettingsDirty`) hoặc Cài đặt ngân hàng (`isBankDirty`), nút Lưu tương ứng tự đổi sang **màu đỏ** (`.btn-save-dirty`) kèm hiệu ứng **lắc nhẹ** điều chỉnh bằng đúng 1 biến CSS `--save-btn-shake-intensity`; nếu đứng yên tại tab Cài Đặt đủ **5 giây** chưa bấm Lưu sẽ bật Tooltip **"Đừng quên lưu cài đặt nhé!"** (`.show-reminder`). Đổi lựa chọn ở Live Preview (`#preview-room-select` / `#preview-month-select`) không làm kích hoạt trạng thái đỏ.
   - **Xuất Excel tháng (`month:export-excel`)**: Bổ sung cột `Q: Ghi Chú` ngoài cùng bên phải (tổng 17 cột `A–Q`), style thường không màu mè/không emoji, tự giãn chiều cao dòng `ht` và chỉ ghi chú cho các phòng có thay ĐH `completed`.
 
+## 15. Modal & Backend Break Chỉ Số Điện / Nước (Đổi Người Thuê Giữa Tháng)
+
+- **Mục đích nghiệp vụ**: Khi có người thuê cũ dọn đi và người thuê mới dọn vào trong **cùng một tháng**, hệ thống cần lưu lại chỉ số **Break kết thúc** của người trước (để đối chiếu lịch sử & xuất Excel) và chốt chỉ số **Break bắt đầu** của người mới làm **Số cũ** tính tiền mới cho tháng đó (tránh tính cộng dồn phần chênh lệch hoặc điều chỉnh giữa hai khách).
+- **Vị trí nút bấm**: Nút **"Break chỉ số"** (`#btn-open-meter-break-modal`, class `.btn.btn-meter-break`, tông **tím chàm**) nằm ngay bên **trái** nút **"Thay đổi đồng hồ"** trong `.table-card-header-actions` tại Phần 1.
+- **Lưu trữ tách biệt (`<baseFolder>/data/meter-breaks.json`)**:
+  - Lưu độc lập theo cấu trúc `{ version: 1, months: { [monthKey]: { [phong]: { elec, water } } } }` qua IPC `meter-breaks:load`, `meter-breaks:save-room`, `meter-breaks:save-month` (ghi atomic `.tmp`, fallback `localStorage` key `phongtro_meter_breaks`), không phá vỡ định dạng mảng `[...]` của `history/YYYY-MM.json`.
+  - Hỗ trợ đầy đủ hoàn tác khi mở khóa chỉnh sửa tháng đã khóa rồi Hủy (`confirmUnlockMonthForEditing` + `restoreLockedMonthFromBackup`).
+- **Quy tắc ràng buộc & Khóa tuần tự**:
+  - **Tối đa 1 lần Break / loại đồng hồ / phòng / tháng** (không hỗ trợ thêm nhiều lần Break).
+  - **Loại trừ lẫn nhau (Phương án 1)**: Trên cùng phòng và cùng loại đồng hồ (`elec` hoặc `water`) trong 1 tháng, **không thể** dùng đồng thời cả **Break chỉ số** và **Thay đổi đồng hồ** (checkbox bên còn lại tự disable và hiển thị cảnh báo xung đột). Vẫn cho phép Break Điện kết hợp Thay đổi đồng hồ Nước (hoặc ngược lại) trên cùng một phòng.
+  - **Khóa nhập tuần tự Ô 1 → Ô 2 → Ô 3**:
+    - *Ô 1 (`Đầu kỳ gốc`)*: Tự động khóa từ số chốt tháng trước (`originalPrevDien` / `originalPrevNuoc`). Nếu tháng trước phòng nghỉ hoặc thiếu số, nút `!` mở popup `#mb-missing-prev-modal` cho phép tự nhập đầu kỳ hoặc quay lại tháng trước.
+    - *Ô 2 (`Break kết thúc`)*: Mở sẵn cho đến khi có Ô 1 hợp lệ; chỉ nhận số nguyên không âm.
+    - *Ô 3 (`Break bắt đầu`)*: Khóa cho tới khi Ô 2 hợp lệ; sau khi lưu trở thành `dienCu` / `nuocCu` mới của tháng.
+  - **Xác nhận quay vòng (`#mb-rollover-modal`)**: Chặn không cho lưu nếu `Ô 2 < Ô 1` (`endRollover`), `Ô 3 < Ô 2` (`startRollover`), hoặc trường hợp ngoài bảng chính đã nhập sẵn `Số mới` mà `Số mới < Ô 3` (`tableEndRollover`) — **trừ khi** người dùng xác nhận đồng hồ đã quay vòng qua hộp thoại `#mb-rollover-modal`.
+- **Đồng bộ Bảng Chính, Khóa Sau Lưu & Đầu Ra**:
+  - **Bảng Phần 1 (`syncMeterBreakToMainTable`)**: Ghi đè `dienCu` / `nuocCu = breakStart`, gắn pill `✂️` (`.meter-mb-pill`), khóa chỉnh trực tiếp ô `Số cũ` (`.mb-locked-input`), tính lại tiêu thụ/thành tiền ngay lập tức nếu `Số mới` đã nhập sẵn, và bỏ qua cảnh báo bất thường `±40%` ở loại đồng hồ đã Break (`hasMbElec`) để không ẩn tiền oan. Hủy Break (`handleDeleteRoomMeterBreaks` / `handleDeleteSectionMeterBreak`) trả lại nguyên vẹn `originalPrevDien` / `originalPrevNuoc`.
+  - **Khóa tự động sau Lưu tại Bước 2**: Sau khi bấm `💾 Lưu ghi nhận`, Bước 2 tự khóa (`🔒 Đã khóa dữ liệu`), muốn sửa phải bấm `✏️ Chỉnh Sửa` → xác nhận qua `#mb-unlock-edit-modal`, kèm nút `Hủy thay đổi & Giữ nguyên` và `🗑️ Hủy Break`. Mục 3 ở Trang 1 (`#mb-history-list`) liệt kê lịch sử Break theo thứ tự **Mới nhất → Cũ nhất**.
+  - **Phiếu Thu (JPG/PDF), Zalo & Excel Tháng**:
+    - *Phiếu Thu*: Không chèn dòng ghi chú `(*)` Break; hiển thị bình thường với `Số cũ = Break bắt đầu` và `Số mới = Số chốt cuối tháng`.
+    - *Tin nhắn Zalo*: Không chèn ghi chú Break; sử dụng số `dienCu` / `nuocCu` mới (`Break bắt đầu`).
+    - *Excel Tháng (`month-excel.js`, cột `Q: Ghi Chú`)*: Ghi đầy đủ ghi chú Break qua `formatRoomMeterBreakNotes()` (`Ghi chú Break chỉ số:\n- Điện/Nước: Đầu kỳ ... → Break kết thúc ... | Break bắt đầu ...`), tự gộp sạch nếu phòng đồng thời có Thay đổi đồng hồ ở loại còn lại.
+  - **Activity Log**: Ghi nhận các thao tác `METER_BREAK_SAVE` và `METER_BREAK_DELETE` vào `activity-logs.json` qua `buildMbActivityLogDiff()`, kèm đầy đủ bảng chi tiết Trước → Sau (`metadata.changes`: Đầu kỳ gốc, Break kết thúc, Break bắt đầu / Số cũ mới, Ngày Break) và nhãn `[quay vòng]` / `[quay vòng cuối tháng]` trong cả `summary` lẫn bảng chi tiết mở rộng.

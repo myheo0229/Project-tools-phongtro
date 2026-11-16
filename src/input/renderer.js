@@ -548,6 +548,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (typeof loadMeterChangesStore === 'function') {
     await loadMeterChangesStore();
   }
+  if (typeof loadMeterBreaksStore === 'function') {
+    await loadMeterBreaksStore();
+  }
   await populateMonthSelect();
   await loadRoomsForMonth(document.getElementById('month-year-select').value);
   await loadResidentsData();
@@ -1599,6 +1602,41 @@ async function loadRoomsForMonth(currentMonthYearStr) {
       }
     }
 
+    // Kiểm tra bản ghi Break chỉ số giữa tháng (meter-breaks.json) — không dùng chung với Thay ĐH trên cùng loại
+    const mbRec = typeof getRoomMeterBreakRecord === 'function'
+      ? getRoomMeterBreakRecord(currentMonthYearStr, phongName)
+      : null;
+
+    const originalPrevDien = isDienCuLocked
+      ? dienCu
+      : (mbRec && mbRec.elec && mbRec.elec.initialIndex !== null && mbRec.elec.initialIndex !== undefined
+        ? Number(mbRec.elec.initialIndex)
+        : dienCu);
+    const hadOriginalPrevDien = isDienCuLocked;
+    const originalPrevNuoc = isNuocCuLocked
+      ? nuocCu
+      : (mbRec && mbRec.water && mbRec.water.initialIndex !== null && mbRec.water.initialIndex !== undefined
+        ? Number(mbRec.water.initialIndex)
+        : nuocCu);
+    const hadOriginalPrevNuoc = isNuocCuLocked;
+
+    let hasMbElec = false;
+    if (!hasMcElec && mbRec && mbRec.elec && mbRec.elec.breakStart !== null && mbRec.elec.breakStart !== undefined) {
+      hasMbElec = true;
+      dienCu = Number(mbRec.elec.breakStart);
+      isDienCuLocked = true;
+      if (mbRec.elec.confirmedTableEndRollover) {
+        finalConfirmedRollover = true;
+      }
+    }
+
+    let hasMbWater = false;
+    if (!hasMcWater && mbRec && mbRec.water && mbRec.water.breakStart !== null && mbRec.water.breakStart !== undefined) {
+      hasMbWater = true;
+      nuocCu = Number(mbRec.water.breakStart);
+      isNuocCuLocked = true;
+    }
+
     return {
       phong: phongName,
       dienCu: dienCu,
@@ -1609,6 +1647,10 @@ async function loadRoomsForMonth(currentMonthYearStr) {
       tienPhong: activeSettings.giaPhong,
       isDienCuLocked,
       isNuocCuLocked,
+      originalPrevDien,
+      hadOriginalPrevDien,
+      originalPrevNuoc,
+      hadOriginalPrevNuoc,
       confirmedRollover: finalConfirmedRollover,
       confirmedAnomaly: isConfirmedAnomaly,
       hasMcElec,
@@ -1616,7 +1658,9 @@ async function loadRoomsForMonth(currentMonthYearStr) {
       dienKwhOverride,
       hasMcWater,
       mcWaterStatus,
-      nuocKhoiOverride
+      nuocKhoiOverride,
+      hasMbElec,
+      hasMbWater
     };
   });
 
@@ -1647,8 +1691,8 @@ function renderInitialTable() {
     const dienMoiVal = room.dienMoi !== undefined && room.dienMoi !== null ? room.dienMoi : '';
     const nuocMoiVal = room.nuocMoi !== undefined && room.nuocMoi !== null ? room.nuocMoi : '';
 
-    const dienCuReadonly = room.isDienCuLocked || Boolean(room.hasMcElec) || isTableReadonly;
-    const nuocCuReadonly = room.isNuocCuLocked || Boolean(room.hasMcWater) || isTableReadonly;
+    const dienCuReadonly = room.isDienCuLocked || Boolean(room.hasMcElec) || Boolean(room.hasMbElec) || isTableReadonly;
+    const nuocCuReadonly = room.isNuocCuLocked || Boolean(room.hasMcWater) || Boolean(room.hasMbWater) || isTableReadonly;
 
     const roomMeterCfg = (activeSettings && activeSettings.meterDigits && activeSettings.meterDigits[room.phong]) || {};
     const dienMaxDigits = (roomMeterCfg.dien && Number(roomMeterCfg.dien) >= 3 && Number(roomMeterCfg.dien) <= 7) ? Number(roomMeterCfg.dien) : 5;
@@ -1730,18 +1774,30 @@ function renderInitialTable() {
       <td class="col-stt">${index + 1}</td>
       <td class="col-phong"><span class="room-badge">${room.phong}</span></td>
       
-      <!-- Điện Cũ (Tự động điền & khóa nếu có lịch sử tháng trước hoặc thay ĐH hoặc tháng đã khóa) -->
+      <!-- Điện Cũ (Tự động điền & khóa nếu có lịch sử tháng trước hoặc thay ĐH hoặc Break hoặc tháng đã khóa) -->
       <td class="col-meter">
-        <input type="number" 
-               class="table-input ${room.isDienCuLocked ? 'locked-input' : ''} ${room.hasMcElec ? 'mc-locked-input' : ''} ${isTableReadonly ? 'month-locked-input' : ''}" 
-               data-row="${index}" 
-               data-field="dienCu" 
-               value="${dienCuVal}" 
-               ${dienCuReadonly ? 'readonly tabindex="-1"' : ''} 
-               ${room.hasMcElec ? 'title="Ô này đang quản lý qua Modal Thay đổi đồng hồ Điện."' : lockedTooltip}
-               onmousedown="if (this.readOnly) event.preventDefault()"
-               oninput="if (this.value.length > ${dienMaxDigits}) this.value = this.value.slice(0, ${dienMaxDigits}); handleInputChange(${index}, 'dienCu', this.value)" 
-               onfocus="if (!this.readOnly) this.select()">
+        ${room.hasMbElec
+          ? `<div class="meter-input-wrap">
+               <input type="number"
+                      class="table-input mb-locked-input ${isTableReadonly ? 'month-locked-input' : ''}"
+                      data-row="${index}"
+                      data-field="dienCu"
+                      value="${dienCuVal}"
+                      readonly tabindex="-1"
+                      onmousedown="event.preventDefault()"
+                      title="Đầu kỳ đã đổi theo Break bắt đầu. Bấm nút ✂️ bên cạnh để xem hoặc sửa Break Điện.">
+               <button type="button" class="meter-mb-pill" onclick="openMeterBreakModal('${room.phong}', 'elec')" title="Đã Break chỉ số Điện · Bấm để xem/sửa">✂️</button>
+             </div>`
+          : `<input type="number" 
+                    class="table-input ${room.isDienCuLocked ? 'locked-input' : ''} ${room.hasMcElec ? 'mc-locked-input' : ''} ${isTableReadonly ? 'month-locked-input' : ''}" 
+                    data-row="${index}" 
+                    data-field="dienCu" 
+                    value="${dienCuVal}" 
+                    ${dienCuReadonly ? 'readonly tabindex="-1"' : ''} 
+                    ${room.hasMcElec ? 'title="Ô này đang quản lý qua Modal Thay đổi đồng hồ Điện."' : lockedTooltip}
+                    onmousedown="if (this.readOnly) event.preventDefault()"
+                    oninput="if (this.value.length > ${dienMaxDigits}) this.value = this.value.slice(0, ${dienMaxDigits}); handleInputChange(${index}, 'dienCu', this.value)" 
+                    onfocus="if (!this.readOnly) this.select()">`}
       </td>
 
       <!-- Điện Mới -->
@@ -1751,18 +1807,30 @@ function renderInitialTable() {
       <!-- Số Điện Tiêu Thụ -->
       <td class="col-kwh val-calc cell-dien-kwh">-</td>
 
-      <!-- Nước Cũ (Tự động điền & khóa nếu có lịch sử tháng trước hoặc thay ĐH hoặc tháng đã khóa) -->
+      <!-- Nước Cũ (Tự động điền & khóa nếu có lịch sử tháng trước hoặc thay ĐH hoặc Break hoặc tháng đã khóa) -->
       <td class="col-meter">
-        <input type="number" 
-               class="table-input ${room.isNuocCuLocked ? 'locked-input' : ''} ${room.hasMcWater ? 'mc-locked-input' : ''} ${isTableReadonly ? 'month-locked-input' : ''}" 
-               data-row="${index}" 
-               data-field="nuocCu" 
-               value="${nuocCuVal}" 
-               ${nuocCuReadonly ? 'readonly tabindex="-1"' : ''} 
-               ${room.hasMcWater ? 'title="Ô này đang quản lý qua Modal Thay đổi đồng hồ Nước."' : lockedTooltip}
-               onmousedown="if (this.readOnly) event.preventDefault()"
-               oninput="if (this.value.length > ${nuocMaxDigits}) this.value = this.value.slice(0, ${nuocMaxDigits}); handleInputChange(${index}, 'nuocCu', this.value)" 
-               onfocus="if (!this.readOnly) this.select()">
+        ${room.hasMbWater
+          ? `<div class="meter-input-wrap">
+               <input type="number"
+                      class="table-input mb-locked-input ${isTableReadonly ? 'month-locked-input' : ''}"
+                      data-row="${index}"
+                      data-field="nuocCu"
+                      value="${nuocCuVal}"
+                      readonly tabindex="-1"
+                      onmousedown="event.preventDefault()"
+                      title="Đầu kỳ đã đổi theo Break bắt đầu. Bấm nút ✂️ bên cạnh để xem hoặc sửa Break Nước.">
+               <button type="button" class="meter-mb-pill" onclick="openMeterBreakModal('${room.phong}', 'water')" title="Đã Break chỉ số Nước · Bấm để xem/sửa">✂️</button>
+             </div>`
+          : `<input type="number" 
+                    class="table-input ${room.isNuocCuLocked ? 'locked-input' : ''} ${room.hasMcWater ? 'mc-locked-input' : ''} ${isTableReadonly ? 'month-locked-input' : ''}" 
+                    data-row="${index}" 
+                    data-field="nuocCu" 
+                    value="${nuocCuVal}" 
+                    ${nuocCuReadonly ? 'readonly tabindex="-1"' : ''} 
+                    ${room.hasMcWater ? 'title="Ô này đang quản lý qua Modal Thay đổi đồng hồ Nước."' : lockedTooltip}
+                    onmousedown="if (this.readOnly) event.preventDefault()"
+                    oninput="if (this.value.length > ${nuocMaxDigits}) this.value = this.value.slice(0, ${nuocMaxDigits}); handleInputChange(${index}, 'nuocCu', this.value)" 
+                    onfocus="if (!this.readOnly) this.select()">`}
       </td>
 
       <!-- Nước Mới -->
@@ -1884,7 +1952,7 @@ function updateRowUI(index) {
   // Kiểm tra bất thường >= 40% so với tháng trước (nếu không thay đồng hồ và đã qua bước quay vòng)
   const prevKwh = Number(room.prevDienKwh) || 0;
   let isAnomalyUnconfirmed = false;
-  if (!room.hasMcElec && (appSettings.enableAnomalyPopup !== false) && hasDienMoiInput && prevKwh > 0 && !isRolloverUnconfirmed) {
+  if (!room.hasMcElec && !room.hasMbElec && (appSettings.enableAnomalyPopup !== false) && hasDienMoiInput && prevKwh > 0 && !isRolloverUnconfirmed) {
     const surrogateR = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
     const rCalc = typeof calcRoom === 'function' ? calcRoom(surrogateR, activeSettings) : null;
     const currKwh = rCalc ? rCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
@@ -1996,7 +2064,7 @@ function updateFooterTotals() {
 
     const prevKwh = Number(room.prevDienKwh) || 0;
     let isAnomalyUnconfirmed = false;
-    if (!room.hasMcElec && (appSettings.enableAnomalyPopup !== false) && hasDienMoiInput && prevKwh > 0 && !isRolloverUnconfirmed) {
+    if (!room.hasMcElec && !room.hasMbElec && (appSettings.enableAnomalyPopup !== false) && hasDienMoiInput && prevKwh > 0 && !isRolloverUnconfirmed) {
       const surrogateR = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
       const rCalc = typeof calcRoom === 'function' ? calcRoom(surrogateR, activeSettings) : null;
       const currKwh = rCalc ? rCalc.dienKwh : Math.max(0, dienMoiNum - dienCuNum);
@@ -2446,6 +2514,9 @@ async function saveAndExport() {
         if (typeof loadMeterChangesStore === 'function') {
     await loadMeterChangesStore();
   }
+  if (typeof loadMeterBreaksStore === 'function') {
+    await loadMeterBreaksStore();
+  }
   await populateMonthSelect();
         return true;
       }
@@ -2566,10 +2637,14 @@ function confirmUnlockMonthForEditing() {
   const currMcSnapshot = (window.meterChangesStore && window.meterChangesStore.months && currentLoadedMonth && window.meterChangesStore.months[currentLoadedMonth])
     ? JSON.parse(JSON.stringify(window.meterChangesStore.months[currentLoadedMonth]))
     : {};
+  const currMbSnapshot = (window.meterBreaksStore && window.meterBreaksStore.months && currentLoadedMonth && window.meterBreaksStore.months[currentLoadedMonth])
+    ? JSON.parse(JSON.stringify(window.meterBreaksStore.months[currentLoadedMonth]))
+    : {};
   lockedMonthBackupState = {
     rooms: JSON.parse(JSON.stringify(roomsData)),
     snapshot: currentMonthSnapshotSettings ? { ...currentMonthSnapshotSettings } : createPricingSnapshot(appSettings),
-    meterChanges: currMcSnapshot
+    meterChanges: currMcSnapshot,
+    meterBreaks: currMbSnapshot
   };
   isCurrentMonthEditing = true;
   renderInitialTable();
@@ -2596,6 +2671,21 @@ function restoreLockedMonthFromBackup() {
       if (window.api && typeof window.api.saveMonthMeterChanges === 'function') {
         window.api.saveMonthMeterChanges({ monthKey: currentLoadedMonth, monthData: restoredMc }).catch(e => {
           console.warn('Lỗi khôi phục meter-changes:', e);
+        });
+      }
+    }
+    if (window.meterBreaksStore && window.meterBreaksStore.months && currentLoadedMonth) {
+      const restoredMb = lockedMonthBackupState.meterBreaks && typeof lockedMonthBackupState.meterBreaks === 'object'
+        ? JSON.parse(JSON.stringify(lockedMonthBackupState.meterBreaks))
+        : {};
+      if (Object.keys(restoredMb).length > 0) {
+        window.meterBreaksStore.months[currentLoadedMonth] = restoredMb;
+      } else {
+        delete window.meterBreaksStore.months[currentLoadedMonth];
+      }
+      if (window.api && typeof window.api.saveMonthMeterBreaks === 'function') {
+        window.api.saveMonthMeterBreaks({ monthKey: currentLoadedMonth, monthData: restoredMb }).catch(e => {
+          console.warn('Lỗi khôi phục meter-breaks:', e);
         });
       }
     }
@@ -2731,7 +2821,7 @@ function handleDienMoiBlur(index) {
 
   // 2. Kiểm tra bất thường >= 40% so với tháng trước: CHỈ hỏi 1 lần duy nhất nếu chưa xác nhận
   const prevKwh = Number(room.prevDienKwh) || 0;
-  if (appSettings.enableAnomalyPopup !== false && prevKwh > 0 && dienMoiNum >= dienCuNum) {
+  if (!room.hasMbElec && appSettings.enableAnomalyPopup !== false && prevKwh > 0 && dienMoiNum >= dienCuNum) {
     const surrogate = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
     const activeSettings = getActiveMonthSettings();
     const roomCalc = typeof calcRoom === 'function' ? calcRoom(surrogate, activeSettings) : null;

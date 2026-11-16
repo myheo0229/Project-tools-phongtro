@@ -21,6 +21,7 @@ interface Window {
   formatMcDateVN?: (isoDateStr: string) => string;
   buildMeterChangeDetailForType?: (typeRecord: any, type: 'elec' | 'water') => any;
   formatRoomMeterChangeNotes?: (roomMcRecord: any) => any;
+  formatRoomMeterBreakNotes?: (roomMbRecord: any) => any;
   renderZaloTemplateWithMeterChange?: (template: string, values: Record<string, any>) => string;
   applyZaloMeterChangeNote?: (renderedMsg: string, rawTemplate: string, noteBlock: string, shouldInclude: boolean) => string;
   handleExportMonthExcelClick?: () => Promise<any>;
@@ -64,6 +65,35 @@ interface Window {
   handleDeleteSectionMeterChange?: (type: string) => Promise<void>;
   handleDeleteRoomMeterChanges?: () => Promise<void>;
   suppressMcBlurBriefly?: (ms?: number) => void;
+  meterBreaksStore?: { version: number; months: Record<string, Record<string, any>> };
+  loadMeterBreaksStore?: () => Promise<any>;
+  getRoomMeterBreakRecord?: (monthKey: string, phong: string) => any;
+  openMeterBreakModal?: (preselectPhong?: string, preselectType?: string) => void;
+  closeMeterBreakModal?: () => void;
+  toggleMeterBreakType?: (labelId: string, checkbox: any) => void;
+  goToMeterBreakStep?: (step: number, dir: number) => void;
+  handleMbStep2Back?: () => void;
+  handleToggleEditMbRecordClick?: () => void;
+  closeMbUnlockEditModal?: () => void;
+  confirmUnlockMbRecordForEditing?: () => void;
+  openMeterBreakHistoryCard?: (monthKey: string, phong: string) => Promise<void>;
+  onMbIntKeyDown?: (event: any) => boolean;
+  onMeterBreakDateInput?: (type: string, val: string) => void;
+  onMeterBreakNumInput?: (type: string, field: string, inputEl: any) => void;
+  onMbBreakEndBlur?: (type: string) => void;
+  onMbBreakStartBlur?: (type: string) => void;
+  openMbMissingPrevModal?: (type: string) => void;
+  closeMbMissingPrevModal?: () => void;
+  confirmManualInitFromMb?: () => void;
+  confirmGoToPrevMonthFromMb?: () => Promise<void>;
+  openMbRolloverPopup?: (kind: string, type: string, onAfterConfirm?: any) => void;
+  cancelMbRolloverModal?: () => void;
+  confirmMbRolloverModal?: () => void;
+  handleSaveMeterBreak?: () => Promise<void>;
+  handleDeleteSectionMeterBreak?: (type: string) => Promise<void>;
+  handleDeleteRoomMeterBreaks?: () => Promise<void>;
+  suppressMbBlurBriefly?: (ms?: number) => void;
+  isMbReadonlyMode?: () => boolean;
 }
 
 interface HTMLElement {
@@ -104,6 +134,7 @@ declare function toReceiptData(calcResult: any, monthKey?: string, dienThoai?: s
 declare function formatMcDateVN(isoDateStr: string): string;
 declare function buildMeterChangeDetailForType(typeRecord: any, type: 'elec' | 'water'): any;
 declare function formatRoomMeterChangeNotes(roomMcRecord: any): any;
+declare function formatRoomMeterBreakNotes(roomMbRecord: any): any;
 declare function renderZaloTemplateWithMeterChange(template: string, values: Record<string, any>): string;
 declare function applyZaloMeterChangeNote(renderedMsg: string, rawTemplate: string, noteBlock: string, shouldInclude: boolean): string;
 declare function calcRoom(room?: any, settings?: any): any;
@@ -133,6 +164,9 @@ declare function recordActivityLog(payload: any, immediate?: boolean): Promise<a
 declare function loadMeterChangesStore(): Promise<any>;
 declare function getRoomMeterChangeRecord(monthKey: string, phong: string): any;
 declare function getUnfinishedMeterChangesForMonth(monthKey: string): any[];
+declare function loadMeterBreaksStore(): Promise<any>;
+declare function getRoomMeterBreakRecord(monthKey: string, phong: string): any;
+declare function openMeterBreakModal(preselectPhong?: string, preselectType?: 'elec' | 'water'): void;
 declare function extractHistoryPayload(rawData: any): { isLocked: boolean; settingsSnapshot: any; rooms: any[] };
 declare function readHistoryFile(monthYearStr: string): Promise<any>;
 declare function writeHistoryFile(monthYearStr: string, data: any): Promise<boolean>;

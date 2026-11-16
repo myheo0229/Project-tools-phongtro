@@ -679,6 +679,154 @@ ipcMain.handle('meter-changes:save-month', async (event, payload = {}) => {
   }
 });
 
+// ============================================================
+// QUẢN LÝ LỊCH SỬ BREAK CHỈ SỐ ĐIỆN / NƯỚC GIỮA THÁNG (baseFolder/<dataFolderName>/meter-breaks.json)
+// Lưu tách biệt hoàn toàn với history/YYYY-MM.json và meter-changes.json
+// ============================================================
+function getMeterBreaksFilePath(pointer) {
+  return path.join(pointer.baseFolder, pointer.dataFolderName || 'data', 'meter-breaks.json');
+}
+
+function normalizeMeterBreaksData(raw) {
+  const result = { version: 1, months: {} };
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return result;
+  if (raw.months && typeof raw.months === 'object' && !Array.isArray(raw.months)) {
+    Object.keys(raw.months).forEach(monthKey => {
+      if (!MONTH_KEY_REGEX.test(monthKey)) return;
+      const monthEntry = raw.months[monthKey];
+      if (!monthEntry || typeof monthEntry !== 'object' || Array.isArray(monthEntry)) return;
+      const cleanRooms = {};
+      Object.keys(monthEntry).forEach(phong => {
+        const roomEntry = monthEntry[phong];
+        if (roomEntry && typeof roomEntry === 'object' && !Array.isArray(roomEntry)) {
+          const cleanRoom = {};
+          if (roomEntry.elec && typeof roomEntry.elec === 'object') {
+            cleanRoom.elec = roomEntry.elec;
+          }
+          if (roomEntry.water && typeof roomEntry.water === 'object') {
+            cleanRoom.water = roomEntry.water;
+          }
+          if (cleanRoom.elec || cleanRoom.water) {
+            cleanRooms[phong] = cleanRoom;
+          }
+        }
+      });
+      if (Object.keys(cleanRooms).length > 0) {
+        result.months[monthKey] = cleanRooms;
+      }
+    });
+  }
+  return result;
+}
+
+function writeMeterBreaksAtomic(filePath, dataObj) {
+  const normalized = normalizeMeterBreaksData(dataObj);
+  const dir = path.dirname(filePath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const tmpPath = `${filePath}.tmp`;
+  fs.writeFileSync(tmpPath, JSON.stringify(normalized, null, 2), 'utf8');
+  fs.renameSync(tmpPath, filePath);
+  return normalized;
+}
+
+// IPC: Đọc toàn bộ lịch sử Break chỉ số
+ipcMain.handle('meter-breaks:load', async () => {
+  try {
+    const pointer = getPointer();
+    if (!pointer || !pointer.baseFolder) {
+      return { ok: false, data: normalizeMeterBreaksData(null) };
+    }
+    const filePath = getMeterBreaksFilePath(pointer);
+    if (!fs.existsSync(filePath)) {
+      return { ok: true, data: normalizeMeterBreaksData(null) };
+    }
+    const raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return { ok: true, data: normalizeMeterBreaksData(raw) };
+  } catch (err) {
+    console.error('Lỗi khi đọc meter-breaks.json:', err);
+    return { ok: false, error: err.message, data: normalizeMeterBreaksData(null) };
+  }
+});
+
+// IPC: Lưu hoặc xóa ghi nhận Break chỉ số cho 1 phòng trong tháng
+ipcMain.handle('meter-breaks:save-room', async (event, payload = {}) => {
+  try {
+    const { monthKey, phong, roomData } = payload || {};
+    if (!monthKey || !MONTH_KEY_REGEX.test(monthKey) || !phong) {
+      return { error: 'Thiếu thông tin tháng hoặc phòng hợp lệ!' };
+    }
+    const pointer = getPointer();
+    if (!pointer || !pointer.baseFolder) {
+      return { error: 'Chưa chọn thư mục lưu dữ liệu!' };
+    }
+    const filePath = getMeterBreaksFilePath(pointer);
+    let current = normalizeMeterBreaksData(null);
+    if (fs.existsSync(filePath)) {
+      try {
+        current = normalizeMeterBreaksData(JSON.parse(fs.readFileSync(filePath, 'utf8')));
+      } catch (readErr) {
+        console.warn('File meter-breaks.json bị lỗi, khởi tạo mới:', readErr);
+      }
+    }
+
+    if (!current.months[monthKey]) current.months[monthKey] = {};
+    if (roomData && (roomData.elec || roomData.water)) {
+      const nextRoom = {};
+      if (roomData.elec) nextRoom.elec = roomData.elec;
+      if (roomData.water) nextRoom.water = roomData.water;
+      current.months[monthKey][phong] = nextRoom;
+    } else {
+      delete current.months[monthKey][phong];
+      if (Object.keys(current.months[monthKey]).length === 0) {
+        delete current.months[monthKey];
+      }
+    }
+
+    const saved = writeMeterBreaksAtomic(filePath, current);
+    return { ok: true, success: true, data: saved };
+  } catch (err) {
+    console.error('Lỗi khi lưu meter-breaks phòng:', err);
+    return { error: err.message };
+  }
+});
+
+// IPC: Ghi đè toàn bộ dữ liệu Break chỉ số của 1 tháng (hỗ trợ hoàn tác khi hủy sửa tháng đã khóa)
+ipcMain.handle('meter-breaks:save-month', async (event, payload = {}) => {
+  try {
+    const { monthKey, monthData } = payload || {};
+    if (!monthKey || !MONTH_KEY_REGEX.test(monthKey)) {
+      return { error: 'MonthKey không hợp lệ!' };
+    }
+    const pointer = getPointer();
+    if (!pointer || !pointer.baseFolder) {
+      return { error: 'Chưa chọn thư mục lưu dữ liệu!' };
+    }
+    const filePath = getMeterBreaksFilePath(pointer);
+    let current = normalizeMeterBreaksData(null);
+    if (fs.existsSync(filePath)) {
+      try {
+        current = normalizeMeterBreaksData(JSON.parse(fs.readFileSync(filePath, 'utf8')));
+      } catch (readErr) {
+        console.warn('File meter-breaks.json bị lỗi, khởi tạo mới:', readErr);
+      }
+    }
+
+    if (monthData && typeof monthData === 'object' && Object.keys(monthData).length > 0) {
+      current.months[monthKey] = monthData;
+    } else {
+      delete current.months[monthKey];
+    }
+
+    const saved = writeMeterBreaksAtomic(filePath, current);
+    return { ok: true, success: true, data: saved };
+  } catch (err) {
+    console.error('Lỗi khi đồng bộ meter-breaks tháng:', err);
+    return { error: err.message };
+  }
+});
+
 // Helper tạo danh sách 12 phòng mặc định trắng
 function getDefaultRooms() {
   const defaultRoomNames = ['1A', '2A', '3A', '4A', '5A', '6A', '1B', '2B', '3B', '4B', '5B', '6B'];

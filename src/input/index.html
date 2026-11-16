@@ -158,6 +158,18 @@
                 tiền</span>
             </div>
             <div class="table-card-header-actions">
+              <button type="button" class="btn btn-meter-break" id="btn-open-meter-break-modal"
+                onclick="openMeterBreakModal()" title="Chốt lại chỉ số đầu kỳ (Break) khi đổi người thuê giữa tháng">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="6" cy="6" r="3" />
+                  <circle cx="6" cy="18" r="3" />
+                  <line x1="20" y1="4" x2="8.12" y2="15.88" />
+                  <line x1="14.47" y1="14.48" x2="20" y2="20" />
+                  <line x1="8.12" y1="8.12" x2="12" y2="12" />
+                </svg>
+                <span>Break chỉ số</span>
+              </button>
               <button type="button" class="btn btn-meter-change" id="btn-open-meter-change-modal"
                 onclick="openMeterChangeModal()" title="Ghi nhận thay đổi đồng hồ Điện / Nước trong tháng">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -2945,6 +2957,266 @@
     </div>
   </div>
 
+  <!-- =========================================================================
+       MODAL BREAK CHỈ SỐ ĐIỆN / NƯỚC GIỮA THÁNG (2 BƯỚC, TÔNG TÍM CHÀM, CHỮ >= 16PX)
+       ========================================================================= -->
+  <div id="meter-break-modal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true"
+    aria-labelledby="mb-modal-heading">
+    <div class="mb-modal-container">
+      <div class="mb-modal-header">
+        <h2 id="mb-modal-heading">
+          <span>✂️ Break chỉ số Điện / Nước (Đổi người thuê giữa tháng)</span>
+          <span class="mb-badge-step" id="mb-step-badge">Bước 1/2: Chọn phòng &amp; loại</span>
+        </h2>
+        <button type="button" class="mb-close-btn" onmousedown="suppressMbBlurBriefly()"
+          onclick="closeMeterBreakModal()" title="Đóng (Esc)" aria-label="Đóng">&times;</button>
+      </div>
+
+      <div class="mb-pages-viewport" id="mb-viewport">
+        <!-- ================= TRANG 1: CHỌN PHÒNG, LOẠI & LỊCH SỬ BREAK ================= -->
+        <div class="mb-page active" id="mb-page1">
+          <div class="mb-step1-wrapper">
+            <div class="mb-step1-body">
+              <div class="mb-section-head-row">
+                <span class="mb-section-label">1. Chọn phòng cần Break chỉ số (Chỉ chọn duy nhất 1 phòng):</span>
+                <span class="mb-month-pill" id="mb-current-month-label">Tháng hiện tại</span>
+              </div>
+              <div class="mb-room-grid" id="mb-room-grid" role="radiogroup" aria-label="Danh sách 12 phòng Break"></div>
+
+              <span class="mb-section-label">2. Chọn loại đồng hồ cần Break (Có thể chọn 1 hoặc cả 2):</span>
+              <div class="mb-meter-type-group">
+                <label class="mb-type-checkbox checked" id="mb-lbl-elec">
+                  <input type="checkbox" id="mb-chk-elec" checked onchange="toggleMeterBreakType('mb-lbl-elec', this)">
+                  <div class="mb-type-info">
+                    <strong>⚡ Đồng hồ Điện (kWh)</strong>
+                    <span>Lưu số Break kết thúc của người trước và lấy số Break bắt đầu làm đầu kỳ tháng này</span>
+                    <span class="mb-conflict-note" id="mb-conflict-elec" style="display: none;">⚠️ Phòng này đang dùng Thay đổi đồng hồ Điện nên không thể Break cùng lúc.</span>
+                  </div>
+                </label>
+                <label class="mb-type-checkbox" id="mb-lbl-water">
+                  <input type="checkbox" id="mb-chk-water" onchange="toggleMeterBreakType('mb-lbl-water', this)">
+                  <div class="mb-type-info">
+                    <strong>💧 Đồng hồ Nước (m³)</strong>
+                    <span>Lưu số Break kết thúc của người trước và lấy số Break bắt đầu làm đầu kỳ tháng này</span>
+                    <span class="mb-conflict-note" id="mb-conflict-water" style="display: none;">⚠️ Phòng này đang dùng Thay đổi đồng hồ Nước nên không thể Break cùng lúc.</span>
+                  </div>
+                </label>
+              </div>
+
+              <div class="mb-history-section" id="mb-history-section">
+                <div class="mb-section-head-row mb-history-head-row">
+                  <span class="mb-section-label">3. Lịch sử các tháng đã Break chỉ số (Mới nhất → Cũ nhất):</span>
+                  <span class="mb-history-subhint">Nhấn vào khung phòng để xem chi tiết hoặc chỉnh sửa trong cửa sổ này</span>
+                </div>
+                <div class="mb-history-list" id="mb-history-list"></div>
+              </div>
+            </div>
+
+            <div class="mb-step1-footer">
+              <span class="mb-step1-hint">💡 Dữ liệu đầu kỳ gốc được đọc trực tiếp từ tháng đang mở trên bảng chính.</span>
+              <div class="mb-footer-actions">
+                <button type="button" class="btn btn-secondary mb-btn-ui" onclick="closeMeterBreakModal()">Đóng</button>
+                <button type="button" class="btn-mb-primary" id="mb-btn-next" disabled
+                  onclick="goToMeterBreakStep(2, 1)">Tiếp theo ➔</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= TRANG 2: NHẬP LIỆU (60%) & BẢNG HƯỚNG DẪN (40%) ================= -->
+        <div class="mb-page" id="mb-page2">
+          <div class="mb-step2-layout">
+            <!-- CỘT TRÁI 60% -->
+            <div class="mb-left-panel">
+              <div class="mb-room-topbar">
+                <div class="mb-room-title-badge" id="mb-selected-room-title">🏠 Phòng 1A</div>
+                <button type="button" class="mb-btn-back" onmousedown="suppressMbBlurBriefly()"
+                  onclick="handleMbStep2Back()">⬅ Quay lại</button>
+              </div>
+
+              <div class="mb-locked-banner" id="mb-locked-banner" style="display: none;">
+                <span>🔒 Tháng này đã khóa dữ liệu (chỉ xem). Bấm <strong>Chỉnh Sửa</strong> ngoài bảng chính nếu muốn thay đổi.</span>
+              </div>
+
+              <div class="mb-inset-center-box">
+                <div class="mb-dynamic-form-area" id="mb-dynamic-form-area"></div>
+              </div>
+
+              <div class="mb-left-footer">
+                <span class="mb-preview-note" id="mb-left-footer-note">Nhập số nguyên không âm (0–9): Break kết thúc ➔ Break bắt đầu.</span>
+                <div class="mb-footer-actions">
+                  <button type="button" class="btn btn-danger-outline mb-btn-ui" id="mb-btn-delete-all" style="display: none;"
+                    onmousedown="suppressMbBlurBriefly()" onclick="handleDeleteRoomMeterBreaks()">🗑️ Hủy Break</button>
+                  <button type="button" class="btn btn-secondary mb-btn-ui" id="mb-btn-footer-back" onmousedown="suppressMbBlurBriefly()"
+                    onclick="handleMbStep2Back()">⬅ Quay lại</button>
+                  <button type="button" class="btn btn-edit-month mb-btn-ui" id="mb-btn-toggle-edit" style="display: none;"
+                    onmousedown="suppressMbBlurBriefly()" onclick="handleToggleEditMbRecordClick()">✏️ Chỉnh Sửa</button>
+                  <button type="button" class="btn-mb-primary" id="mb-btn-save" onmousedown="suppressMbBlurBriefly()"
+                    onclick="handleSaveMeterBreak()">💾 Lưu ghi nhận</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- CỘT PHẢI 40%: HƯỚNG DẪN CHI TIẾT & NGẮN GỌN (CHỮ >= 16PX) -->
+            <div class="mb-right-panel">
+              <div class="mb-guide-title">
+                <span>📘 Hướng dẫn Break chỉ số</span>
+              </div>
+              <p class="mb-guide-intro">Dùng khi có người cũ dọn đi và người mới vào giữa tháng, cần chốt lại <strong>Số cũ mới</strong> cho tháng này mà không cộng phần chênh giữa 2 khách.</p>
+
+              <div class="mb-legend-card">
+                <div class="mb-legend-item">
+                  <span class="mb-dot-color" style="background:#e2e8f0; border:1.5px solid #64748b;"></span>
+                  <div><strong>Ô 1 — Đầu kỳ gốc:</strong> Số chốt từ tháng trước (tự khóa). Bấm nút <strong style="color:#4f46e5;">!</strong> tím chàm nếu tháng trước phòng chưa có số.</div>
+                </div>
+                <div class="mb-legend-item">
+                  <span class="mb-dot-color" style="background:#fde68a; border:1.5px solid #f59e0b;"></span>
+                  <div><strong>Ô 2 — Break kết thúc:</strong> Số đồng hồ lúc người cũ rời đi. Chỉ lưu lại vào <b>lịch sử Break</b> và <b>Excel</b> để đối chiếu.</div>
+                </div>
+                <div class="mb-legend-item">
+                  <span class="mb-dot-color" style="background:#c7d2fe; border:1.5px solid #4f46e5;"></span>
+                  <div><strong>Ô 3 — Break bắt đầu:</strong> Số đồng hồ lúc bàn giao cho người mới. Số này sẽ trở thành <b>Số cũ</b> trên bảng chính &amp; <b>Phiếu thu</b>.</div>
+                </div>
+              </div>
+
+              <div class="mb-visual-formula">
+                <strong>🧮 Cách tính tiền cuối tháng:</strong>
+                <div class="mb-formula-line">Tiêu thụ tháng = Số chốt cuối tháng − Ô 3 (Break bắt đầu)</div>
+                <div class="mb-formula-sub">• Phiếu thu chỉ hiện Số mới &amp; Số cũ (bằng Ô 3), không chèn ghi chú dài.</div>
+                <div class="mb-formula-sub">• Nếu số sau nhỏ hơn số trước do qua vòng tối đa (VD: 9999 → 0002), hệ thống tự bật hộp thoại xác nhận quay vòng.</div>
+              </div>
+
+              <div class="mb-note-box">
+                <strong>💡 Lưu ý:</strong> Mỗi loại ĐH trong tháng chỉ Break <b>1 lần</b> (không dùng chung với <i>Thay đổi đồng hồ</i> trên cùng loại ĐH). Sau khi lưu sẽ tự khóa để tránh sửa nhầm.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP CON BREAK 1: THIẾU DỮ LIỆU THÁNG TRƯỚC (!) -->
+  <div id="mb-missing-prev-modal" class="modal-overlay mb-child-overlay" style="display: none;">
+    <div class="modal-card mb-child-card">
+      <div class="modal-header">
+        <div class="modal-icon mc-icon-indigo">
+          <span class="mc-bang-symbol">!</span>
+        </div>
+        <div class="modal-title-group">
+          <h3>Chưa có dữ liệu chốt tháng trước</h3>
+          <p class="modal-subtitle" id="mb-missing-prev-subtitle">Phòng - chưa có số cuối kỳ trước</p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p id="mb-missing-prev-desc">Tháng trước chưa có chỉ số chốt của phòng này (do tháng trước nghỉ hoặc chưa nhập liệu).</p>
+        <div class="modal-info-box mc-indigo-info-box">
+          <div class="info-row">
+            <span>Phòng / Loại đồng hồ:</span>
+            <strong id="mb-missing-prev-target">-</strong>
+          </div>
+          <div class="info-row">
+            <span>Tháng trước cần kiểm tra:</span>
+            <strong id="mb-missing-prev-month">-</strong>
+          </div>
+        </div>
+        <p class="modal-question">Bạn muốn tự nhập Đầu kỳ gốc tại đây hay quay lại tháng trước để bổ sung?</p>
+      </div>
+      <div class="modal-footer" style="gap: 10px; flex-wrap: wrap;">
+        <button type="button" class="btn btn-secondary mb-btn-ui" onclick="closeMbMissingPrevModal()">Để sau</button>
+        <button type="button" class="btn btn-mc-indigo-outline mb-btn-ui" id="mb-btn-go-prev-month"
+          onclick="confirmGoToPrevMonthFromMb()">⬅ Quay lại tháng trước</button>
+        <button type="button" class="btn btn-primary mb-btn-ui" onclick="confirmManualInitFromMb()">✏️ Tự nhập đầu kỳ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP CON BREAK 2: XÁC NHẬN ĐỒNG HỒ QUAY VÒNG -->
+  <div id="mb-rollover-modal" class="modal-overlay mb-child-overlay" style="display: none;">
+    <div class="modal-card mb-child-card">
+      <div class="modal-header">
+        <div class="modal-icon warning">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div class="modal-title-group">
+          <h3 id="mb-rollover-title">Xác nhận đồng hồ quay vòng khi Break</h3>
+          <p class="modal-subtitle" id="mb-rollover-subtitle">Số nhập vào đang nhỏ hơn số mốc trước đó</p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p id="mb-rollover-desc">Chỉ số mới nhập nhỏ hơn số trước đó. Hệ thống chỉ cho phép lưu nếu đồng hồ vừa chạy hết vòng tối đa.</p>
+        <div class="modal-info-box">
+          <div class="info-row">
+            <span id="mb-rollover-from-label">Số mốc trước:</span>
+            <strong id="mb-rollover-from-val">0</strong>
+          </div>
+          <div class="info-row">
+            <span id="mb-rollover-to-label">Số nhập mới:</span>
+            <strong id="mb-rollover-to-val" class="text-danger">0</strong>
+          </div>
+          <div class="info-row">
+            <span>Mức chênh nếu quay vòng:</span>
+            <strong id="mb-rollover-calc-val" class="text-success">0</strong>
+          </div>
+        </div>
+        <p class="modal-question">Bạn có xác nhận đồng hồ đã <strong>quay vòng</strong> không? Nếu nhập nhầm hãy chọn "Nhập lại".</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary mb-btn-ui" onclick="cancelMbRolloverModal()">Nhập lại</button>
+        <button type="button" class="btn btn-primary mb-btn-ui" onclick="confirmMbRolloverModal()">Xác nhận quay vòng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP CON BREAK 3: XÁC NHẬN MỞ KHÓA CHỈNH SỬA GHI NHẬN BREAK -->
+  <div id="mb-unlock-edit-modal" class="modal-overlay mb-child-overlay" style="display: none;"
+    onclick="if(event.target === this) closeMbUnlockEditModal()">
+    <div class="modal-card mb-child-card">
+      <div class="modal-header">
+        <div class="modal-icon warning">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+          </svg>
+        </div>
+        <div class="modal-title-group">
+          <h3>Mở khóa chỉnh sửa Break chỉ số?</h3>
+          <p class="modal-subtitle" id="mb-unlock-edit-subtitle">Phòng ... • Tháng ...</p>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <p>Ghi nhận Break của phòng này đã được lưu và khóa tự động để bảo toàn Số cũ trên bảng tính.</p>
+
+        <div class="modal-notice-box-warning">
+          <div class="notice-box-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <strong>Lưu ý khi mở khóa:</strong>
+          </div>
+          <p>Dữ liệu chỉ thay đổi khi bạn bấm <strong>💾 Lưu ghi nhận</strong>. Nếu đổi ý, bấm <strong>Hủy thay đổi &amp; Giữ nguyên</strong> để khôi phục bản cũ và khóa lại.</p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary mb-btn-ui" onclick="closeMbUnlockEditModal()">Đóng</button>
+        <button type="button" class="btn btn-edit-month mb-btn-ui" id="mb-confirm-unlock-edit-btn"
+          onclick="confirmUnlockMbRecordForEditing()">
+          🔓 Mở khóa để sửa
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Shared Calc & Format Scripts -->
   <script src="../shared/calc.js"></script>
   <script src="../shared/format.js"></script>
@@ -2956,6 +3228,8 @@
   <script src="month-excel.js"></script>
   <!-- Meter Change Modal UI Module -->
   <script src="meter-change-modal.js"></script>
+  <!-- Meter Break Modal UI Module -->
+  <script src="meter-break-modal.js"></script>
   <!-- Renderer Script -->
   <script src="renderer.js"></script>
 </body>

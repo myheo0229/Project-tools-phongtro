@@ -211,6 +211,49 @@ function formatRoomMeterChangeNotes(roomMcRecord) {
 }
 
 /**
+ * Tạo chuỗi ghi chú Break chỉ số (cho cột Q Excel tháng — style thường, không emoji)
+ * @param {any} roomMbRecord
+ */
+function formatRoomMeterBreakNotes(roomMbRecord) {
+  const buildLine = (typeRec, type) => {
+    if (
+      !typeRec ||
+      typeof typeRec !== 'object' ||
+      typeRec.breakEnd === null ||
+      typeRec.breakEnd === undefined ||
+      typeRec.breakStart === null ||
+      typeRec.breakStart === undefined
+    ) {
+      return '';
+    }
+    const label = type === 'elec' ? 'Điện' : 'Nước';
+    const dateVN = formatMcDateVN(typeRec.date || '');
+    const datePart = dateVN ? ` (${dateVN})` : '';
+    const initStr = (typeRec.initialIndex !== null && typeRec.initialIndex !== undefined && typeRec.initialIndex !== '')
+      ? String(Number(typeRec.initialIndex))
+      : '?';
+    const endRoll = typeRec.confirmedEndRollover ? ' [quay vòng]' : '';
+    const startRoll = typeRec.confirmedStartRollover ? ' [quay vòng]' : '';
+    return `- ${label}${datePart}: Đầu kỳ ${initStr} → Break kết thúc ${Number(typeRec.breakEnd)}${endRoll} | Break bắt đầu ${Number(typeRec.breakStart)}${startRoll}`;
+  };
+
+  const elecLine = buildLine(roomMbRecord && roomMbRecord.elec, 'elec');
+  const waterLine = buildLine(roomMbRecord && roomMbRecord.water, 'water');
+  const lines = [];
+  if (elecLine) lines.push(elecLine);
+  if (waterLine) lines.push(waterLine);
+
+  const hasAny = lines.length > 0;
+  return {
+    hasAny,
+    elecLine,
+    waterLine,
+    lines,
+    excelNote: hasAny ? `Ghi chú Break chỉ số:\n${lines.join('\n')}` : ''
+  };
+}
+
+/**
  * Gộp kết quả calcRoom() (từ calc.js) + ngày tháng + định dạng tiền, ra đúng shape mà
  * renderRoom(data) của src/receipt đang cần.
  */
@@ -306,6 +349,7 @@ if (typeof module !== 'undefined' && module.exports) {
     formatMcDateVN,
     buildMeterChangeDetailForType,
     formatRoomMeterChangeNotes,
+    formatRoomMeterBreakNotes,
     renderZaloTemplateWithMeterChange,
     applyZaloMeterChangeNote
   };
@@ -320,6 +364,7 @@ if (typeof window !== 'undefined') {
   win.formatMcDateVN = formatMcDateVN;
   win.buildMeterChangeDetailForType = buildMeterChangeDetailForType;
   win.formatRoomMeterChangeNotes = formatRoomMeterChangeNotes;
+  win.formatRoomMeterBreakNotes = formatRoomMeterBreakNotes;
   win.renderZaloTemplateWithMeterChange = renderZaloTemplateWithMeterChange;
   win.applyZaloMeterChangeNote = applyZaloMeterChangeNote;
 }

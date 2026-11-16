@@ -348,3 +348,41 @@ Các kênh IPC được phơi ra thông qua `window.api` trong `electron/preload
 - `activity-logs:dismiss-notice`: Đánh dấu đã xem cảnh báo file log cũ bị lỗi định dạng.
 - `activity-logs:preserve-on-restore`: Hợp nhất log hiện tại và log trong bản sao lưu sau khi phục hồi, đồng thời ghi log `RESTORE_BACKUP`.
 - `activity-logs:export-json`: Mở hộp thoại lưu và kết xuất danh sách log ra file `.json`.
+
+---
+
+## 9. Cấu Trúc Lưu Trữ & Kênh IPC Break Chỉ Số (`meter-breaks.json`)
+
+### 9.1. Tệp Dữ Liệu Break Chỉ Số: `<BaseFolder>/data/meter-breaks.json`
+- **Cấu trúc JSON (`normalizeMeterBreaksData`)**:
+  ```json
+  {
+    "version": 1,
+    "months": {
+      "2026-08": {
+        "1A": {
+          "elec": {
+            "date": "2026-08-15",
+            "initialIndex": 100,
+            "isInitialManual": false,
+            "breakEnd": 130,
+            "breakStart": 132,
+            "digits": 5,
+            "confirmedEndRollover": false,
+            "confirmedStartRollover": false,
+            "confirmedTableEndRollover": false,
+            "updatedAt": "2026-08-15T10:00:00.000Z"
+          },
+          "water": null
+        }
+      }
+    }
+  }
+  ```
+
+### 9.2. Danh Sách Kênh IPC Break Chỉ Số
+| Tên Channel | Kiểu | Tham số đầu vào | Kết quả trả về | Mô tả chức năng |
+|---|---|---|---|---|
+| `meter-breaks:load` | `invoke` | Không | `{ ok, data }` | Đọc toàn bộ lịch sử Break chỉ số từ `<BaseFolder>/data/meter-breaks.json` |
+| `meter-breaks:save-room` | `invoke` | `{ monthKey, phong, roomData }` | `{ ok, success, data }` hoặc `{ error }` | Lưu hoặc gỡ bản ghi Break Điện/Nước của 1 phòng trong tháng (ghi atomic `.tmp`) |
+| `meter-breaks:save-month` | `invoke` | `{ monthKey, monthData }` | `{ ok, success, data }` hoặc `{ error }` | Ghi đè lịch sử Break của cả 1 tháng (phục vụ hoàn tác khi hủy sửa tháng đã khóa) |

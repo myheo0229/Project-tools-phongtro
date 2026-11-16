@@ -92,6 +92,16 @@ async function handleExportMonthExcelClick() {
       const mcNotes = typeof formatRoomMeterChangeNotes === 'function'
         ? formatRoomMeterChangeNotes(mcRec)
         : null;
+      const mbRec = typeof getRoomMeterBreakRecord === 'function'
+        ? getRoomMeterBreakRecord(targetMonth, room.phong)
+        : null;
+      const mbNotes = typeof formatRoomMeterBreakNotes === 'function'
+        ? formatRoomMeterBreakNotes(mbRec)
+        : null;
+      const combinedNote = [
+        (mcNotes && mcNotes.hasCompletedAny) ? mcNotes.excelNote : '',
+        (mbNotes && mbNotes.hasAny) ? mbNotes.excelNote : ''
+      ].filter(Boolean).join('\n');
 
       return {
         phong: room.phong,
@@ -109,7 +119,7 @@ async function handleExportMonthExcelClick() {
         haoTaiKwh: res.haoTaiKwh || 0,
         tienHaoTai: res.tienHaoTai || 0,
         tongCong: tCong,
-        ghiChu: (mcNotes && mcNotes.hasCompletedAny) ? mcNotes.excelNote : ''
+        ghiChu: combinedNote
       };
     });
 

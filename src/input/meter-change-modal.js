@@ -477,10 +477,27 @@ function openMeterChangeModal(preselectPhong, preselectType) {
     }
   }
 
-  if (chkElec) chkElec.checked = defaultElec;
-  if (chkWater) chkWater.checked = defaultWater;
-  if (lblElec) lblElec.classList.toggle('checked', defaultElec);
-  if (lblWater) lblWater.classList.toggle('checked', defaultWater);
+  const mbConflict = (mcSelectedRoom && typeof getRoomMeterBreakRecord === 'function')
+    ? getRoomMeterBreakRecord(targetMonth, mcSelectedRoom.phong)
+    : null;
+  if (mbConflict && mbConflict.elec && !mcSelectedRoom?.savedElec) {
+    defaultElec = false;
+    if (!mbConflict.water && preselectType !== 'elec') defaultWater = true;
+  }
+  if (mbConflict && mbConflict.water && !mcSelectedRoom?.savedWater) {
+    defaultWater = false;
+  }
+
+  if (chkElec) {
+    chkElec.disabled = Boolean(mbConflict && mbConflict.elec);
+    chkElec.checked = chkElec.disabled ? false : defaultElec;
+  }
+  if (chkWater) {
+    chkWater.disabled = Boolean(mbConflict && mbConflict.water);
+    chkWater.checked = chkWater.disabled ? false : defaultWater;
+  }
+  if (lblElec && chkElec) lblElec.classList.toggle('checked', chkElec.checked);
+  if (lblWater && chkWater) lblWater.classList.toggle('checked', chkWater.checked);
 
   renderMeterChangeRoomGrid();
   renderMeterChangeHistoryList();
@@ -977,16 +994,33 @@ function selectMcRoomCard(room, roomGrid, card) {
   const chkWater = /** @type {HTMLInputElement | null} */ (document.getElementById('mc-chk-water'));
   const lblElec = document.getElementById('mc-lbl-elec');
   const lblWater = document.getElementById('mc-lbl-water');
+  const mbRec = (typeof getRoomMeterBreakRecord === 'function')
+    ? getRoomMeterBreakRecord(getMcTargetMonthKey(), room.phong)
+    : null;
+  const breakElec = Boolean(mbRec && mbRec.elec);
+  const breakWater = Boolean(mbRec && mbRec.water);
+
+  if (chkElec) chkElec.disabled = breakElec;
+  if (chkWater) chkWater.disabled = breakWater;
 
   if (room.savedElec || room.savedWater) {
-    if (chkElec) chkElec.checked = Boolean(room.savedElec);
-    if (chkWater) chkWater.checked = Boolean(room.savedWater);
+    if (chkElec) chkElec.checked = Boolean(room.savedElec) && !breakElec;
+    if (chkWater) chkWater.checked = Boolean(room.savedWater) && !breakWater;
   } else {
-    if (chkElec) chkElec.checked = true;
-    if (chkWater) chkWater.checked = false;
+    if (chkElec) chkElec.checked = !breakElec;
+    if (chkWater) chkWater.checked = breakElec && !breakWater;
   }
   if (lblElec && chkElec) lblElec.classList.toggle('checked', chkElec.checked);
   if (lblWater && chkWater) lblWater.classList.toggle('checked', chkWater.checked);
+
+  if (breakElec || breakWater) {
+    const names = [];
+    if (breakElec) names.push('Điện');
+    if (breakWater) names.push('Nước');
+    if (typeof showToast === 'function') {
+      showToast(`Phòng ${room.phong} đang dùng Break chỉ số (${names.join(' & ')}) trong tháng này — hãy Hủy Break trước nếu muốn Thay đổi đồng hồ.`, 'info');
+    }
+  }
 
   validateMeterChangeStep1();
 }
@@ -1056,6 +1090,13 @@ function renderMeterChangeRoomGrid() {
 }
 
 function toggleMeterChangeType(labelId, checkbox) {
+  if (checkbox && checkbox.disabled) {
+    checkbox.checked = false;
+    if (typeof showToast === 'function') {
+      showToast('Loại đồng hồ này đang dùng Break chỉ số trong tháng. Hãy Hủy Break trước nếu muốn Thay đồng hồ.', 'warning');
+    }
+    return;
+  }
   const lbl = document.getElementById(labelId);
   if (lbl) lbl.classList.toggle('checked', Boolean(checkbox && checkbox.checked));
   validateMeterChangeStep1();
@@ -1065,7 +1106,7 @@ function validateMeterChangeStep1() {
   const chkElec = /** @type {HTMLInputElement | null} */ (document.getElementById('mc-chk-elec'));
   const chkWater = /** @type {HTMLInputElement | null} */ (document.getElementById('mc-chk-water'));
   const btnNext = /** @type {HTMLButtonElement | null} */ (document.getElementById('mc-btn-next'));
-  const hasType = Boolean((chkElec && chkElec.checked) || (chkWater && chkWater.checked));
+  const hasType = Boolean((chkElec && chkElec.checked && !chkElec.disabled) || (chkWater && chkWater.checked && !chkWater.disabled));
   if (btnNext) {
     btnNext.disabled = !(mcSelectedRoom && hasType);
   }
@@ -2463,6 +2504,16 @@ async function handleSaveMeterChange() {
 
   if (!needElec && !needWater) {
     if (typeof showToast === 'function') showToast('Vui lòng chọn ít nhất 1 loại đồng hồ!', 'warning');
+    return;
+  }
+
+  const mbConflictSave = (typeof getRoomMeterBreakRecord === 'function')
+    ? getRoomMeterBreakRecord(getMcTargetMonthKey(), mcSelectedRoom.phong)
+    : null;
+  if ((needElec && mbConflictSave && mbConflictSave.elec) || (needWater && mbConflictSave && mbConflictSave.water)) {
+    if (typeof showToast === 'function') {
+      showToast('Phòng này đang có Break chỉ số ở loại đồng hồ đã chọn, không thể lưu Thay đổi đồng hồ cùng lúc!', 'warning');
+    }
     return;
   }
 
