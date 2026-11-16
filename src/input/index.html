@@ -279,15 +279,18 @@
                 <h2>THIẾT LẬP GIÁ & THÔNG TIN CHUNG</h2>
                 <p>Cấu hình bảng giá mặc định và thư mục lưu xuất phiếu thu</p>
               </div>
-              <button type="submit" form="settings-form" class="btn btn-primary btn-save-settings-inline"
-                id="btn-save-settings">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                  <polyline points="7 3 7 8 15 8"></polyline>
-                </svg>
-                <span id="btn-save-settings-text">Lưu Cài Đặt</span>
-              </button>
+              <div class="save-btn-reminder-wrap" id="wrap-save-settings">
+                <button type="submit" form="settings-form" class="btn btn-primary btn-save-settings-inline"
+                  id="btn-save-settings">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                  </svg>
+                  <span id="btn-save-settings-text">Lưu Cài Đặt</span>
+                </button>
+                <div class="save-reminder-tooltip" id="tooltip-save-settings" role="status">Đừng quên lưu cài đặt nhé!</div>
+              </div>
             </div>
 
             <!-- Nút Lưu Cài Đặt dạng Floating (Trượt theo bên trái khối khi nút trên đầu khuất tầm nhìn) -->
@@ -299,6 +302,7 @@
                 <polyline points="7 3 7 8 15 8"></polyline>
               </svg>
               <span>Lưu Cài Đặt</span>
+              <span class="save-reminder-tooltip" id="tooltip-save-settings-floating" role="status">Đừng quên lưu cài đặt nhé!</span>
             </button>
 
             <form id="settings-form" onsubmit="saveSettings(event)" class="settings-form">
@@ -723,6 +727,35 @@
                     </span>
                   </div>
                 </div>
+
+                <!-- Tùy chọn 4: Ghi chú thay đổi đồng hồ trong tin nhắn (Mặc định TẮT) -->
+                <div class="zalo-option-row" id="opt-row-mc-note" onclick="toggleZaloSendOption('mcNote')">
+                  <div class="zalo-option-left">
+                    <div class="zalo-option-icon green">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                      </svg>
+                    </div>
+                    <div class="zalo-option-text">
+                      <span class="zalo-option-title">Ghi chú thay đổi đồng hồ</span>
+                      <span class="zalo-option-desc">Tự động kèm ghi chú vào tin nhắn khi phòng đó tháng đó có thay đồng hồ</span>
+                    </div>
+                  </div>
+                  <div class="zalo-option-check">
+                    <input type="checkbox" id="set-zaloIncludeMeterChangeNote" class="zalo-custom-checkbox"
+                      onclick="event.stopPropagation(); onZaloOptionCheckboxChange('mcNote')">
+                    <span class="custom-check-circle">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <!-- KHU VỰC TÙY CHỈNH MẪU TIN NHẮN & PREVIEW (CHỈ HIỆN KHI BẬT TIN NHẮN ZALO) -->
@@ -830,6 +863,19 @@
                           title="Chỉ số nước cũ">{nuocCu}</button>
                         <button type="button" class="var-chip chip-gray" onclick="insertVariableIntoTemplate('nuocMoi')"
                           title="Chỉ số nước mới">{nuocMoi}</button>
+                      </div>
+                    </div>
+
+                    <!-- Nhóm 5: Thay đồng hồ -->
+                    <div class="variable-group">
+                      <span class="group-label">Thay ĐH:</span>
+                      <div class="group-chips">
+                        <button type="button" class="var-chip chip-amber"
+                          onclick="insertVariableIntoTemplate('ghiChuThayDien')"
+                          title="Ghi chú thay đổi đồng hồ Điện (chỉ hiện khi bật công tắc và phòng có thay ĐH Điện)">{ghiChuThayDien}</button>
+                        <button type="button" class="var-chip chip-cyan"
+                          onclick="insertVariableIntoTemplate('ghiChuThayNuoc')"
+                          title="Ghi chú thay đổi đồng hồ Nước (chỉ hiện khi bật công tắc và phòng có thay ĐH Nước)">{ghiChuThayNuoc}</button>
                       </div>
                     </div>
                   </div>
@@ -1066,15 +1112,18 @@
             </div>
 
             <div class="form-actions bank-form-actions">
-              <button type="button" class="btn btn-primary btn-lg" id="btn-save-bank-settings"
-                onclick="saveBankSettings(event)">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                  <polyline points="7 3 7 8 15 8"></polyline>
-                </svg>
-                Lưu Cài Đặt Ngân Hàng
-              </button>
+              <div class="save-btn-reminder-wrap" id="wrap-save-bank-settings">
+                <button type="button" class="btn btn-primary btn-lg" id="btn-save-bank-settings"
+                  onclick="saveBankSettings(event)">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                  </svg>
+                  Lưu Cài Đặt Ngân Hàng
+                </button>
+                <div class="save-reminder-tooltip" id="tooltip-save-bank-settings" role="status">Đừng quên lưu cài đặt nhé!</div>
+              </div>
             </div>
           </div>
         </div>
@@ -2606,6 +2655,14 @@
                   </div>
                 </label>
               </div>
+
+              <div class="mc-history-section" id="mc-history-section">
+                <div class="mc-section-head-row mc-history-head-row">
+                  <span class="mc-section-label">3. Những tháng đã thay đổi đồng hồ (Mới nhất → Cũ nhất):</span>
+                  <span class="mc-history-subhint">Nhấn vào khung phòng để mở xem hoặc chỉnh sửa trong cửa sổ này</span>
+                </div>
+                <div class="mc-history-list" id="mc-history-list"></div>
+              </div>
             </div>
 
             <div class="mc-step1-footer">
@@ -2629,8 +2686,7 @@
               <div class="mc-room-topbar">
                 <div class="mc-room-title-badge" id="mc-selected-room-title">🏠 Phòng 1A</div>
                 <button type="button" class="mc-btn-back" onmousedown="suppressMcBlurBriefly()"
-                  onclick="goToMeterChangeStep(1, -1)">⬅ Quay lại chọn
-                  phòng</button>
+                  onclick="handleMcStep2Back()">⬅ Quay lại</button>
               </div>
 
               <div class="mc-locked-banner" id="mc-locked-banner" style="display: none;">
@@ -2647,8 +2703,10 @@
                 <div class="mc-footer-actions">
                   <button type="button" class="btn btn-danger-outline" id="mc-btn-delete-all" style="display: none;"
                     onmousedown="suppressMcBlurBriefly()" onclick="handleDeleteRoomMeterChanges()">🗑️ Hủy thay đổi ĐH</button>
-                  <button type="button" class="btn btn-secondary" onmousedown="suppressMcBlurBriefly()"
-                    onclick="closeMeterChangeModal()">Đóng</button>
+                  <button type="button" class="btn btn-secondary" id="mc-btn-footer-back" onmousedown="suppressMcBlurBriefly()"
+                    onclick="handleMcStep2Back()">⬅ Quay lại</button>
+                  <button type="button" class="btn btn-edit-month" id="mc-btn-toggle-edit" style="display: none;"
+                    onmousedown="suppressMcBlurBriefly()" onclick="handleToggleEditMcRecordClick()">✏️ Chỉnh Sửa</button>
                   <button type="button" class="btn-mc-primary" id="mc-btn-save" onmousedown="suppressMcBlurBriefly()"
                     onclick="handleSaveMeterChange()">💾
                     Lưu ghi nhận</button>
@@ -2837,6 +2895,51 @@
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
           <span>OK (Áp dụng)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP CON 4: XÁC NHẬN MỞ KHÓA CHỈNH SỬA GHI NHẬN THAY ĐỒNG HỒ -->
+  <div id="mc-unlock-edit-modal" class="modal-overlay mc-child-overlay" style="display: none;"
+    onclick="if(event.target === this) closeMcUnlockEditModal()">
+    <div class="modal-card modal-card-large-text">
+      <div class="modal-header">
+        <div class="modal-icon warning">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+          </svg>
+        </div>
+        <div class="modal-title-group">
+          <h3>Mở khóa chỉnh sửa thay đổi đồng hồ?</h3>
+          <p class="modal-subtitle" id="mc-unlock-edit-subtitle">Phòng ... • Tháng ...</p>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <p>Ghi nhận thay đổi đồng hồ của phòng này đã được lưu và tự động khóa để tránh chỉnh sửa nhầm lẫn.</p>
+
+        <div class="modal-notice-box-warning">
+          <div class="notice-box-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <strong>Lưu ý khi mở khóa:</strong>
+          </div>
+          <p>Bạn có thể sửa chỉ số, thêm/xóa lần thay hoặc gỡ đồng hồ. Dữ liệu chỉ thực sự thay đổi khi bạn bấm <strong>💾 Lưu ghi nhận</strong>. Nếu đổi ý, bấm <strong>Hủy thay đổi &amp; Giữ nguyên</strong> để khôi phục bản cũ và khóa lại.</p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeMcUnlockEditModal()">Đóng</button>
+        <button type="button" class="btn btn-edit-month" id="mc-confirm-unlock-edit-btn"
+          onclick="confirmUnlockMcRecordForEditing()">
+          🔓 Mở khóa để sửa
         </button>
       </div>
     </div>

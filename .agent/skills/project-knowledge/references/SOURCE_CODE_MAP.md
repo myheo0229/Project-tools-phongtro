@@ -107,15 +107,15 @@ Project-tools-phongtro/
   - `startQrLogin(webContents, baseFolder)`: Mở luồng quét QR, stream event qua IPC `zalo:qr-event`.
   - `abortQrLogin()` / `retryQrLogin()`: Hủy an toàn hoặc tạo lại mã QR khi hết hạn.
   - `downloadVietQrImage(url, destPath)`: Tải ảnh mã thanh toán VietQR động về thư mục tạm.
-  - `renderZaloTemplate(template, task, context)`: Phân tích cú pháp chuỗi mẫu tin nhắn tùy biến, thay thế toàn bộ 27 biến số (`{phong}`, `{tongCong}`, `{dienKwh}`, `{bankName}`...) bằng giá trị tính toán thực tế của phòng đang gửi.
+  - `renderZaloTemplate(template, task, context)`: Phân tích cú pháp chuỗi mẫu tin nhắn tùy biến, thay thế toàn bộ biến số (`{phong}`, `{tongCong}`, `{dienKwh}`, `{bankName}`, cùng nhóm biến thay ĐH `{ghiChuThayDongHo}`, `{ghiChuThayDien}`, `{ghiChuThayNuoc}`, `{ngayThayDien}`, `{ngayThayNuoc}`...) và chỉ tự động chèn ghi chú thay đồng hồ khi `appSettings.zaloIncludeMeterChangeNote === true` và phòng/tháng đó có thay đổi ĐH (`hasMeterChange`).
   - `sendReceipts({ monthKey, baseFolder, roomTasks, appSettings }, onProgress)`: Thực hiện gửi hóa đơn tự động tuần tự từng phòng theo tùy chọn:
     1. Tìm UID người nhận qua `api.findUser(cleanPhone)`.
     2. Kiểm tra `appSettings.zaloSendReceiptImage !== false`: Gửi ảnh phiếu thu `Phong-XX.jpg`.
     3. Kiểm tra `appSettings.zaloSendPaymentQr !== false`: Tải và gửi ảnh mã VietQR (nếu có đủ thông tin ngân hàng).
-    4. Kiểm tra `appSettings.zaloSendMessageText !== false`: Gửi tin nhắn văn bản (render theo `appSettings.zaloMessageTemplate` tùy biến nếu có, hoặc gửi mẫu mặc định 100% nguyên bản).
+    4. Kiểm tra `appSettings.zaloSendMessageText !== false`: Gửi tin nhắn văn bản (render theo `appSettings.zaloMessageTemplate` tùy biến nếu có, hoặc gửi mẫu mặc định; chỉ kèm ghi chú thay ĐH nếu `zaloIncludeMeterChangeNote === true` và phòng có thay ĐH).
     5. Áp dụng độ trễ ngẫu nhiên từ 3.0s – 4.5s để chống spam.
     6. Áp dụng timeout 15s cho từng phòng.
-- **Dependencies**: `zca-js`, `sharp`, `electron`, `path`, `fs`, `https`, `http`, `../src/shared/banks-data.js`.
+- **Dependencies**: `zca-js`, `sharp`, `electron`, `path`, `fs`, `https`, `http`, `../src/shared/banks-data.js`, `../src/shared/format.js`.
 - **Tác động nếu sửa**: Cần hết sức cẩn trọng khi sửa các tham số độ trễ gửi tin hoặc luồng quét QR vì có thể dẫn đến việc tài khoản Zalo của chủ trọ bị khóa hoặc bị đánh dấu spam.
 
 #### 📄 `electron/rasterizer.html` (32 dòng)
@@ -135,7 +135,7 @@ Project-tools-phongtro/
 - **Nhiệm vụ**: Tạo và xuất báo cáo bảng dữ liệu chỉ số và tính tiền phòng của tháng ra file Excel chuẩn OpenXML SpreadsheetML (`.xlsx`) độc lập, không phụ thuộc thư viện ngoài.
 - **Các hàm chính**:
   - `exportMonthDataToExcel({ baseFolder, monthKey, roomsData })`: Kiểm tra `BaseFolder`, tạo buffer `.xlsx` và ghi file an toàn nguyên tử (atomic write qua `.tmp` rồi rename).
-  - `buildMonthDataExcelBuffer(roomsData, monthKey)`: Xây dựng bảng 16 cột chuẩn tương ứng giao diện, định dạng số `#,#00` cho tiền tệ và chỉ số, thêm dòng TỔNG CỘNG tích hợp sẵn công thức `=SUM(...)`, định dạng màu header xanh lá `#E2EFDA` và viền đôi cho dòng tổng.
+  - `buildMonthDataExcelBuffer(roomsData, monthKey)`: Xây dựng bảng **17 cột (`A–Q`)** chuẩn tương ứng giao diện (bổ sung cột `Q: Ghi Chú` ngoài cùng bên phải với style thường `s="9"` có `wrapText="1"`, tự giãn chiều cao dòng theo nội dung), định dạng số `#,#00` cho tiền tệ và chỉ số, thêm dòng TỔNG CỘNG tích hợp sẵn công thức `=SUM(...)`, định dạng màu header xanh lá `#E2EFDA` và viền đôi cho dòng tổng.
   - `generateMonthExcelFileName(baseFolder, monthKey, date)`: Sinh tên file theo định dạng `BangDuLieu_MM_YYYY - Output Time YYYY_MM_DD_HH_MM_SS.xlsx` (kèm hậu tố `_01`, `_02` nếu phát sinh xuất trùng giây).
 - **Dependencies**: `fs`, `path`, `zlib` (Node.js built-ins).
 
@@ -190,11 +190,12 @@ Project-tools-phongtro/
 - **Nhiệm vụ**: Phân hệ UI & Backend Logic cho Modal **"Ghi nhận thay đổi đồng hồ Điện / Nước"** 2 bước (`#meter-change-modal`), kết nối `<baseFolder>/data/meter-changes.json` qua IPC, đồng bộ 2 chiều với bảng Phần 1 (`roomsData`), Cài Đặt Chung (`meterDigits`) và Nhật ký hoạt động.
 - **Các hàm chính**:
   - `loadMeterChangesStore()`, `getRoomMeterChangeRecord()`, `getUnfinishedMeterChangesForMonth()`, `persistRoomMeterChange()`: Quản lý kho `meterChangesStore` trong bộ nhớ và ghi/đọc atomic xuống `meter-changes.json`.
-  - `openMeterChangeModal(preselectPhong, preselectType)`, `closeMeterChangeModal()`, `renderMeterChangeRoomGrid()`: Nạp 12 phòng kèm trạng thái tháng trước/trạng thái thay ĐH đang lưu, hỗ trợ mở thẳng Bước 2 khi bấm badge trên bảng chính.
+  - `openMeterChangeModal(preselectPhong, preselectType)`, `closeMeterChangeModal()`, `renderMeterChangeRoomGrid()`, `renderMeterChangeHistoryList()`, `openMeterChangeHistoryCard(monthKey, phong)`: Nạp 12 phòng kèm trạng thái tháng trước/trạng thái thay ĐH đang lưu, hiển thị Mục 3 các tháng đã thay ĐH mới nhất $\rightarrow$ cũ nhất trên cùng thanh cuộn Trang 1, hỗ trợ mở thẳng Bước 2 cho bất kỳ tháng nào từ thẻ lịch sử hoặc badge trên bảng chính.
+  - `prepareMcStep2LockMode()`, `createMcStep2Backup()`, `restoreMcStep2FromBackup()`, `handleToggleEditMcRecordClick()`, `confirmUnlockMcRecordForEditing()`, `handleMcStep2Back()`: Quản lý khóa tự động sau khi lưu (`🔒 Đã khóa dữ liệu` chỉ trong Bước 2, không khóa bảng Phần 1), popup xác nhận `#mc-unlock-edit-modal`, hoàn tác `Hủy thay đổi & Giữ nguyên` về chế độ khóa ngay tại Bước 2 và tự động khôi phục khi quay lại/đóng lúc chưa lưu.
   - `goToMeterChangeStep(step, dir)`, `addMeterChangeRow(type)`, `removeMeterChangeRow(type, idx)`: Chuyển trang trượt ngang (`--dir`), quản lý chuỗi $n$ lần thay.
   - `onMcIntKeyDown()`, `onMeterChangeNumInput()`, `onMcOldEndBlur()`, `onMcMonthEndBlur()`: Ràng buộc chỉ số nguyên không âm `0–9`, tuần tự Ô 1 $\rightarrow$ Ô 2 $\rightarrow$ Ô 3 (mặc định `0`) $\rightarrow$ Ô 4, xử lý quay vòng và bật popup xác nhận số chữ số ĐH mới.
   - `evaluateMeterChangeSection(type)`, `updateMeterChangeLiveSection(type)`: Tính tiêu thụ qua $n$ lần thay (kể cả quay vòng) và cập nhật 3 cấp độ (`⏳ Đang theo dõi` / `📝 Hãy nhập ô 4` / `✅ Đã đủ`).
-  - `handleSaveMeterChange()`, `handleDeleteSectionMeterChange(type)`, `handleDeleteRoomMeterChanges()`, `syncMeterChangeToMainTable()`: Lưu/gỡ thay đổi ĐH, đồng bộ `dienKwhOverride` / `nuocKhoiOverride` ra bảng Phần 1, `history/YYYY-MM.json` và ghi `activity-logs`.
+  - `handleSaveMeterChange()`, `handleDeleteSectionMeterChange(type)`, `handleDeleteRoomMeterChanges()`, `syncMeterChangeToMainTable()`: Lưu (rồi tự khóa ngay tại Bước 2 thay vì đóng Modal), tạm gỡ/gỡ hoàn toàn thay đổi ĐH, đồng bộ `dienKwhOverride` / `nuocKhoiOverride` ra bảng Phần 1 hoặc `history/YYYY-MM.json` của tháng lịch sử tương ứng và ghi `activity-logs`.
 
 #### 📄 `src/input/style.css` (3570 dòng)
 - **Nhiệm vụ**: Toàn bộ hệ thống giao diện trực quan, định nghĩa biến màu sắc, kích thước, hiệu ứng đổ bóng, responsive breakpoints và hiệu ứng chuyển động.
@@ -204,14 +205,14 @@ Project-tools-phongtro/
 
 ### 2.3. Phân Hệ Mẫu Phiếu Thu In Ấn (`src/receipt/`)
 
-#### 📄 `src/receipt/index.html` (121 dòng)
-- **Nhiệm vụ**: Khung HTML mẫu phiếu thu chuẩn in ấn khổ A4 ngang. Chứa các thẻ `<span>` có id tiền tố `f-` (ví dụ: `f-dienThoai`, `f-phong`, `f-tienPhong`, `f-dienMoi`, `f-dienCu`, `f-tongCong`...).
+#### 📄 `src/receipt/index.html`
+- **Nhiệm vụ**: Khung HTML mẫu phiếu thu chuẩn in ấn khổ A4 ngang. Chứa các thẻ `<span>` có id tiền tố `f-` (ví dụ: `f-dienThoai`, `f-phong`, `f-tienPhong`, `f-dienMoi`, `f-dienCu`, `f-tongCong`...), kèm cặp dòng thay thế `#row-dien-mc` / `#row-nuoc-mc` hiển thị chi tiết thay ĐH khi phòng có thay đồng hồ.
 
-#### 📄 `src/receipt/main.js` (68 dòng)
-- **Nhiệm vụ**: Cung cấp hàm `renderRoom(data)` cập nhật dữ liệu vào các thẻ `<span>` tương ứng. Tự động ẩn dòng "Nợ cũ" nếu không có nợ.
+#### 📄 `src/receipt/main.js`
+- **Nhiệm vụ**: Cung cấp hàm `renderRoom(data)` cập nhật dữ liệu vào các thẻ tương ứng, tự động ẩn dòng "Nợ cũ" nếu không có nợ, dùng `applyMeterChangeRow()` ẩn `Số mới / Số cũ` khi có `dienMcLines`/`nuocMcLines`, và chạy `fitReceiptMeterChangeNotes()` tự thu nhỏ `font-size` vùng ghi chú ĐH nếu nhiều dòng để bảo đảm vừa khít 1 trang A4 ngang.
 
-#### 📄 `src/receipt/style.css` (199 dòng) & `reset.css` (50 dòng)
-- **Nhiệm vụ**: Định nghĩa kích thước trang in `@page { size: A4 landscape; margin: 0; }`, font chữ Times New Roman, khoảng cách dòng và các dấu chấm lấp đầy (`.row-fill`).
+#### 📄 `src/receipt/style.css` & `reset.css`
+- **Nhiệm vụ**: Định nghĩa kích thước trang in `@page { size: A4 landscape; margin: 0; }`, font chữ Times New Roman, khoảng cách dòng, các dấu chấm lấp đầy (`.row-fill`), và style riêng `.mc-replace-row` / `.mc-lines-box` với `--mc-note-font-size` dùng khi phòng có thay ĐH.
 
 ---
 
@@ -227,13 +228,15 @@ Project-tools-phongtro/
 - **Hằng số**: `MAX_DONG_HO_DIEN = 10000`.
 - **Nguyên tắc an toàn**: **TUYỆT ĐỐI KHÔNG TỰ Ý SỬA**. Đây là khu vực nhạy cảm nhất của toàn bộ hệ thống.
 
-#### 📄 `src/shared/format.js` (88 dòng)
-- **Nhiệm vụ**: Định dạng dữ liệu hiển thị.
+#### 📄 `src/shared/format.js`
+- **Nhiệm vụ**: Định dạng dữ liệu hiển thị dùng chung (Node & Browser).
 - **Các hàm export**:
   - `formatMoney(number)`: Trả về chuỗi định dạng dấu chấm phân cách hàng nghìn (VD: `2.200.000`).
   - `formatDecimalVN(number)`: Trả về số thập phân 1 chữ số có dấu phẩy (VD: `5,4`).
   - `getNgayThangNam(monthKey)`: Trích xuất `{ ngay: "01", thang, nam }`.
-  - `toReceiptData(calcResult, monthKey, dienThoai)`: Ánh xạ kết quả tính toán thành cấu trúc dữ liệu hiển thị trên phiếu thu.
+  - `formatMcDateVN(isoDateStr)`, `buildMeterChangeDetailForType(typeRecord, type)`, `formatRoomMeterChangeNotes(roomMcRecord)`: Diễn giải chi tiết thay đổi ĐH (`status === 'completed'`) dùng chung cho Phiếu thu, Zalo và Excel.
+  - `renderZaloTemplateWithMeterChange(template, values)` & `applyZaloMeterChangeNote(...)`: Render tin nhắn Zalo với `{ghiChuThayDien}` / `{ghiChuThayNuoc}` và tự dọn dòng trống thừa khi thiếu dữ liệu (không tự động chèn nếu mẫu không đặt biến).
+  - `toReceiptData(calcResult, monthKey, dienThoai, roomMcRecord)`: Ánh xạ kết quả tính toán (và ghi chú thay ĐH nếu có) thành cấu trúc dữ liệu hiển thị trên phiếu thu.
 
 #### 📄 `src/shared/date-picker.js` (573 dòng) & `date-picker.css` (215 dòng)
 - **Nhiệm vụ**: Cung cấp component nhập ngày tháng định dạng mặt nạ `dd/mm/yyyy` (`DateMaskInput`) và Popup lịch chọn ngày (`DatePickerPopup`) độc lập hoàn toàn, hỗ trợ chọn năm từ quá khứ đến tương lai hơn 100 năm.

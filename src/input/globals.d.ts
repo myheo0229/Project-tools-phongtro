@@ -17,7 +17,12 @@ interface Window {
   formatMoney?: (val: any) => string;
   formatDecimalVN?: (val: any) => string;
   getNgayThangNam?: (date?: any) => any;
-  toReceiptData?: (room: any, calcResult: any, settings?: any) => any;
+  toReceiptData?: (room: any, calcResult: any, settings?: any, roomMcRecord?: any) => any;
+  formatMcDateVN?: (isoDateStr: string) => string;
+  buildMeterChangeDetailForType?: (typeRecord: any, type: 'elec' | 'water') => any;
+  formatRoomMeterChangeNotes?: (roomMcRecord: any) => any;
+  renderZaloTemplateWithMeterChange?: (template: string, values: Record<string, any>) => string;
+  applyZaloMeterChangeNote?: (renderedMsg: string, rawTemplate: string, noteBlock: string, shouldInclude: boolean) => string;
   handleExportMonthExcelClick?: () => Promise<any>;
   showMonthExcelExportResultModal?: (result: any, monthKey?: string) => void;
   logExportMonthExcelEvent?: (params: any) => Promise<any>;
@@ -31,6 +36,11 @@ interface Window {
   closeMeterChangeModal?: () => void;
   toggleMeterChangeType?: (labelId: string, checkbox: any) => void;
   goToMeterChangeStep?: (step: number, dir: number) => void;
+  handleMcStep2Back?: () => void;
+  handleToggleEditMcRecordClick?: () => void;
+  closeMcUnlockEditModal?: () => void;
+  confirmUnlockMcRecordForEditing?: () => void;
+  openMeterChangeHistoryCard?: (monthKey: string, phong: string) => Promise<void>;
   addMeterChangeRow?: (type: string) => void;
   removeMeterChangeRow?: (type: string, idx: number) => void;
   onMcIntKeyDown?: (event: any) => boolean;
@@ -90,6 +100,12 @@ interface EventTarget {
   getAttribute?: (qualifiedName: string) => string | null;
 }
 
+declare function toReceiptData(calcResult: any, monthKey?: string, dienThoai?: string, roomMcRecord?: any): any;
+declare function formatMcDateVN(isoDateStr: string): string;
+declare function buildMeterChangeDetailForType(typeRecord: any, type: 'elec' | 'water'): any;
+declare function formatRoomMeterChangeNotes(roomMcRecord: any): any;
+declare function renderZaloTemplateWithMeterChange(template: string, values: Record<string, any>): string;
+declare function applyZaloMeterChangeNote(renderedMsg: string, rawTemplate: string, noteBlock: string, shouldInclude: boolean): string;
 declare function calcRoom(room?: any, settings?: any): any;
 declare function calcAllRooms(rooms: any[], settings?: any): any;
 declare function getMeterLimitByDigits(digits: any, defaultVal?: number): number;
@@ -117,4 +133,7 @@ declare function recordActivityLog(payload: any, immediate?: boolean): Promise<a
 declare function loadMeterChangesStore(): Promise<any>;
 declare function getRoomMeterChangeRecord(monthKey: string, phong: string): any;
 declare function getUnfinishedMeterChangesForMonth(monthKey: string): any[];
+declare function extractHistoryPayload(rawData: any): { isLocked: boolean; settingsSnapshot: any; rooms: any[] };
+declare function readHistoryFile(monthYearStr: string): Promise<any>;
+declare function writeHistoryFile(monthYearStr: string, data: any): Promise<boolean>;
 declare function openMeterChangeModal(preselectPhong?: string, preselectType?: string): void;

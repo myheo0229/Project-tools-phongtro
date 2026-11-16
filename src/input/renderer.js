@@ -18,6 +18,7 @@ let appSettings = {
   bankName: "",
   bankAccount: "",
   bankOwner: "",
+  zaloIncludeMeterChangeNote: false,
   confirmedAlerts: {}
 };
 
@@ -310,6 +311,10 @@ async function populateMonthSelect() {
   } else {
     select.value = maxMonthKey;
   }
+
+  if (typeof initZaloTemplateCustomizerUI === 'function') {
+    initZaloTemplateCustomizerUI();
+  }
 }
 
 /**
@@ -355,6 +360,7 @@ async function loadSettingsFile() {
             zaloSendReceiptImage: data.zaloSendReceiptImage !== undefined ? data.zaloSendReceiptImage : true,
             zaloSendPaymentQr: data.zaloSendPaymentQr !== undefined ? data.zaloSendPaymentQr : true,
             zaloSendMessageText: data.zaloSendMessageText !== undefined ? data.zaloSendMessageText : true,
+            zaloIncludeMeterChangeNote: data.zaloIncludeMeterChangeNote === true,
             zaloMessageTemplate: data.zaloMessageTemplate !== undefined ? data.zaloMessageTemplate : "",
             confirmedAlerts: data.confirmedAlerts || {},
             meterDigits: (data.meterDigits && typeof data.meterDigits === 'object') ? data.meterDigits : (appSettings.meterDigits || {})
@@ -403,6 +409,7 @@ async function saveSettingsFile(isSilent = false) {
     zaloSendReceiptImage: appSettings.zaloSendReceiptImage !== undefined ? appSettings.zaloSendReceiptImage : true,
     zaloSendPaymentQr: appSettings.zaloSendPaymentQr !== undefined ? appSettings.zaloSendPaymentQr : true,
     zaloSendMessageText: appSettings.zaloSendMessageText !== undefined ? appSettings.zaloSendMessageText : true,
+    zaloIncludeMeterChangeNote: appSettings.zaloIncludeMeterChangeNote === true,
     zaloMessageTemplate: appSettings.zaloMessageTemplate || "",
     confirmedAlerts: appSettings.confirmedAlerts || {},
     meterDigits: (appSettings.meterDigits && typeof appSettings.meterDigits === 'object') ? appSettings.meterDigits : {}
@@ -546,6 +553,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadResidentsData();
   await loadRoomsData();
   initResidentsSection();
+  if (typeof initZaloTemplateCustomizerUI === 'function') {
+    initZaloTemplateCustomizerUI();
+  }
 
   // Khởi tạo DatePicker cho Ngày Sinh & Ngày Vào Ở
   initDatePickers();
@@ -671,8 +681,13 @@ function forceSwitchTab(tabName) {
   if (oldSection && (oldSection.id === 'section-data' || oldSection.id === 'section-input') && currentLoadedMonth) {
     autoSaveCurrentMonthData(currentLoadedMonth);
   }
-  if (tabName === 'settings' && typeof refreshBackupSystemState === 'function') {
-    refreshBackupSystemState(true);
+  if (tabName === 'settings') {
+    if (typeof refreshBackupSystemState === 'function') {
+      refreshBackupSystemState(true);
+    }
+    if (typeof updateZaloLivePreview === 'function') {
+      updateZaloLivePreview();
+    }
   }
 
   // Nếu chưa có tab active nào (khi mở ứng dụng lần đầu)
@@ -759,9 +774,20 @@ function forceSwitchTab(tabName) {
 
     if (tabName === 'settings' && typeof updateFloatingSaveSettingsPosition === 'function') {
       updateFloatingSaveSettingsPosition();
+      if (isSettingsDirty && typeof restartSettingsSaveReminderTimer === 'function') {
+        restartSettingsSaveReminderTimer();
+      }
+      if (isBankDirty && typeof restartBankSaveReminderTimer === 'function') {
+        restartBankSaveReminderTimer();
+      }
     } else {
       const floatingBtn = document.getElementById('btn-save-settings-floating');
       if (floatingBtn) floatingBtn.classList.remove('visible');
+      if (typeof clearSettingsSaveReminderTimer === 'function') clearSettingsSaveReminderTimer();
+      if (typeof clearBankSaveReminderTimer === 'function') clearBankSaveReminderTimer();
+    }
+    if (typeof syncSaveSettingsButtonsUI === 'function') {
+      syncSaveSettingsButtonsUI();
     }
 
     // MỞ KHÓA THANH ĐIỀU HƯỚNG HEADER (hoàn thành chuyển cảnh 100%)
@@ -778,8 +804,15 @@ function initSettingsForm() {
   const settingsForm = document.getElementById('settings-form');
   if (settingsForm && !settingsForm.dataset.dirtyBound) {
     settingsForm.dataset.dirtyBound = 'true';
-    settingsForm.addEventListener('input', markSettingsDirty);
-    settingsForm.addEventListener('change', markSettingsDirty);
+    const onFormFieldChanged = (e) => {
+      const target = /** @type {HTMLElement | null} */ (e && e.target);
+      if (target && (target.id === 'preview-room-select' || target.id === 'preview-month-select')) {
+        return;
+      }
+      markSettingsDirty();
+    };
+    settingsForm.addEventListener('input', onFormFieldChanged);
+    settingsForm.addEventListener('change', onFormFieldChanged);
   }
 
   const baseFolderInput = document.getElementById('set-baseFolder');
@@ -849,6 +882,10 @@ function initSettingsForm() {
   if (zaloTextCheck) {
     zaloTextCheck.checked = appSettings.zaloSendMessageText !== false;
   }
+  const zaloMcNoteCheck = document.getElementById('set-zaloIncludeMeterChangeNote');
+  if (zaloMcNoteCheck) {
+    zaloMcNoteCheck.checked = appSettings.zaloIncludeMeterChangeNote === true;
+  }
   const tmplInput = document.getElementById('zalo-template-input');
   if (tmplInput) {
     tmplInput.value = appSettings.zaloMessageTemplate || DEFAULT_ZALO_TEMPLATE;
@@ -901,6 +938,7 @@ function initSettingsForm() {
 
   isSettingsDirty = false;
   isBankDirty = false;
+  syncSaveSettingsButtonsUI();
 
   initFloatingSaveSettingsButton();
 }
@@ -2184,6 +2222,9 @@ async function saveSettings(event) {
   const zaloTextCheck = document.getElementById('set-zaloSendMessageText');
   if (zaloTextCheck) appSettings.zaloSendMessageText = zaloTextCheck.checked;
 
+  const zaloMcNoteCheck = document.getElementById('set-zaloIncludeMeterChangeNote');
+  if (zaloMcNoteCheck) appSettings.zaloIncludeMeterChangeNote = zaloMcNoteCheck.checked;
+
   const tmplInput = document.getElementById('zalo-template-input');
   if (tmplInput) appSettings.zaloMessageTemplate = tmplInput.value;
 
@@ -2202,6 +2243,7 @@ async function saveSettings(event) {
   isSettingsDirty = false;
   isBankDirty = false;
   clearBankFieldsError();
+  syncSaveSettingsButtonsUI();
 
   // Đã lưu thành công
   if (baseFolderInput) baseFolderInput.classList.remove('input-error');
@@ -2996,6 +3038,87 @@ function closeAnomalyModal() {
 let isSettingsDirty = false;
 let isBankDirty = false;
 let pendingActionAfterUnsavedModal = null;
+let settingsSaveReminderTimer = null;
+let bankSaveReminderTimer = null;
+let isSettingsReminderVisible = false;
+let isBankReminderVisible = false;
+const SAVE_REMINDER_IDLE_MS = 5000;
+
+function isSettingsTabActive() {
+  const sec = document.getElementById('section-settings');
+  return Boolean(sec && sec.classList.contains('active'));
+}
+
+function clearSettingsSaveReminderTimer() {
+  if (settingsSaveReminderTimer) {
+    clearTimeout(settingsSaveReminderTimer);
+    settingsSaveReminderTimer = null;
+  }
+}
+
+function clearBankSaveReminderTimer() {
+  if (bankSaveReminderTimer) {
+    clearTimeout(bankSaveReminderTimer);
+    bankSaveReminderTimer = null;
+  }
+}
+
+function restartSettingsSaveReminderTimer() {
+  clearSettingsSaveReminderTimer();
+  isSettingsReminderVisible = false;
+  if (!isSettingsDirty || !isSettingsTabActive()) return;
+  settingsSaveReminderTimer = setTimeout(() => {
+    settingsSaveReminderTimer = null;
+    if (isSettingsDirty && isSettingsTabActive()) {
+      isSettingsReminderVisible = true;
+      syncSaveSettingsButtonsUI();
+    }
+  }, SAVE_REMINDER_IDLE_MS);
+}
+
+function restartBankSaveReminderTimer() {
+  clearBankSaveReminderTimer();
+  isBankReminderVisible = false;
+  if (!isBankDirty || !isSettingsTabActive()) return;
+  bankSaveReminderTimer = setTimeout(() => {
+    bankSaveReminderTimer = null;
+    if (isBankDirty && isSettingsTabActive()) {
+      isBankReminderVisible = true;
+      syncSaveSettingsButtonsUI();
+    }
+  }, SAVE_REMINDER_IDLE_MS);
+}
+
+function syncSaveSettingsButtonsUI() {
+  const inlineBtn = document.getElementById('btn-save-settings');
+  const floatingBtn = document.getElementById('btn-save-settings-floating');
+  const inlineWrap = document.getElementById('wrap-save-settings');
+  const bankBtn = document.getElementById('btn-save-bank-settings');
+  const bankWrap = document.getElementById('wrap-save-bank-settings');
+
+  if (!isSettingsDirty) {
+    clearSettingsSaveReminderTimer();
+    isSettingsReminderVisible = false;
+  }
+  if (!isBankDirty) {
+    clearBankSaveReminderTimer();
+    isBankReminderVisible = false;
+  }
+
+  const onSettingsTab = isSettingsTabActive();
+  const showSettingsReminder = Boolean(isSettingsDirty && isSettingsReminderVisible && onSettingsTab);
+  const showBankReminder = Boolean(isBankDirty && isBankReminderVisible && onSettingsTab);
+
+  if (inlineBtn) inlineBtn.classList.toggle('btn-save-dirty', isSettingsDirty);
+  if (floatingBtn) {
+    floatingBtn.classList.toggle('btn-save-dirty', isSettingsDirty);
+    floatingBtn.classList.toggle('show-reminder', showSettingsReminder);
+  }
+  if (inlineWrap) inlineWrap.classList.toggle('show-reminder', showSettingsReminder);
+
+  if (bankBtn) bankBtn.classList.toggle('btn-save-dirty', isBankDirty);
+  if (bankWrap) bankWrap.classList.toggle('show-reminder', showBankReminder);
+}
 
 const DEFAULT_ZALO_TEMPLATE = `📋 HÓA ĐƠN PHÒNG {phong} - THÁNG {thang}/{nam}
 
@@ -3014,15 +3137,20 @@ const ZALO_VALID_VARIABLES = [
   'bankName', 'bankAccount', 'bankOwner', 'noiDungCK',
   'tienPhong', 'tienRac', 'tienInternet',
   'dienCu', 'dienMoi', 'dienKwh', 'giaDien', 'tienDien', 'haoTaiKwh', 'tienHaoTai',
-  'nuocCu', 'nuocMoi', 'nuocKhoi', 'giaNuoc', 'tienNuoc'
+  'nuocCu', 'nuocMoi', 'nuocKhoi', 'giaNuoc', 'tienNuoc',
+  'ghiChuThayDien', 'ghiChuThayNuoc'
 ];
 
 function markSettingsDirty() {
   isSettingsDirty = true;
+  restartSettingsSaveReminderTimer();
+  syncSaveSettingsButtonsUI();
 }
 
 function markBankDirty() {
   isBankDirty = true;
+  restartBankSaveReminderTimer();
+  syncSaveSettingsButtonsUI();
 }
 
 function highlightUnsavedBankFields() {
@@ -3083,6 +3211,7 @@ async function saveBankSettings(event) {
 
   isBankDirty = false;
   clearBankFieldsError();
+  syncSaveSettingsButtonsUI();
   showToast("Đã lưu thông tin tài khoản ngân hàng thành công!", "success");
   return true;
 }
@@ -3117,6 +3246,7 @@ function discardUnsavedSettingsModal() {
   isSettingsDirty = false;
   isBankDirty = false;
   clearBankFieldsError();
+  syncSaveSettingsButtonsUI();
   if (typeof pendingActionAfterUnsavedModal === 'function') {
     const action = pendingActionAfterUnsavedModal;
     pendingActionAfterUnsavedModal = null;
@@ -5679,6 +5809,13 @@ async function executeSendZaloReceipts() {
     const isFullyEntered = hasDienMoi && hasNuocMoi;
     const calc = isFullyEntered ? calcRoom(room, activeSettings) : null;
 
+    const mcRec = typeof getRoomMeterChangeRecord === 'function'
+      ? getRoomMeterChangeRecord(monthKey, room.phong)
+      : null;
+    const mcNotes = typeof formatRoomMeterChangeNotes === 'function'
+      ? formatRoomMeterChangeNotes(mcRec)
+      : null;
+
     roomTasks.push({
       phong: room.phong,
       tenChuPhong: hostResident ? hostResident.hoTen : (roomInfo?.tenKhach || ''),
@@ -5699,7 +5836,10 @@ async function executeSendZaloReceipts() {
       tienRac: calc ? calc.rac : (activeSettings.tienRac !== undefined ? activeSettings.tienRac : (activeSettings.rac || 0)),
       tienInternet: calc ? calc.internet : (activeSettings.tienInternet !== undefined ? activeSettings.tienInternet : (activeSettings.internet || 0)),
       haoTaiKwh: calc ? calc.haoTaiKwh : 0,
-      tienHaoTai: calc ? calc.tienHaoTai : 0
+      tienHaoTai: calc ? calc.tienHaoTai : 0,
+      hasMeterChange: Boolean(mcNotes && mcNotes.hasCompletedAny),
+      ghiChuThayDien: (mcNotes && mcNotes.hasCompletedAny) ? mcNotes.ghiChuThayDien : '',
+      ghiChuThayNuoc: (mcNotes && mcNotes.hasCompletedAny) ? mcNotes.ghiChuThayNuoc : ''
     });
   }
 
@@ -6525,6 +6665,7 @@ function toggleZaloSendOption(type) {
   if (type === 'receipt') chk = document.getElementById('set-zaloSendReceiptImage');
   else if (type === 'qr') chk = document.getElementById('set-zaloSendPaymentQr');
   else if (type === 'text') chk = document.getElementById('set-zaloSendMessageText');
+  else if (type === 'mcNote') chk = document.getElementById('set-zaloIncludeMeterChangeNote');
 
   if (chk) {
     chk.checked = !chk.checked;
@@ -6548,8 +6689,12 @@ function onZaloOptionChange(markDirty = true) {
   const chkText = document.getElementById('set-zaloSendMessageText');
 
   const customizer = document.getElementById('zalo-template-customizer');
+  const optRowMcNote = document.getElementById('opt-row-mc-note');
   const isTextChecked = chkText ? chkText.checked : true;
 
+  if (optRowMcNote) {
+    optRowMcNote.style.display = isTextChecked ? 'flex' : 'none';
+  }
   if (customizer) {
     customizer.style.display = isTextChecked ? 'block' : 'none';
   }
@@ -6789,6 +6934,16 @@ function updateZaloLivePreview() {
   const tenChuPhong = hostResident ? hostResident.hoTen : (roomInfo?.tenKhach || 'Nguyễn Văn Thuê');
   const sdt = hostResident ? (hostResident.sdtZalo || hostResident.sdtGoi || '0982141407') : '0982141407';
 
+  const chkMcNote = /** @type {HTMLInputElement | null} */ (document.getElementById('set-zaloIncludeMeterChangeNote'));
+  const includeMcNote = chkMcNote ? chkMcNote.checked : (appSettings.zaloIncludeMeterChangeNote === true);
+  const mcRec = typeof getRoomMeterChangeRecord === 'function'
+    ? getRoomMeterChangeRecord(targetMonthKey, targetRoomName)
+    : null;
+  const mcNotes = typeof formatRoomMeterChangeNotes === 'function'
+    ? formatRoomMeterChangeNotes(mcRec)
+    : null;
+  const shouldIncludeMc = Boolean(includeMcNote && mcNotes && mcNotes.hasCompletedAny);
+
   const previewValues = {
     phong: targetRoomName,
     tenChuPhong: tenChuPhong,
@@ -6815,15 +6970,19 @@ function updateZaloLivePreview() {
     bankName: bankShortName || 'MB Bank',
     bankAccount: currentBankAccount || '0982141407',
     bankOwner: currentBankOwner || 'LE CONG BA NHAN',
-    noiDungCK: `${tenChuPhong} phong ${targetRoomName} thang ${mm}/${yyyy}`
+    noiDungCK: `${tenChuPhong} phong ${targetRoomName} thang ${mm}/${yyyy}`,
+    ghiChuThayDien: shouldIncludeMc ? mcNotes.ghiChuThayDien : '',
+    ghiChuThayNuoc: shouldIncludeMc ? mcNotes.ghiChuThayNuoc : ''
   };
 
-  let rendered = template.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) => {
-    if (Object.prototype.hasOwnProperty.call(previewValues, key)) {
-      return previewValues[key];
-    }
-    return match; // Giữ nguyên biến không hợp lệ để người dùng thấy
-  });
+  let rendered = (typeof renderZaloTemplateWithMeterChange === 'function')
+    ? renderZaloTemplateWithMeterChange(template, previewValues)
+    : template.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) => {
+      if (Object.prototype.hasOwnProperty.call(previewValues, key)) {
+        return previewValues[key];
+      }
+      return match;
+    });
 
   bubble.textContent = rendered;
 

@@ -227,13 +227,13 @@ function generateMonthExcelFileName(baseFolder, monthKey, date = new Date()) {
 }
 
 /**
- * Xây dựng nội dung file .xlsx (OpenXML SpreadsheetML) cho Bảng Dữ Liệu Tháng (16 cột)
+ * Xây dựng nội dung file .xlsx (OpenXML SpreadsheetML) cho Bảng Dữ Liệu Tháng (17 cột)
  * @param {Array<any>} roomsData - Danh sách 12 phòng đã tính toán tiền
  * @param {string} monthKey - Tháng tính tiền (VD: 2026-07)
  * @returns {Buffer}
  */
 function buildMonthDataExcelBuffer(roomsData, monthKey = '') {
-  // 16 cột tiêu đề theo đúng thứ tự hiển thị của bảng chính
+  // 17 cột tiêu đề: 16 cột bảng chính + cột Ghi Chú bên phải ngoài cùng
   const headers = [
     'STT',
     'Số Phòng',
@@ -250,12 +250,13 @@ function buildMonthDataExcelBuffer(roomsData, monthKey = '') {
     'Internet',
     'Điện Hao Tải',
     'Tiền Hao Tải',
-    'Tổng Cộng'
+    'Tổng Cộng',
+    'Ghi Chú'
   ];
 
   // Khai báo độ rộng mặc định từng cột
-  const minColWidths = [6, 12, 13, 13, 14, 13, 13, 14, 15, 15, 15, 12, 12, 14, 15, 18];
-  const colLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
+  const minColWidths = [6, 12, 13, 13, 14, 13, 13, 14, 15, 15, 15, 12, 12, 14, 15, 18, 52];
+  const colLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q'];
 
   // Chuẩn bị dữ liệu từng dòng phòng
   const rows = Array.isArray(roomsData) ? roomsData : [];
@@ -328,7 +329,16 @@ function buildMonthDataExcelBuffer(roomsData, monthKey = '') {
     const cTienHaoTai = `<c r="O${rNum}" s="3" t="n"><v>${tienHaoTai}</v></c>`;
     const cTongCong = `<c r="P${rNum}" s="3" t="n"><v>${tongCong}</v></c>`;
 
-    return `<row r="${rNum}" ht="22" customHeight="1">${cStt}${cPhong}${cDienCu}${cDienMoi}${cDienKwh}${cNuocCu}${cNuocMoi}${cNuocKhoi}${cTienDien}${cTienNuoc}${cTienPhong}${cRac}${cInternet}${cHaoTaiKwh}${cTienHaoTai}${cTongCong}</row>`;
+    const ghiChu = r.ghiChu ? String(r.ghiChu).trim() : '';
+    const cGhiChu = `<c r="Q${rNum}" s="9" t="inlineStr"><is><t xml:space="preserve">${escapeXml(ghiChu)}</t></is></c>`;
+
+    let rowHeight = 22;
+    if (ghiChu) {
+      const lineCount = ghiChu.split('\n').reduce((acc, line) => acc + Math.max(1, Math.ceil(line.length / 48)), 0);
+      rowHeight = Math.max(22, lineCount * 16 + 6);
+    }
+
+    return `<row r="${rNum}" ht="${rowHeight}" customHeight="1">${cStt}${cPhong}${cDienCu}${cDienMoi}${cDienKwh}${cNuocCu}${cNuocMoi}${cNuocKhoi}${cTienDien}${cTienNuoc}${cTienPhong}${cRac}${cInternet}${cHaoTaiKwh}${cTienHaoTai}${cTongCong}${cGhiChu}</row>`;
   });
 
   // Dòng TỔNG CỘNG (Footer Row)
@@ -356,7 +366,8 @@ function buildMonthDataExcelBuffer(roomsData, monthKey = '') {
     `<c r="M${sumRowNum}" s="7"><f>SUM(M${startRow}:M${lastDataRow})</f><v>${sumInternet}</v></c>`,
     `<c r="N${sumRowNum}" s="8"><f>SUM(N${startRow}:N${lastDataRow})</f><v>${Math.round(sumHaoTaiKwh * 10) / 10}</v></c>`,
     `<c r="O${sumRowNum}" s="7"><f>SUM(O${startRow}:O${lastDataRow})</f><v>${sumTienHaoTai}</v></c>`,
-    `<c r="P${sumRowNum}" s="7"><f>SUM(P${startRow}:P${lastDataRow})</f><v>${sumTongCong}</v></c>`
+    `<c r="P${sumRowNum}" s="7"><f>SUM(P${startRow}:P${lastDataRow})</f><v>${sumTongCong}</v></c>`,
+    `<c r="Q${sumRowNum}" s="6" t="inlineStr"><is><t></t></is></c>`
   ];
 
   const sumRowXml = `<row r="${sumRowNum}" ht="26" customHeight="1">${sumCells.join('')}</row>`;
@@ -372,7 +383,7 @@ function buildMonthDataExcelBuffer(roomsData, monthKey = '') {
     .join('');
   const headerRowXml = `<row r="1" ht="26" customHeight="1">${headerCellsXml}</row>`;
 
-  const dimensionRef = `A1:P${sumRowNum}`;
+  const dimensionRef = `A1:Q${sumRowNum}`;
 
   const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -471,7 +482,7 @@ function buildMonthDataExcelBuffer(roomsData, monthKey = '') {
   <cellStyleXfs count="1">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
   </cellStyleXfs>
-  <cellXfs count="9">
+  <cellXfs count="10">
     <!-- 0: Default -->
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
     <!-- 1: Header (Bold, Center, Green fill, Border) -->
@@ -505,6 +516,10 @@ function buildMonthDataExcelBuffer(roomsData, monthKey = '') {
     <!-- 8: Summary formula decimal, Bold, Right, #,##0.0, Gray fill, Border double bottom -->
     <xf numFmtId="165" fontId="2" fillId="3" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right" vertical="center"/>
+    </xf>
+    <!-- 9: Left text with wrap, normal font & border (Ghi Chu) -->
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1">
+      <alignment horizontal="left" vertical="center" wrapText="1"/>
     </xf>
   </cellXfs>
   <cellStyles count="1">

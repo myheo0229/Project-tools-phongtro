@@ -86,6 +86,13 @@ async function handleExportMonthExcelClick() {
       const tCong = Number(res.tongCong) || 0;
       grandTotal += tCong;
 
+      const mcRec = typeof getRoomMeterChangeRecord === 'function'
+        ? getRoomMeterChangeRecord(targetMonth, room.phong)
+        : null;
+      const mcNotes = typeof formatRoomMeterChangeNotes === 'function'
+        ? formatRoomMeterChangeNotes(mcRec)
+        : null;
+
       return {
         phong: room.phong,
         dienCu: room.dienCu,
@@ -101,7 +108,8 @@ async function handleExportMonthExcelClick() {
         internet: res.internet || 0,
         haoTaiKwh: res.haoTaiKwh || 0,
         tienHaoTai: res.tienHaoTai || 0,
-        tongCong: tCong
+        tongCong: tCong,
+        ghiChu: (mcNotes && mcNotes.hasCompletedAny) ? mcNotes.excelNote : ''
       };
     });
 

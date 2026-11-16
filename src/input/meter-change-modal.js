@@ -29,6 +29,17 @@ let mcIsTransitioning = false;
 let mcTransitionTimer = null;
 let mcSuppressBlurUntil = 0;
 
+/** Trạng thái tháng mục tiêu & chế độ khóa / chỉnh sửa ở Bước 2 */
+let mcActiveMonthKey = null;
+let mcIsRecordLocked = false;
+let mcIsRecordEditing = false;
+let mcRecordBackupState = null;
+let mcStagedDeletes = { elec: false, water: false };
+
+function cloneMcJson(obj) {
+  return (obj === undefined || obj === null) ? obj : JSON.parse(JSON.stringify(obj));
+}
+
 function suppressMcBlurBriefly(ms = 350) {
   mcSuppressBlurUntil = Date.now() + ms;
 }
@@ -53,14 +64,36 @@ let mcState = {
 };
 
 /**
- * Lấy monthKey đang chọn ở giao diện chính
+ * Lấy monthKey đang thao tác trong Modal (ưu tiên tháng được chọn từ Mục 3, mặc định theo bảng chính)
  */
 function getMcTargetMonthKey() {
+  if (mcActiveMonthKey) {
+    return mcActiveMonthKey;
+  }
   if (typeof currentLoadedMonth !== 'undefined' && currentLoadedMonth) {
     return currentLoadedMonth;
   }
   const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById('month-year-select'));
   return (sel && sel.value) ? sel.value : MC_FIRST_SYSTEM_MONTH;
+}
+
+/**
+ * Kiểm tra tháng `monthKey` có đang bị khóa ở cấp độ Tháng (Lưu & Xuất ngoài Phần 1) hay không
+ * @param {string} monthKey
+ */
+function isMcMonthLocked(monthKey) {
+  const loadedMonth = (typeof currentLoadedMonth !== 'undefined' && currentLoadedMonth)
+    ? currentLoadedMonth
+    : (document.getElementById('month-year-select')?.value || '');
+  if (monthKey && loadedMonth && monthKey !== loadedMonth) {
+    const entry = (typeof monthLocksState !== 'undefined' && monthLocksState && monthLocksState.months)
+      ? monthLocksState.months[monthKey]
+      : null;
+    return Boolean(entry && entry.isLocked);
+  }
+  const locked = (typeof isCurrentMonthLocked !== 'undefined') && Boolean(isCurrentMonthLocked);
+  const editing = (typeof isCurrentMonthEditing !== 'undefined') && Boolean(isCurrentMonthEditing);
+  return locked && !editing;
 }
 
 /**
@@ -82,12 +115,11 @@ function formatMcMonthLabel(monthKey) {
 }
 
 /**
- * Kiểm tra tháng hiện tại có đang bị khóa (chỉ xem) hay không
+ * Kiểm tra Bước 2 có đang ở chế độ chỉ xem (tháng khóa HOẶC bản ghi phòng đang khóa chưa bấm Chỉnh Sửa)
  */
 function isMcReadonlyMode() {
-  const locked = (typeof isCurrentMonthLocked !== 'undefined') && Boolean(isCurrentMonthLocked);
-  const editing = (typeof isCurrentMonthEditing !== 'undefined') && Boolean(isCurrentMonthEditing);
-  return locked && !editing;
+  if (isMcMonthLocked(getMcTargetMonthKey())) return true;
+  return Boolean(mcIsRecordLocked && !mcIsRecordEditing);
 }
 
 /**
@@ -388,6 +420,11 @@ function openMeterChangeModal(preselectPhong, preselectType) {
   const modal = document.getElementById('meter-change-modal');
   if (!modal) return;
 
+  mcActiveMonthKey = null;
+  mcIsRecordLocked = false;
+  mcIsRecordEditing = false;
+  mcRecordBackupState = null;
+  mcStagedDeletes = { elec: false, water: false };
   mcRoomsSnapshot = getRoomsForMeterChangeModal();
   mcSelectedRoom = null;
   mcCurrentStep = 1;
@@ -446,6 +483,7 @@ function openMeterChangeModal(preselectPhong, preselectType) {
   if (lblWater) lblWater.classList.toggle('checked', defaultWater);
 
   renderMeterChangeRoomGrid();
+  renderMeterChangeHistoryList();
   validateMeterChangeStep1();
 
   modal.style.display = 'flex';
@@ -459,15 +497,132 @@ function openMeterChangeModal(preselectPhong, preselectType) {
     }
     if (stepBadge) stepBadge.textContent = 'Bước 2/2: Nhập chỉ số thay đổi';
     initMeterChangeStep2State();
+    prepareMcStep2LockMode();
     renderMeterChangeStep2Form();
     maybePromptMissingPrevOnEnter();
   }
 }
 
 /**
- * Đóng Modal Thay đổi đồng hồ và các popup con
+ * Dựng backup tạm thời của Bước 2 để hỗ trợ hoàn tác khi bấm Hủy thay đổi & Giữ nguyên hoặc đóng/quay lại chưa lưu
+ */
+function createMcStep2Backup() {
+  const chkElec = /** @type {HTMLInputElement | null} */ (document.getElementById('mc-chk-elec'));
+  const chkWater = /** @type {HTMLInputElement | null} */ (document.getElementById('mc-chk-water'));
+  const hasMeterDigits = typeof appSettings !== 'undefined' && appSettings && appSettings.meterDigits;
+  mcRecordBackupState = {
+    monthKey: getMcTargetMonthKey(),
+    phong: mcSelectedRoom ? mcSelectedRoom.phong : '',
+    selectedRoom: cloneMcJson(mcSelectedRoom),
+    mcState: cloneMcJson(mcState),
+    chkElec: Boolean(chkElec && chkElec.checked),
+    chkWater: Boolean(chkWater && chkWater.checked),
+    stagedDeletes: cloneMcJson(mcStagedDeletes),
+    meterDigits: hasMeterDigits ? cloneMcJson(appSettings.meterDigits) : null
+  };
+}
+
+/**
+ * Khôi phục bản sao lưu trước khi Chỉnh Sửa và quay về chế độ Đã khóa ngay tại Bước 2
+ * @param {boolean} [silent]
+ */
+function restoreMcStep2FromBackup(silent = false) {
+  if (!mcRecordBackupState) return;
+  const bak = mcRecordBackupState;
+  mcSelectedRoom = cloneMcJson(bak.selectedRoom);
+  mcState = cloneMcJson(bak.mcState);
+  mcStagedDeletes = cloneMcJson(bak.stagedDeletes || { elec: false, water: false });
+
+  const chkElec = /** @type {HTMLInputElement | null} */ (document.getElementById('mc-chk-elec'));
+  const chkWater = /** @type {HTMLInputElement | null} */ (document.getElementById('mc-chk-water'));
+  const lblElec = document.getElementById('mc-lbl-elec');
+  const lblWater = document.getElementById('mc-lbl-water');
+  if (chkElec) chkElec.checked = Boolean(bak.chkElec);
+  if (chkWater) chkWater.checked = Boolean(bak.chkWater);
+  if (lblElec) lblElec.classList.toggle('checked', Boolean(bak.chkElec));
+  if (lblWater) lblWater.classList.toggle('checked', Boolean(bak.chkWater));
+
+  if (bak.meterDigits && typeof appSettings !== 'undefined' && appSettings) {
+    const changed = JSON.stringify(appSettings.meterDigits) !== JSON.stringify(bak.meterDigits);
+    if (changed) {
+      appSettings.meterDigits = cloneMcJson(bak.meterDigits);
+      if (typeof saveSettingsFile === 'function') {
+        saveSettingsFile(true);
+      }
+      if (typeof renderMeterDigitsSettingsList === 'function') {
+        renderMeterDigitsSettingsList();
+      }
+    }
+  }
+
+  mcIsRecordLocked = Boolean(mcSelectedRoom && (mcSelectedRoom.savedElec || mcSelectedRoom.savedWater));
+  mcIsRecordEditing = false;
+  mcRecordBackupState = null;
+
+  if (!silent) {
+    renderMeterChangeStep2Form();
+  }
+}
+
+/**
+ * Xác định trạng thái khóa Bước 2 khi vừa bước vào (phòng đã có bản lưu -> khóa; nếu tích thêm loại ĐH chưa lưu -> mở edit kèm backup)
+ */
+function prepareMcStep2LockMode() {
+  mcStagedDeletes = { elec: false, water: false };
+  if (!mcSelectedRoom) {
+    mcIsRecordLocked = false;
+    mcIsRecordEditing = false;
+    mcRecordBackupState = null;
+    return;
+  }
+
+  const hasSavedAny = Boolean(mcSelectedRoom.savedElec || mcSelectedRoom.savedWater);
+  if (!hasSavedAny) {
+    mcIsRecordLocked = false;
+    mcIsRecordEditing = false;
+    mcRecordBackupState = null;
+    return;
+  }
+
+  const monthLocked = isMcMonthLocked(getMcTargetMonthKey());
+  const chkElec = /** @type {HTMLInputElement | null} */ (document.getElementById('mc-chk-elec'));
+  const chkWater = /** @type {HTMLInputElement | null} */ (document.getElementById('mc-chk-water'));
+  const wantElec = Boolean(chkElec && chkElec.checked);
+  const wantWater = Boolean(chkWater && chkWater.checked);
+  const addedNewUnsavedType = !monthLocked && ((wantElec && !mcSelectedRoom.savedElec) || (wantWater && !mcSelectedRoom.savedWater));
+
+  if (addedNewUnsavedType) {
+    const hasMeterDigits = typeof appSettings !== 'undefined' && appSettings && appSettings.meterDigits;
+    mcRecordBackupState = {
+      monthKey: getMcTargetMonthKey(),
+      phong: mcSelectedRoom.phong,
+      selectedRoom: cloneMcJson(mcSelectedRoom),
+      mcState: {
+        elec: buildInitialTypeState(mcSelectedRoom, 'elec'),
+        water: buildInitialTypeState(mcSelectedRoom, 'water')
+      },
+      chkElec: Boolean(mcSelectedRoom.savedElec),
+      chkWater: Boolean(mcSelectedRoom.savedWater),
+      stagedDeletes: { elec: false, water: false },
+      meterDigits: hasMeterDigits ? cloneMcJson(appSettings.meterDigits) : null
+    };
+    mcIsRecordLocked = true;
+    mcIsRecordEditing = true;
+  } else {
+    mcIsRecordLocked = true;
+    mcIsRecordEditing = false;
+    mcRecordBackupState = null;
+  }
+}
+
+/**
+ * Đóng Modal Thay đổi đồng hồ và các popup con (tự động hủy bản sửa chưa lưu nếu có)
  */
 function closeMeterChangeModal() {
+  if (mcIsRecordEditing && mcRecordBackupState) {
+    restoreMcStep2FromBackup(true);
+  }
+  closeMcUnlockEditModal();
   closeMcMissingPrevModal();
   closeMcRolloverModalUI();
   closeMcDigitsModalUI();
@@ -479,7 +634,331 @@ function closeMeterChangeModal() {
     mcTransitionTimer = null;
   }
   mcIsTransitioning = false;
+  mcActiveMonthKey = null;
+  mcIsRecordLocked = false;
+  mcIsRecordEditing = false;
+  mcRecordBackupState = null;
+  mcStagedDeletes = { elec: false, water: false };
   modal.style.display = 'none';
+}
+
+/**
+ * Quay lại Trang 1 từ Trang 2 (nếu đang mở sửa chưa lưu thì tự động khôi phục bản cũ)
+ */
+function handleMcStep2Back() {
+  if (mcIsTransitioning) return;
+  if (mcIsRecordEditing && mcRecordBackupState) {
+    restoreMcStep2FromBackup(true);
+    if (typeof showToast === 'function') {
+      showToast('Đã hủy thay đổi chưa lưu và giữ nguyên dữ liệu cũ.', 'info');
+    }
+  }
+  closeMcUnlockEditModal();
+
+  const loadedMonth = (typeof currentLoadedMonth !== 'undefined' && currentLoadedMonth)
+    ? currentLoadedMonth
+    : (document.getElementById('month-year-select')?.value || MC_FIRST_SYSTEM_MONTH);
+  const wasOtherMonth = Boolean(mcActiveMonthKey && mcActiveMonthKey !== loadedMonth);
+  const prevSelectedPhong = (!wasOtherMonth && mcSelectedRoom) ? mcSelectedRoom.phong : '';
+
+  mcActiveMonthKey = null;
+  mcIsRecordLocked = false;
+  mcIsRecordEditing = false;
+  mcRecordBackupState = null;
+  mcStagedDeletes = { elec: false, water: false };
+  mcRoomsSnapshot = getRoomsForMeterChangeModal();
+  mcSelectedRoom = prevSelectedPhong
+    ? (mcRoomsSnapshot.find(r => r.phong === prevSelectedPhong) || null)
+    : null;
+
+  renderMeterChangeRoomGrid();
+  renderMeterChangeHistoryList();
+  validateMeterChangeStep1();
+  goToMeterChangeStep(1, -1);
+}
+
+/**
+ * Bấm nút Chỉnh Sửa / Hủy thay đổi & Giữ nguyên ở Bước 2
+ */
+function handleToggleEditMcRecordClick() {
+  if (!mcSelectedRoom || isMcMonthLocked(getMcTargetMonthKey())) return;
+  if (!mcIsRecordEditing) {
+    openMcUnlockEditModal();
+    return;
+  }
+  restoreMcStep2FromBackup(false);
+  if (typeof showToast === 'function') {
+    showToast('Đã hủy thay đổi và khôi phục dữ liệu đã khóa.', 'info');
+  }
+}
+
+function openMcUnlockEditModal() {
+  if (!mcSelectedRoom) return;
+  const subEl = document.getElementById('mc-unlock-edit-subtitle');
+  if (subEl) {
+    subEl.textContent = `Phòng ${mcSelectedRoom.phong} • ${formatMcMonthLabel(getMcTargetMonthKey())}`;
+  }
+  const modal = document.getElementById('mc-unlock-edit-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeMcUnlockEditModal() {
+  const modal = document.getElementById('mc-unlock-edit-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function confirmUnlockMcRecordForEditing() {
+  closeMcUnlockEditModal();
+  if (!mcSelectedRoom || isMcMonthLocked(getMcTargetMonthKey())) return;
+  createMcStep2Backup();
+  mcIsRecordLocked = true;
+  mcIsRecordEditing = true;
+  renderMeterChangeStep2Form();
+}
+
+/**
+ * Dựng danh sách dòng (*) ngắn gọn cho 1 phòng trong Mục 3 (Mới nhất -> Cũ nhất)
+ * @param {any} rec
+ * @returns {string[]}
+ */
+function buildHistoryCardLinesForRoom(rec) {
+  if (!rec || typeof rec !== 'object') return [];
+  /** @type {string[]} */
+  const lines = [];
+
+  /**
+   * @param {any} typeRec
+   * @param {'elec' | 'water'} type
+   */
+  const appendTypeLines = (typeRec, type) => {
+    if (!typeRec || typeof typeRec !== 'object') return;
+    if (typeof buildMeterChangeDetailForType === 'function') {
+      const detail = buildMeterChangeDetailForType(typeRec, type);
+      if (detail && detail.completed && Array.isArray(detail.receiptLines) && detail.receiptLines.length > 0) {
+        detail.receiptLines.forEach(line => lines.push(line));
+        return;
+      }
+    }
+
+    const typeLabel = type === 'elec' ? 'Điện' : 'Nước';
+    const changes = Array.isArray(typeRec.changes) ? typeRec.changes : [];
+    const statusLabel = typeRec.status === 'need_box4' ? 'Hãy nhập ô 4' : 'Đang theo dõi';
+
+    if (changes.length === 0) {
+      lines.push(`(*) Thay ĐH ${typeLabel}: ${statusLabel}`);
+      return;
+    }
+
+    changes.forEach((chg, idx) => {
+      const dateVN = (typeof formatMcDateVN === 'function' && chg.date) ? formatMcDateVN(chg.date) : (chg.date || '');
+      const datePart = dateVN ? ` (${dateVN})` : '';
+      const startVal = idx === 0
+        ? (typeRec.initialIndex !== null && typeRec.initialIndex !== undefined ? formatMcNumber(Number(typeRec.initialIndex)) : '?')
+        : formatMcNumber(Number(changes[idx - 1]?.newStart ?? 0));
+      const oldEndStr = (chg.oldEnd !== null && chg.oldEnd !== undefined) ? formatMcNumber(Number(chg.oldEnd)) : '?';
+      const newStartStr = (chg.newStart !== null && chg.newStart !== undefined) ? formatMcNumber(Number(chg.newStart)) : '0';
+      const multiPrefix = changes.length > 1 ? ` lần ${idx + 1}` : '';
+
+      if (idx < changes.length - 1) {
+        lines.push(`(*) Thay ĐH ${typeLabel}${multiPrefix}${datePart}: ĐH cũ ${startVal}→${oldEndStr}`);
+      } else {
+        lines.push(`(*) Thay ĐH ${typeLabel}${multiPrefix}${datePart}: ĐH cũ ${startVal}→${oldEndStr} + ĐH mới ${newStartStr}→... (${statusLabel})`);
+      }
+    });
+  };
+
+  appendTypeLines(rec.elec, 'elec');
+  appendTypeLines(rec.water, 'water');
+  return lines;
+}
+
+/**
+ * Trả về nhãn trạng thái tổng hợp của 1 phòng
+ * @param {any} rec
+ */
+function getMcRoomCombinedStatusInfo(rec) {
+  const statuses = [rec?.elec?.status, rec?.water?.status].filter(Boolean);
+  if (statuses.includes('tracking')) {
+    return { cls: 'tracking', text: '⏳ Đang theo dõi' };
+  }
+  if (statuses.includes('need_box4')) {
+    return { cls: 'need-box4', text: '📝 Hãy nhập ô 4' };
+  }
+  return { cls: 'completed', text: '✅ Đã đủ' };
+}
+
+/**
+ * Render Mục 3: Danh sách các tháng đã thay đồng hồ (Mới nhất -> Cũ nhất), dùng chung thanh cuộn Trang 1
+ */
+function renderMeterChangeHistoryList() {
+  const container = document.getElementById('mc-history-list');
+  if (!container) return;
+
+  const storeMonths = (window.meterChangesStore && window.meterChangesStore.months) || {};
+  const monthKeys = Object.keys(storeMonths)
+    .filter(mk => {
+      const mEntry = storeMonths[mk];
+      if (!mEntry || typeof mEntry !== 'object') return false;
+      return Object.keys(mEntry).some(p => mEntry[p] && (mEntry[p].elec || mEntry[p].water));
+    })
+    .sort((a, b) => b.localeCompare(a));
+
+  if (monthKeys.length === 0) {
+    container.innerHTML = '<div class="mc-history-empty">Chưa có tháng nào ghi nhận thay đổi đồng hồ Điện / Nước.</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  monthKeys.forEach(mk => {
+    const mEntry = storeMonths[mk];
+    const roomNames = [
+      ...MC_FALLBACK_ROOMS.filter(p => mEntry[p] && (mEntry[p].elec || mEntry[p].water)),
+      ...Object.keys(mEntry).filter(p => !MC_FALLBACK_ROOMS.includes(p) && mEntry[p] && (mEntry[p].elec || mEntry[p].water))
+    ];
+    if (roomNames.length === 0) return;
+
+    const monthLocked = isMcMonthLocked(mk);
+    const groupEl = document.createElement('div');
+    groupEl.className = 'mc-history-month-group';
+    groupEl.setAttribute('data-month-key', mk);
+
+    const headerEl = document.createElement('div');
+    headerEl.className = 'mc-history-month-header';
+    headerEl.innerHTML = `
+      <span class="mc-history-month-tag">📅 ${escapeMcAttr(formatMcMonthLabel(mk))}</span>
+      <span class="mc-history-lock-chip ${monthLocked ? '' : 'editable'}">${monthLocked ? '🔒 Đã xuất (Chỉ xem)' : '🟢 Chưa khóa / Đang sửa'}</span>
+    `;
+    groupEl.appendChild(headerEl);
+
+    const cardsWrap = document.createElement('div');
+    cardsWrap.className = 'mc-history-month-cards';
+
+    roomNames.forEach(phong => {
+      const rec = mEntry[phong];
+      const statusInfo = getMcRoomCombinedStatusInfo(rec);
+      const noteLines = buildHistoryCardLinesForRoom(rec);
+
+      const cardBtn = document.createElement('button');
+      cardBtn.type = 'button';
+      cardBtn.className = 'mc-history-card';
+      cardBtn.setAttribute('data-month-key', mk);
+      cardBtn.setAttribute('data-phong', phong);
+      cardBtn.onclick = () => openMeterChangeHistoryCard(mk, phong);
+
+      const linesHtml = noteLines
+        .map(line => `<div class="mc-history-line">${escapeMcAttr(line)}</div>`)
+        .join('');
+
+      cardBtn.innerHTML = `
+        <div class="mc-history-card-head">
+          <div class="mc-history-room-left">
+            <span class="mc-history-room-name">🏠 Phòng ${escapeMcAttr(phong)}</span>
+            <span class="mc-history-status-pill ${statusInfo.cls}">${statusInfo.text}</span>
+          </div>
+          <span class="mc-history-open-cue">Xem chi tiết ➔</span>
+        </div>
+        <div class="mc-history-lines">${linesHtml}</div>
+      `;
+      cardsWrap.appendChild(cardBtn);
+    });
+
+    groupEl.appendChild(cardsWrap);
+    container.appendChild(groupEl);
+  });
+}
+
+/**
+ * Dựng snapshot cho 1 phòng thuộc 1 tháng bất kỳ (hỗ trợ mở thẻ lịch sử của tháng khác)
+ * @param {string} monthKey
+ * @param {string} phong
+ */
+async function buildRoomSnapshotForMonth(monthKey, phong) {
+  const curMonth = (typeof currentLoadedMonth !== 'undefined' && currentLoadedMonth)
+    ? currentLoadedMonth
+    : (document.getElementById('month-year-select')?.value || MC_FIRST_SYSTEM_MONTH);
+
+  if (monthKey === curMonth) {
+    mcRoomsSnapshot = getRoomsForMeterChangeModal();
+    return mcRoomsSnapshot.find(r => r.phong === phong) || null;
+  }
+
+  const savedRec = getRoomMeterChangeRecord(monthKey, phong);
+  const prevMonth = getMcPrevMonthKey(monthKey);
+  let currRoom = null;
+  let prevRoom = null;
+
+  if (typeof readHistoryFile === 'function' && typeof extractHistoryPayload === 'function') {
+    try {
+      const [rawCurr, rawPrev] = await Promise.all([
+        readHistoryFile(monthKey),
+        prevMonth ? readHistoryFile(prevMonth) : Promise.resolve(null)
+      ]);
+      const currPayload = extractHistoryPayload(rawCurr);
+      const prevPayload = extractHistoryPayload(rawPrev);
+      currRoom = (currPayload.rooms || []).find(r => r.phong === phong) || null;
+      prevRoom = (prevPayload.rooms || []).find(r => r.phong === phong) || null;
+    } catch (err) {
+      console.warn('Không thể đọc dữ liệu tháng lịch sử khi mở thẻ:', err);
+    }
+  }
+
+  const hasPrevElec = Boolean(prevRoom && prevRoom.dienMoi !== '' && prevRoom.dienMoi !== null && prevRoom.dienMoi !== undefined);
+  const hasPrevWater = Boolean(prevRoom && prevRoom.nuocMoi !== '' && prevRoom.nuocMoi !== null && prevRoom.nuocMoi !== undefined);
+
+  const prevElec = hasPrevElec
+    ? Number(prevRoom.dienMoi)
+    : (currRoom && currRoom.dienCu !== '' && currRoom.dienCu !== null && currRoom.dienCu !== undefined && !isNaN(Number(currRoom.dienCu))
+      ? Number(currRoom.dienCu)
+      : (savedRec?.elec?.initialIndex ?? null));
+
+  const prevWater = hasPrevWater
+    ? Number(prevRoom.nuocMoi)
+    : (currRoom && currRoom.nuocCu !== '' && currRoom.nuocCu !== null && currRoom.nuocCu !== undefined && !isNaN(Number(currRoom.nuocCu))
+      ? Number(currRoom.nuocCu)
+      : (savedRec?.water?.initialIndex ?? null));
+
+  return {
+    phong,
+    hasPrevElec,
+    hasPrevWater,
+    prevElec: prevElec !== null && !isNaN(Number(prevElec)) ? Number(prevElec) : null,
+    prevWater: prevWater !== null && !isNaN(Number(prevWater)) ? Number(prevWater) : null,
+    savedElec: savedRec && savedRec.elec ? savedRec.elec : null,
+    savedWater: savedRec && savedRec.water ? savedRec.water : null
+  };
+}
+
+/**
+ * Mở chi tiết 1 phòng từ Mục 3 trực tiếp sang Bước 2 trên cùng Modal
+ * @param {string} monthKey
+ * @param {string} phong
+ */
+async function openMeterChangeHistoryCard(monthKey, phong) {
+  if (mcIsTransitioning) return;
+  const targetRoom = await buildRoomSnapshotForMonth(monthKey, phong);
+  if (!targetRoom) return;
+
+  mcActiveMonthKey = monthKey;
+  mcSelectedRoom = targetRoom;
+
+  const chkElec = /** @type {HTMLInputElement | null} */ (document.getElementById('mc-chk-elec'));
+  const chkWater = /** @type {HTMLInputElement | null} */ (document.getElementById('mc-chk-water'));
+  const lblElec = document.getElementById('mc-lbl-elec');
+  const lblWater = document.getElementById('mc-lbl-water');
+  if (chkElec) chkElec.checked = Boolean(targetRoom.savedElec);
+  if (chkWater) chkWater.checked = Boolean(targetRoom.savedWater);
+  if (lblElec && chkElec) lblElec.classList.toggle('checked', chkElec.checked);
+  if (lblWater && chkWater) lblWater.classList.toggle('checked', chkWater.checked);
+
+  if (mcCurrentStep === 2) {
+    mcMissingPrevAutoPrompted = { elec: false, water: false };
+    initMeterChangeStep2State();
+    prepareMcStep2LockMode();
+    renderMeterChangeStep2Form();
+    return;
+  }
+
+  goToMeterChangeStep(2, 1);
 }
 
 /**
@@ -624,9 +1103,11 @@ function goToMeterChangeStep(step, dir) {
   if (step === 2) {
     mcMissingPrevAutoPrompted = { elec: false, water: false };
     initMeterChangeStep2State();
+    prepareMcStep2LockMode();
     renderMeterChangeStep2Form();
     if (stepBadge) stepBadge.textContent = 'Bước 2/2: Nhập chỉ số thay đổi';
   } else {
+    renderMeterChangeHistoryList();
     if (stepBadge) stepBadge.textContent = 'Bước 1/2: Chọn phòng & loại';
   }
 
@@ -740,21 +1221,48 @@ function removeMeterChangeRow(type, idx) {
 function renderMeterChangeStep2Form() {
   if (!mcSelectedRoom) return;
 
+  const monthKey = getMcTargetMonthKey();
+  const monthLocked = isMcMonthLocked(monthKey);
   const readonlyMode = isMcReadonlyMode();
+  const hasSavedAny = Boolean(mcSelectedRoom.savedElec || mcSelectedRoom.savedWater);
+
   const lockedBanner = document.getElementById('mc-locked-banner');
   if (lockedBanner) {
-    lockedBanner.style.display = readonlyMode ? 'flex' : 'none';
+    lockedBanner.style.display = monthLocked ? 'flex' : 'none';
   }
 
   const saveBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('mc-btn-save'));
   if (saveBtn) {
     saveBtn.disabled = readonlyMode;
+    saveBtn.style.display = readonlyMode ? 'none' : 'inline-flex';
+  }
+
+  const toggleEditBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('mc-btn-toggle-edit'));
+  if (toggleEditBtn) {
+    if (!monthLocked && hasSavedAny) {
+      toggleEditBtn.style.display = 'inline-flex';
+      if (mcIsRecordEditing) {
+        toggleEditBtn.className = 'btn btn-edit-month cancel-mode';
+        toggleEditBtn.innerHTML = '✖️ Hủy thay đổi &amp; Giữ nguyên';
+      } else {
+        toggleEditBtn.className = 'btn btn-edit-month';
+        toggleEditBtn.innerHTML = '✏️ Chỉnh Sửa';
+      }
+    } else {
+      toggleEditBtn.style.display = 'none';
+    }
   }
 
   const delAllBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('mc-btn-delete-all'));
-  const hasSavedAny = Boolean(mcSelectedRoom.savedElec || mcSelectedRoom.savedWater);
   if (delAllBtn) {
     delAllBtn.style.display = (hasSavedAny && !readonlyMode) ? 'inline-flex' : 'none';
+  }
+
+  const footerNote = document.getElementById('mc-left-footer-note');
+  if (footerNote) {
+    footerNote.textContent = (readonlyMode && !monthLocked && hasSavedAny)
+      ? "Dữ liệu đã lưu & khóa. Bấm '✏️ Chỉnh Sửa' nếu muốn thay đổi chỉ số."
+      : 'Chỉ nhập số nguyên không âm (0–9) lần lượt từ Ô 2 ➔ Ô 3 ➔ Ô 4.';
   }
 
   const titleEl = document.getElementById('mc-selected-room-title');
@@ -780,9 +1288,23 @@ function renderMeterChangeStep2Form() {
       badgeCls = 'no-data';
     }
 
+    const lockBadgeHtml = (!monthLocked && hasSavedAny)
+      ? (mcIsRecordEditing
+        ? '<span class="month-lock-badge editing">✏️ Đang mở chỉnh sửa</span>'
+        : '<span class="month-lock-badge locked">🔒 Đã khóa dữ liệu</span>')
+      : (monthLocked ? '<span class="month-lock-badge locked">🔒 Tháng đã khóa</span>' : '');
+    const loadedMonth = (typeof currentLoadedMonth !== 'undefined' && currentLoadedMonth)
+      ? currentLoadedMonth
+      : (document.getElementById('month-year-select')?.value || '');
+    const monthChipHtml = (monthKey && loadedMonth && monthKey !== loadedMonth)
+      ? `<span class="mc-room-month-chip">📅 ${escapeMcAttr(formatMcMonthLabel(monthKey))}</span>`
+      : '';
+
     titleEl.innerHTML = `
       <span>🏠 Phòng ${escapeMcAttr(mcSelectedRoom.phong)}</span>
+      ${monthChipHtml}
       <span class="mc-room-prev-badge ${badgeCls}">${badgeText}</span>
+      ${lockBadgeHtml}
     `;
   }
 
@@ -1816,7 +2338,11 @@ function serializeMcSectionForSave(type) {
  */
 async function syncMeterChangeToMainTable(monthKey, phong) {
   const rec = getRoomMeterChangeRecord(monthKey, phong);
-  if (typeof roomsData !== 'undefined' && Array.isArray(roomsData)) {
+  const loadedMonth = (typeof currentLoadedMonth !== 'undefined' && currentLoadedMonth)
+    ? currentLoadedMonth
+    : (document.getElementById('month-year-select')?.value || '');
+
+  if (monthKey === loadedMonth && typeof roomsData !== 'undefined' && Array.isArray(roomsData)) {
     const idx = roomsData.findIndex(r => r.phong === phong);
     if (idx !== -1) {
       const room = roomsData[idx];
@@ -1865,21 +2391,66 @@ async function syncMeterChangeToMainTable(monthKey, phong) {
         room.nuocMoi = '';
       }
     }
+
+    if (typeof autoSaveCurrentMonthData === 'function') {
+      await autoSaveCurrentMonthData(monthKey);
+    }
+    if (typeof renderInitialTable === 'function') {
+      renderInitialTable();
+    }
+    if (typeof populateMonthSelect === 'function') {
+      await populateMonthSelect();
+    }
+    return;
   }
 
-  if (typeof autoSaveCurrentMonthData === 'function') {
-    await autoSaveCurrentMonthData(monthKey);
-  }
-  if (typeof renderInitialTable === 'function') {
-    renderInitialTable();
-  }
-  if (typeof populateMonthSelect === 'function') {
-    await populateMonthSelect();
+  // Nếu sửa/gỡ bản ghi của tháng khác (mở từ Mục 3) -> ghi trực tiếp vào history/YYYY-MM.json của tháng đó, không đụng roomsData hiện tại
+  if (typeof readHistoryFile === 'function' && typeof writeHistoryFile === 'function' && typeof extractHistoryPayload === 'function') {
+    const raw = await readHistoryFile(monthKey);
+    const payload = extractHistoryPayload(raw);
+    const existingList = Array.isArray(payload.rooms) ? payload.rooms : [];
+    const baseList = MC_FALLBACK_ROOMS.map(pName => {
+      const found = existingList.find(item => item.phong === pName);
+      return found ? { ...found } : { phong: pName, dienCu: '', dienMoi: '', nuocCu: '', nuocMoi: '', confirmedRollover: false, confirmedAnomaly: false };
+    });
+    const targetRoom = baseList.find(item => item.phong === phong);
+    if (targetRoom) {
+      if (rec && rec.elec) {
+        if (rec.elec.initialIndex !== null && rec.elec.initialIndex !== undefined && (targetRoom.dienCu === '' || targetRoom.dienCu === null || targetRoom.dienCu === undefined || rec.elec.isInitialManual)) {
+          targetRoom.dienCu = rec.elec.initialIndex;
+        }
+        targetRoom.dienMoi = (rec.elec.status === 'completed' && rec.elec.monthEndIndex !== null && rec.elec.monthEndIndex !== undefined)
+          ? rec.elec.monthEndIndex
+          : '';
+        targetRoom.confirmedRollover = false;
+      } else {
+        targetRoom.dienMoi = '';
+      }
+
+      if (rec && rec.water) {
+        if (rec.water.initialIndex !== null && rec.water.initialIndex !== undefined && (targetRoom.nuocCu === '' || targetRoom.nuocCu === null || targetRoom.nuocCu === undefined || rec.water.isInitialManual)) {
+          targetRoom.nuocCu = rec.water.initialIndex;
+        }
+        targetRoom.nuocMoi = (rec.water.status === 'completed' && rec.water.monthEndIndex !== null && rec.water.monthEndIndex !== undefined)
+          ? rec.water.monthEndIndex
+          : '';
+      } else {
+        targetRoom.nuocMoi = '';
+      }
+
+      const dataToSave = (raw && !Array.isArray(raw) && typeof raw === 'object' && Array.isArray(raw.rooms))
+        ? { ...raw, rooms: baseList }
+        : baseList;
+      await writeHistoryFile(monthKey, dataToSave);
+    }
+    if (typeof populateMonthSelect === 'function') {
+      await populateMonthSelect();
+    }
   }
 }
 
 /**
- * Lưu ghi nhận thay đổi đồng hồ từ Bước 2
+ * Lưu ghi nhận thay đổi đồng hồ từ Bước 2 (Sau khi lưu tự động khóa ngay tại Bước 2, không đóng Modal)
  */
 async function handleSaveMeterChange() {
   mcSuppressBlurUntil = 0;
@@ -1918,10 +2489,11 @@ async function handleSaveMeterChange() {
   const monthKey = getMcTargetMonthKey();
   const phong = mcSelectedRoom.phong;
   const existingRec = getRoomMeterChangeRecord(monthKey, phong) || {};
+  const isAfterEdit = Boolean(mcIsRecordEditing);
 
   const nextRoomData = {
-    elec: needElec ? serializeMcSectionForSave('elec') : (existingRec.elec || null),
-    water: needWater ? serializeMcSectionForSave('water') : (existingRec.water || null)
+    elec: needElec ? serializeMcSectionForSave('elec') : (mcStagedDeletes.elec ? null : (existingRec.elec || null)),
+    water: needWater ? serializeMcSectionForSave('water') : (mcStagedDeletes.water ? null : (existingRec.water || null))
   };
 
   try {
@@ -1938,25 +2510,63 @@ async function handleSaveMeterChange() {
       const parts = [];
       if (needElec && nextRoomData.elec) {
         parts.push(`Điện: ${statusTextMap[nextRoomData.elec.status] || nextRoomData.elec.status} (${formatMcNumber(nextRoomData.elec.totalConsumption)} kWh)`);
+      } else if (mcStagedDeletes.elec) {
+        parts.push('Đã gỡ đồng hồ Điện');
       }
       if (needWater && nextRoomData.water) {
         parts.push(`Nước: ${statusTextMap[nextRoomData.water.status] || nextRoomData.water.status} (${formatMcNumber(nextRoomData.water.totalConsumption)} m³)`);
+      } else if (mcStagedDeletes.water) {
+        parts.push('Đã gỡ đồng hồ Nước');
       }
       await recordActivityLog({
         category: 'MONTH_DATA',
         action: 'METER_CHANGE_SAVE',
         level: 'info',
         result: 'success',
-        title: `Ghi nhận thay đổi đồng hồ phòng ${phong}`,
+        title: isAfterEdit
+          ? `Cập nhật thay đổi đồng hồ phòng ${phong}`
+          : `Ghi nhận thay đổi đồng hồ phòng ${phong}`,
         summary: `${formatMcMonthLabel(monthKey)} · Phòng ${phong}: ${parts.join(' | ')}`,
         metadata: { target: `${monthKey}_${phong}`, monthKey, phong }
       });
     }
 
-    if (typeof showToast === 'function') {
-      showToast(`Đã lưu thay đổi đồng hồ phòng ${phong} (${formatMcMonthLabel(monthKey)})!`, 'success');
+    // Chuyển ngay Bước 2 sang trạng thái Đã khóa dữ liệu (không đóng Modal, không khóa Phần 1)
+    const freshRec = getRoomMeterChangeRecord(monthKey, phong);
+    mcSelectedRoom = {
+      ...mcSelectedRoom,
+      savedElec: freshRec && freshRec.elec ? freshRec.elec : null,
+      savedWater: freshRec && freshRec.water ? freshRec.water : null
+    };
+
+    const loadedMonth = (typeof currentLoadedMonth !== 'undefined' && currentLoadedMonth) ? currentLoadedMonth : monthKey;
+    if (monthKey === loadedMonth) {
+      const snapIdx = mcRoomsSnapshot.findIndex(r => r.phong === phong);
+      if (snapIdx !== -1) {
+        mcRoomsSnapshot[snapIdx] = cloneMcJson(mcSelectedRoom);
+      }
     }
-    closeMeterChangeModal();
+
+    const lblElec = document.getElementById('mc-lbl-elec');
+    const lblWater = document.getElementById('mc-lbl-water');
+    if (chkElec) chkElec.checked = Boolean(mcSelectedRoom.savedElec);
+    if (chkWater) chkWater.checked = Boolean(mcSelectedRoom.savedWater);
+    if (lblElec && chkElec) lblElec.classList.toggle('checked', chkElec.checked);
+    if (lblWater && chkWater) lblWater.classList.toggle('checked', chkWater.checked);
+
+    mcStagedDeletes = { elec: false, water: false };
+    mcIsRecordLocked = true;
+    mcIsRecordEditing = false;
+    mcRecordBackupState = null;
+
+    initMeterChangeStep2State();
+    renderMeterChangeStep2Form();
+    renderMeterChangeRoomGrid();
+    renderMeterChangeHistoryList();
+
+    if (typeof showToast === 'function') {
+      showToast(`Đã lưu & khóa ghi nhận đồng hồ phòng ${phong} (${formatMcMonthLabel(monthKey)})!`, 'success');
+    }
   } catch (err) {
     console.error('Lỗi khi lưu meter-changes:', err);
     if (typeof showToast === 'function') {
@@ -1967,10 +2577,36 @@ async function handleSaveMeterChange() {
 
 /**
  * Gỡ bỏ ghi nhận thay đồng hồ của riêng Điện hoặc Nước trong phòng đang mở
+ * (Nếu đang ở chế độ Chỉnh Sửa và vẫn còn loại ĐH kia -> tạm gỡ trên UI để hoàn tác được cho tới khi bấm Lưu)
  * @param {'elec' | 'water'} type
  */
 async function handleDeleteSectionMeterChange(type) {
   if (!mcSelectedRoom || isMcReadonlyMode()) return;
+
+  const chkElec = /** @type {HTMLInputElement | null} */ (document.getElementById('mc-chk-elec'));
+  const chkWater = /** @type {HTMLInputElement | null} */ (document.getElementById('mc-chk-water'));
+  const otherType = type === 'elec' ? 'water' : 'elec';
+  const otherChecked = otherType === 'elec'
+    ? Boolean(chkElec && chkElec.checked)
+    : Boolean(chkWater && chkWater.checked);
+
+  if (mcIsRecordEditing && otherChecked) {
+    mcStagedDeletes[type] = true;
+    const targetChk = type === 'elec' ? chkElec : chkWater;
+    const targetLbl = document.getElementById(type === 'elec' ? 'mc-lbl-elec' : 'mc-lbl-water');
+    if (targetChk) targetChk.checked = false;
+    if (targetLbl) targetLbl.classList.remove('checked');
+
+    mcSelectedRoom[type === 'elec' ? 'savedElec' : 'savedWater'] = null;
+    mcState[type] = buildInitialTypeState(mcSelectedRoom, type);
+    const typeLabel = type === 'elec' ? 'Điện' : 'Nước';
+    renderMeterChangeStep2Form();
+    if (typeof showToast === 'function') {
+      showToast(`Đã tạm gỡ đồng hồ ${typeLabel}. Bấm '💾 Lưu ghi nhận' để xác nhận hoặc 'Hủy thay đổi & Giữ nguyên' để hoàn tác.`, 'info');
+    }
+    return;
+  }
+
   const monthKey = getMcTargetMonthKey();
   const phong = mcSelectedRoom.phong;
   const existingRec = getRoomMeterChangeRecord(monthKey, phong);
@@ -1987,6 +2623,10 @@ async function handleDeleteSectionMeterChange(type) {
 
     mcSelectedRoom[type === 'elec' ? 'savedElec' : 'savedWater'] = null;
     mcState[type] = buildInitialTypeState(mcSelectedRoom, type);
+    const targetChk = type === 'elec' ? chkElec : chkWater;
+    const targetLbl = document.getElementById(type === 'elec' ? 'mc-lbl-elec' : 'mc-lbl-water');
+    if (targetChk) targetChk.checked = false;
+    if (targetLbl) targetLbl.classList.remove('checked');
 
     const typeLabel = type === 'elec' ? 'Điện' : 'Nước';
     if (typeof recordActivityLog === 'function') {
@@ -2005,9 +2645,18 @@ async function handleDeleteSectionMeterChange(type) {
       showToast(`Đã gỡ thay đổi đồng hồ ${typeLabel} phòng ${phong}. Ô ngoài bảng đã mở khóa nhập bình thường.`, 'info');
     }
 
+    renderMeterChangeRoomGrid();
+    renderMeterChangeHistoryList();
+
     if (!nextRoomData.elec && !nextRoomData.water) {
+      mcRecordBackupState = null;
+      mcIsRecordEditing = false;
+      mcIsRecordLocked = false;
       closeMeterChangeModal();
     } else {
+      mcIsRecordLocked = true;
+      mcIsRecordEditing = false;
+      mcRecordBackupState = null;
       renderMeterChangeStep2Form();
     }
   } catch (err) {
@@ -2043,6 +2692,12 @@ async function handleDeleteRoomMeterChanges() {
     if (typeof showToast === 'function') {
       showToast(`Đã hủy toàn bộ thay đổi đồng hồ phòng ${phong}.`, 'info');
     }
+    mcRecordBackupState = null;
+    mcIsRecordEditing = false;
+    mcIsRecordLocked = false;
+    mcStagedDeletes = { elec: false, water: false };
+    renderMeterChangeRoomGrid();
+    renderMeterChangeHistoryList();
     closeMeterChangeModal();
   } catch (err) {
     console.error('Lỗi khi hủy thay đổi đồng hồ phòng:', err);
@@ -2054,6 +2709,11 @@ async function handleDeleteRoomMeterChanges() {
 if (typeof document !== 'undefined') {
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
+    const unlockEditModal = document.getElementById('mc-unlock-edit-modal');
+    if (unlockEditModal && unlockEditModal.style.display === 'flex') {
+      closeMcUnlockEditModal();
+      return;
+    }
     const digitsModal = document.getElementById('mc-digits-modal');
     if (digitsModal && digitsModal.style.display === 'flex') {
       confirmMcNewMeterDigits();
@@ -2092,6 +2752,11 @@ if (typeof window !== 'undefined') {
   window.closeMeterChangeModal = closeMeterChangeModal;
   window.toggleMeterChangeType = toggleMeterChangeType;
   window.goToMeterChangeStep = goToMeterChangeStep;
+  window.handleMcStep2Back = handleMcStep2Back;
+  window.handleToggleEditMcRecordClick = handleToggleEditMcRecordClick;
+  window.closeMcUnlockEditModal = closeMcUnlockEditModal;
+  window.confirmUnlockMcRecordForEditing = confirmUnlockMcRecordForEditing;
+  window.openMeterChangeHistoryCard = openMeterChangeHistoryCard;
   window.addMeterChangeRow = addMeterChangeRow;
   window.removeMeterChangeRow = removeMeterChangeRow;
   window.onMcIntKeyDown = onMcIntKeyDown;

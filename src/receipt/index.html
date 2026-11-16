@@ -30,7 +30,7 @@
                 <span class="row-value"><span id="f-tienPhong"></span><sup>đ</sup></span>
             </div>
 
-            <div class="row">
+            <div class="row" id="row-dien-normal">
                 <span>Tiền điện:&nbsp; Số mới:</span>
                 <span class="row-fill short"></span>
                 <span class="meter-value" id="f-dienMoi"></span>
@@ -39,6 +39,10 @@
                 <span class="row-fill short"></span>
                 <span class="meter-value" id="f-dienCu"></span>
                 <span class="row-fill"></span>
+            </div>
+            <div class="row mc-replace-row" id="row-dien-mc" style="display: none">
+                <span class="mc-row-prefix">Tiền điện:&nbsp;</span>
+                <div class="mc-lines-box" id="f-dien-mc-lines"></div>
             </div>
             <div class="row calc-row">
                 <span class="row-fill long"></span>
@@ -51,7 +55,7 @@
                 <span class="row-value"><span id="f-tienDien"></span><sup>đ</sup></span>
             </div>
 
-            <div class="row">
+            <div class="row" id="row-nuoc-normal">
                 <span>Tiền nước:&nbsp; Số mới:</span>
                 <span class="row-fill short"></span>
                 <span class="meter-value" id="f-nuocMoi"></span>
@@ -60,6 +64,10 @@
                 <span class="row-fill short"></span>
                 <span class="meter-value" id="f-nuocCu"></span>
                 <span class="row-fill"></span>
+            </div>
+            <div class="row mc-replace-row" id="row-nuoc-mc" style="display: none">
+                <span class="mc-row-prefix">Tiền nước:&nbsp;</span>
+                <div class="mc-lines-box" id="f-nuoc-mc-lines"></div>
             </div>
             <div class="row calc-row">
                 <span class="row-fill long"></span>

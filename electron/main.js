@@ -1080,10 +1080,25 @@ ipcMain.handle('export:receipts', async (event, monthKey, roomDataList) => {
     const mergedPdf = await PDFDocument.create();
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+    // Đọc lịch sử thay đổi đồng hồ của tháng để ghi chú trực tiếp vào phiếu thu nếu phòng có thay ĐH
+    let monthMcMap = {};
+    try {
+      const mcPath = getMeterChangesFilePath(pointer);
+      if (fs.existsSync(mcPath)) {
+        const mcParsed = normalizeMeterChangesData(JSON.parse(fs.readFileSync(mcPath, 'utf8')));
+        if (mcParsed && mcParsed.months && mcParsed.months[monthKey]) {
+          monthMcMap = mcParsed.months[monthKey];
+        }
+      }
+    } catch (mcErr) {
+      console.warn('Không thể đọc meter-changes.json khi xuất phiếu thu:', mcErr);
+    }
+
     // 6. Lặp qua 12 phòng
     for (let i = 0; i < roomDataList.length; i++) {
       const rawRoomData = roomDataList[i];
-      const formattedData = toReceiptData(rawRoomData, monthKey, dienThoai);
+      const roomMcRecord = monthMcMap[rawRoomData.phong] || null;
+      const formattedData = toReceiptData(rawRoomData, monthKey, dienThoai, roomMcRecord);
 
       // Gọi renderRoom(formattedData) trong receiptWin
       const script = `if (typeof renderRoom === 'function') { renderRoom(${JSON.stringify(formattedData)}); }`;

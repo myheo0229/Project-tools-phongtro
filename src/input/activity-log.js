@@ -209,13 +209,14 @@ async function logSettingsAndPricingChanges(oldSettings, newSettings) {
 
   // Tùy chọn thành phần gửi Zalo
   const zaloToggleFields = [
-    { key: 'zaloSendReceiptImage', label: 'Gửi hình phiếu thu Zalo' },
-    { key: 'zaloSendPaymentQr', label: 'Gửi mã QR thanh toán Zalo' },
-    { key: 'zaloSendMessageText', label: 'Gửi tin nhắn văn bản Zalo' }
+    { key: 'zaloSendReceiptImage', label: 'Gửi hình phiếu thu Zalo', defaultVal: true },
+    { key: 'zaloSendPaymentQr', label: 'Gửi mã QR thanh toán Zalo', defaultVal: true },
+    { key: 'zaloSendMessageText', label: 'Gửi tin nhắn văn bản Zalo', defaultVal: true },
+    { key: 'zaloIncludeMeterChangeNote', label: 'Gửi kèm ghi chú thay đồng hồ Zalo', defaultVal: false }
   ];
   zaloToggleFields.forEach(item => {
-    const oldBool = oldSettings[item.key] !== false;
-    const newBool = newSettings[item.key] !== false;
+    const oldBool = item.defaultVal ? (oldSettings[item.key] !== false) : (oldSettings[item.key] === true);
+    const newBool = item.defaultVal ? (newSettings[item.key] !== false) : (newSettings[item.key] === true);
     if (oldBool !== newBool) {
       const stateText = newBool ? 'Bật' : 'Tắt';
       changes.push({

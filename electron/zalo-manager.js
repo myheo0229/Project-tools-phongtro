@@ -4,6 +4,7 @@ const fs = require('fs');
 /** @type {any} */
 const sharp = require('sharp');
 const { Zalo, LoginQRCallbackEventType, ZaloApiLoginQRAborted, ZaloApiLoginQRDeclined } = require('zca-js');
+const { renderZaloTemplateWithMeterChange } = require('../src/shared/format.js');
 
 /**
  * Hàm lấy metadata ảnh (chiều cao, chiều rộng, kích thước) bằng sharp cho zca-js v2+
@@ -521,12 +522,18 @@ class ZaloManager {
         // Bước 3: Gửi tin nhắn text (nếu bật tùy chọn)
         if (shouldSendMessage) {
           const formatMoney = (val) => new Intl.NumberFormat('vi-VN').format(Number(val) || 0);
+          const shouldIncludeMcNote = Boolean(
+            appSettings &&
+            appSettings.zaloIncludeMeterChangeNote === true &&
+            task.hasMeterChange &&
+            (task.ghiChuThayDien || task.ghiChuThayNuoc)
+          );
           let textMsg = "";
 
-          // Sử dụng mẫu tùy chỉnh nếu có, ngược lại giữ nguyên 100% mẫu mặc định hiện tại
+          // Sử dụng mẫu tùy chỉnh nếu có, ngược lại giữ nguyên 100% mẫu mặc định hiện tại (không tự chèn ghi chú ĐH)
           if (appSettings && appSettings.zaloMessageTemplate && appSettings.zaloMessageTemplate.trim() !== "") {
             textMsg = this.renderZaloTemplate(appSettings.zaloMessageTemplate, task, {
-              mm, yyyy, bankShortName, bankAccount, bankOwner
+              mm, yyyy, bankShortName, bankAccount, bankOwner, shouldIncludeMcNote
             });
           } else {
             // MẪU MẶC ĐỊNH HIỆN TẠI (GIỮ NGUYÊN 100% CÂU CHỮ VÀ CẤU TRÚC)
@@ -615,6 +622,11 @@ class ZaloManager {
     const bankAccount = context.bankAccount || '';
     const bankOwner = context.bankOwner || '';
     const noiDungCK = `${task.tenChuPhong || ''} phong ${task.phong || ''} thang ${mm}/${yyyy}`.trim();
+    const shouldIncludeMcNote = Boolean(
+      context.shouldIncludeMcNote &&
+      task.hasMeterChange &&
+      (task.ghiChuThayDien || task.ghiChuThayNuoc)
+    );
 
     const values = {
       phong: task.phong || '',
@@ -642,15 +654,12 @@ class ZaloManager {
       bankName: bankShortName,
       bankAccount: bankAccount,
       bankOwner: bankOwner,
-      noiDungCK: noiDungCK
+      noiDungCK: noiDungCK,
+      ghiChuThayDien: shouldIncludeMcNote ? (task.ghiChuThayDien || '') : '',
+      ghiChuThayNuoc: shouldIncludeMcNote ? (task.ghiChuThayNuoc || '') : ''
     };
 
-    return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) => {
-      if (Object.prototype.hasOwnProperty.call(values, key)) {
-        return values[key];
-      }
-      return match;
-    });
+    return renderZaloTemplateWithMeterChange(template, values);
   }
 
 }

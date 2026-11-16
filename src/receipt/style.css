@@ -197,3 +197,40 @@ sup {
 .unit {
     top: -8px;
 }
+
+/* ============================================================
+   DÒNG THAY THẾ SỐ MỚI / SỐ CŨ KHI PHÒNG CÓ THAY ĐỒNG HỒ
+   (Chỉ áp dụng khi phòng có thay ĐH, không ảnh hưởng phòng thường)
+   ============================================================ */
+.content .row.mc-replace-row {
+    align-items: flex-start;
+    white-space: normal;
+}
+
+.mc-row-prefix {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.mc-lines-box {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: var(--mc-note-font-size, var(--font-size-body));
+    line-height: 1.25;
+    font-weight: normal;
+    padding-top: 0;
+    margin-left: 6px;
+}
+
+.mc-line-item {
+    white-space: nowrap;
+}
+
+.page.mc-allow-wrap .mc-line-item {
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}

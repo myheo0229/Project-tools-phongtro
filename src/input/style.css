@@ -16,6 +16,9 @@
   --accent-warning-light: #fef3c7;
   --accent-danger: #dc2626;
 
+  /* Độ mạnh hiệu ứng lắc cho nút Lưu Cài Đặt khi có thay đổi chưa lưu (0 = tắt lắc, 1 = lắc nhẹ mặc định, tăng/giảm số này tùy ý) */
+  --save-btn-shake-intensity: 1;
+
   --bg-app: #f1f5f9;
   --bg-card: #ffffff;
   --bg-table-header: #f8fafc;
@@ -7869,4 +7872,331 @@ input[type="number"] {
   opacity: 0.48;
   cursor: not-allowed;
   filter: grayscale(0.35);
+}
+
+/* ============================================================================
+   MỤC 3 TRONG MODAL THAY ĐỔI ĐỒNG HỒ: LỊCH SỬ CÁC THÁNG ĐÃ THAY + TRẠNG THÁI KHÓA
+   (Dùng chung thanh cuộn duy nhất của .mc-step1-wrapper, KHÔNG tạo cuộn lồng)
+   ============================================================================ */
+.mc-history-section {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mc-history-head-row {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mc-history-subhint {
+  font-size: 12.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.mc-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mc-history-month-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mc-history-month-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mc-history-month-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.mc-history-lock-chip {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.mc-history-lock-chip.editable {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.mc-history-month-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mc-history-card {
+  width: 100%;
+  text-align: left;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 11px 14px;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+  font-family: inherit;
+}
+
+.mc-history-card:hover {
+  border-color: #3b82f6;
+  background: #f8fafc;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+}
+
+.mc-history-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mc-history-room-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mc-history-room-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.mc-history-status-pill {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.mc-history-status-pill.tracking {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.mc-history-status-pill.need-box4 {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.mc-history-open-cue {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.mc-history-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.mc-history-line {
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.mc-history-empty {
+  padding: 15px 16px;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 10px;
+  text-align: center;
+  color: #64748b;
+  font-size: 13.5px;
+  background: #f8fafc;
+}
+
+.mc-room-title-badge {
+  flex-wrap: wrap;
+}
+
+.mc-room-month-chip {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.mc-left-footer .btn-edit-month {
+  padding: 8px 15px;
+  font-size: 13.5px;
+  border-radius: 8px;
+}
+
+/* ============================================================================
+   TRẠNG THÁI CHƯA LƯU CÀI ĐẶT: ĐỔI MÀU ĐỎ + LẮC NHẸ + TOOLTIP NHẮC NHỞ SAU 5S
+   ============================================================================ */
+.save-btn-reminder-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+@keyframes saveBtnGentleShake {
+  0%, 72%, 100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  76% {
+    transform: translate3d(calc(-2px * var(--save-btn-shake-intensity, 1)), 0, 0)
+      rotate(calc(-1.4deg * var(--save-btn-shake-intensity, 1)));
+  }
+  80% {
+    transform: translate3d(calc(2px * var(--save-btn-shake-intensity, 1)), 0, 0)
+      rotate(calc(1.4deg * var(--save-btn-shake-intensity, 1)));
+  }
+  84% {
+    transform: translate3d(calc(-1.5px * var(--save-btn-shake-intensity, 1)), 0, 0)
+      rotate(calc(-1deg * var(--save-btn-shake-intensity, 1)));
+  }
+  88% {
+    transform: translate3d(calc(1.5px * var(--save-btn-shake-intensity, 1)), 0, 0)
+      rotate(calc(1deg * var(--save-btn-shake-intensity, 1)));
+  }
+  92% {
+    transform: translate3d(calc(-0.8px * var(--save-btn-shake-intensity, 1)), 0, 0)
+      rotate(calc(-0.5deg * var(--save-btn-shake-intensity, 1)));
+  }
+}
+
+@keyframes saveBtnFloatingGentleShake {
+  0%, 72%, 100% {
+    transform: translateY(-50%) translateX(-100%) rotate(0deg);
+  }
+  76% {
+    transform: translateY(-50%) translateX(calc(-100% - 2px * var(--save-btn-shake-intensity, 1)))
+      rotate(calc(-1.4deg * var(--save-btn-shake-intensity, 1)));
+  }
+  80% {
+    transform: translateY(-50%) translateX(calc(-100% + 2px * var(--save-btn-shake-intensity, 1)))
+      rotate(calc(1.4deg * var(--save-btn-shake-intensity, 1)));
+  }
+  84% {
+    transform: translateY(-50%) translateX(calc(-100% - 1.5px * var(--save-btn-shake-intensity, 1)))
+      rotate(calc(-1deg * var(--save-btn-shake-intensity, 1)));
+  }
+  88% {
+    transform: translateY(-50%) translateX(calc(-100% + 1.5px * var(--save-btn-shake-intensity, 1)))
+      rotate(calc(1deg * var(--save-btn-shake-intensity, 1)));
+  }
+  92% {
+    transform: translateY(-50%) translateX(calc(-100% - 0.8px * var(--save-btn-shake-intensity, 1)))
+      rotate(calc(-0.5deg * var(--save-btn-shake-intensity, 1)));
+  }
+}
+
+.btn-primary.btn-save-dirty {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border-color: #b91c1c;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+  animation: saveBtnGentleShake 2.4s ease-in-out infinite;
+}
+
+.btn-primary.btn-save-dirty:hover:not(:disabled) {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.45);
+}
+
+.btn-save-settings-floating.btn-save-dirty.visible {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 10px 26px -4px rgba(220, 38, 38, 0.55), 0 4px 12px rgba(0, 0, 0, 0.16);
+  animation: saveBtnFloatingGentleShake 2.4s ease-in-out infinite;
+}
+
+.save-reminder-tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  background: #991b1b;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 7px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(153, 27, 27, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  pointer-events: none;
+  z-index: 140;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+}
+
+.save-reminder-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 22px;
+  border-width: 6px;
+  border-style: solid;
+  border-color: #991b1b transparent transparent transparent;
+}
+
+.save-btn-reminder-wrap.show-reminder .save-reminder-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.btn-save-settings-floating .save-reminder-tooltip {
+  right: auto;
+  left: 50%;
+  bottom: calc(100% + 12px);
+  transform: translateX(-50%) translateY(4px);
+}
+
+.btn-save-settings-floating .save-reminder-tooltip::after {
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.btn-save-settings-floating.visible.show-reminder .save-reminder-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
 }

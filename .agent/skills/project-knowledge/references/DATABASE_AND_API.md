@@ -83,6 +83,7 @@
   "zaloSendReceiptImage": true,
   "zaloSendPaymentQr": true,
   "zaloSendMessageText": true,
+  "zaloIncludeMeterChangeNote": false,
   "zaloMessageTemplate": "",
   "confirmedAlerts": {
     "2026-07": {
@@ -95,7 +96,7 @@
 *Lưu ý:*
 - `confirmedAlerts`: Lưu trữ vĩnh viễn các trạng thái xác nhận cảnh báo công tơ quay vòng (`rollover: true`) hoặc tiêu thụ bất thường (\ge 40%, `anomaly: true`) cho từng phòng theo từng chu kỳ tháng (`YYYY-MM`). Nhờ đó, khi chuyển đổi qua lại giữa các tháng hoặc khởi động lại ứng dụng, hệ thống không bao giờ bị quên trạng thái xác nhận và giữ nguyên biểu tượng badge `(!)`.
 - `rac`, `internet`, `tileHaoTai` được lưu đồng thời để tương thích ngược với các phiên bản cũ.
-- Các trường tùy chọn gửi Zalo (`zaloSendReceiptImage`, `zaloSendPaymentQr`, `zaloSendMessageText`) mặc định là `true` nếu chưa từng lưu.
+- Các trường tùy chọn gửi Zalo (`zaloSendReceiptImage`, `zaloSendPaymentQr`, `zaloSendMessageText`) mặc định là `true` nếu chưa từng lưu; riêng `zaloIncludeMeterChangeNote` mặc định là `false` (chỉ tự động kèm/điền ghi chú thay đồng hồ vào tin nhắn khi người dùng bật công tắc VÀ phòng đó tháng đó có thay đồng hồ đã chốt đủ Ô 4).
 - Trường `zaloMessageTemplate` lưu chuỗi mẫu tin nhắn tùy biến; nếu chuỗi rỗng (`""`), hệ thống tự động sử dụng mẫu tin nhắn mặc định ban đầu.
 
 ### 2.3. Tệp Danh Mục Phòng: `rooms.json`
