@@ -474,3 +474,9 @@
     - *Tin nhắn Zalo*: Không chèn ghi chú Break; sử dụng số `dienCu` / `nuocCu` mới (`Break bắt đầu`).
     - *Excel Tháng (`month-excel.js`, cột `Q: Ghi Chú`)*: Ghi đầy đủ ghi chú Break qua `formatRoomMeterBreakNotes()` (`Ghi chú Break chỉ số:\n- Điện/Nước: Đầu kỳ ... → Break kết thúc ... | Break bắt đầu ...`), tự gộp sạch nếu phòng đồng thời có Thay đổi đồng hồ ở loại còn lại.
   - **Activity Log**: Ghi nhận các thao tác `METER_BREAK_SAVE` và `METER_BREAK_DELETE` vào `activity-logs.json` qua `buildMbActivityLogDiff()`, kèm đầy đủ bảng chi tiết Trước → Sau (`metadata.changes`: Đầu kỳ gốc, Break kết thúc, Break bắt đầu / Số cũ mới, Ngày Break) và nhãn `[quay vòng]` / `[quay vòng cuối tháng]` trong cả `summary` lẫn bảng chi tiết mở rộng.
+
+## 16. Bảo Mật Cửa Sổ & Đơn Tiến Trình (`electron/main.js`)
+
+- **Đơn tiến trình (Single Instance)**: Dùng `app.requestSingleInstanceLock()` kết hợp `second-instance` để bảo đảm tại một thời điểm chỉ mở tối đa **1 cửa sổ ứng dụng** (nếu người dùng mở thêm sẽ tự khôi phục/focus lại cửa sổ đang chạy) và chặn mở cửa sổ con bằng `setWindowOpenHandler(() => ({ action: 'deny' }))`.
+- **Ẩn thanh menu mặc định**: Gọi `Menu.setApplicationMenu(null)` kết hợp `autoHideMenuBar: true` và `removeMenu()` để ẩn hoàn toàn dải `File - Edit - View - Window`; vẫn giữ nguyên thao tác `F5` / `Ctrl+R` tải lại trang qua `before-input-event` và Copy/Paste bình thường.
+- **Khóa DevTools bản phát hành (Phương án A)**: Đặt `webPreferences.devTools = !app.isPackaged` cho `mainWindow`, `receiptWin` và `rasterWin`. Khi đóng gói (`.exe`), chặn thêm `F12`, `Ctrl+Shift+I`, `Ctrl+Shift+J`, `Ctrl+Shift+C`, `Ctrl+U` và tự đóng qua sự kiện `devtools-opened`; khi chạy dev (`npm start`) vẫn mở được DevTools bình thường.

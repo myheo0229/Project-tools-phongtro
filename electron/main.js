@@ -1,8 +1,23 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Notification, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
 const activityLogger = require('./activity-logger');
+
+// Khóa đơn tiến trình (Single Instance): Chỉ cho phép mở tối đa 1 cửa sổ ứng dụng
+let mainWindowRef = null;
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+      if (mainWindowRef.isMinimized()) mainWindowRef.restore();
+      if (!mainWindowRef.isVisible()) mainWindowRef.show();
+      mainWindowRef.focus();
+    }
+  });
+}
 
 // Tắt tự động tải ngầm, chỉ tải khi người dùng đồng ý
 autoUpdater.autoDownload = false;
@@ -111,16 +126,62 @@ function copyDirSync(src, dest) {
 const { toReceiptData } = require(path.join(PROJECT_ROOT, 'src', 'shared', 'format.js'));
 
 function createWindow() {
+  const isPackaged = app.isPackaged;
   const mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     show: false, // Ẩn cửa sổ ban đầu để tránh giật/trắng màn hình
+    autoHideMenuBar: true, // Ẩn thanh menu File / Edit / View / Window
     title: `Màn Hình Nhập Liệu - Quản Lý Phòng Trọ v${app.getVersion()}`,
     icon: path.join(PROJECT_ROOT, 'assets', 'icon', 'icon32x32.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      devTools: !isPackaged // Phương án A: Khóa DevTools hoàn toàn ở bản đóng gói .exe, giữ khi chạy dev
+    }
+  });
+
+  mainWindowRef = mainWindow;
+  mainWindow.removeMenu();
+  mainWindow.setMenuBarVisibility(false);
+
+  // Chặn tự mở thêm cửa sổ / tab phụ từ bên trong WebContents
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    const key = String(input.key || '').toLowerCase();
+    const hasModifier = Boolean(input.control || input.meta);
+
+    // Giữ F5 / Ctrl+R hoạt động bình thường dù đã tắt thanh menu mặc định
+    if (key === 'f5' || (hasModifier && !input.shift && !input.alt && key === 'r')) {
+      event.preventDefault();
+      mainWindow.webContents.reload();
+      return;
+    }
+
+    // Ở bản đóng gói: Chặn phím tắt mở DevTools / xem mã nguồn
+    if (isPackaged) {
+      const isDevToolsShortcut =
+        key === 'f12' ||
+        (hasModifier && input.shift && (key === 'i' || key === 'j' || key === 'c')) ||
+        (hasModifier && !input.shift && key === 'u');
+      if (isDevToolsShortcut) {
+        event.preventDefault();
+      }
+    }
+  });
+
+  if (isPackaged) {
+    mainWindow.webContents.on('devtools-opened', () => {
+      mainWindow.webContents.closeDevTools();
+    });
+  }
+
+  mainWindow.on('closed', () => {
+    if (mainWindowRef === mainWindow) {
+      mainWindowRef = null;
     }
   });
 
@@ -1203,21 +1264,27 @@ ipcMain.handle('export:receipts', async (event, monthKey, roomDataList) => {
       show: false,
       width: 1123,
       height: 794,
+      autoHideMenuBar: true,
       webPreferences: {
         nodeIntegration: false,
-        contextIsolation: true
+        contextIsolation: true,
+        devTools: !app.isPackaged
       }
     });
+    receiptWin.removeMenu();
     const receiptHtmlPath = path.join(PROJECT_ROOT, 'src', 'receipt', 'index.html');
     await receiptWin.loadFile(receiptHtmlPath);
 
     rasterWin = new BrowserWindow({
       show: false,
+      autoHideMenuBar: true,
       webPreferences: {
         nodeIntegration: false,
-        contextIsolation: true
+        contextIsolation: true,
+        devTools: !app.isPackaged
       }
     });
+    rasterWin.removeMenu();
     const rasterizerHtmlPath = path.join(__dirname, 'rasterizer.html');
     await rasterWin.loadFile(rasterizerHtmlPath);
 
@@ -1589,6 +1656,8 @@ ipcMain.handle('activity-logs:export-json', async () => {
 });
 
 app.whenReady().then(() => {
+  if (!gotSingleInstanceLock) return;
+  Menu.setApplicationMenu(null);
   createWindow();
 
   // Khôi phục phiên Zalo ngầm lúc khởi động
