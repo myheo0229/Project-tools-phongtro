@@ -480,3 +480,17 @@
 - **Đơn tiến trình (Single Instance)**: Dùng `app.requestSingleInstanceLock()` kết hợp `second-instance` để bảo đảm tại một thời điểm chỉ mở tối đa **1 cửa sổ ứng dụng** (nếu người dùng mở thêm sẽ tự khôi phục/focus lại cửa sổ đang chạy) và chặn mở cửa sổ con bằng `setWindowOpenHandler(() => ({ action: 'deny' }))`.
 - **Ẩn thanh menu mặc định**: Gọi `Menu.setApplicationMenu(null)` kết hợp `autoHideMenuBar: true` và `removeMenu()` để ẩn hoàn toàn dải `File - Edit - View - Window`; vẫn giữ nguyên thao tác `F5` / `Ctrl+R` tải lại trang, phím phóng to/thu nhỏ (`Ctrl + +`/`=`, `Ctrl + Shift + +`, `Ctrl + -`, `Ctrl + Shift + -`, `Ctrl + 0` với `setZoomLevel` trong khoảng `-4..4`) qua `before-input-event` và Copy/Paste bình thường.
 - **Khóa DevTools bản phát hành (Phương án A)**: Đặt `webPreferences.devTools = !app.isPackaged` cho `mainWindow`, `receiptWin` và `rasterWin`. Khi đóng gói (`.exe`), chặn thêm `F12`, `Ctrl+Shift+I`, `Ctrl+Shift+J`, `Ctrl+Shift+C`, `Ctrl+U` và tự đóng qua sự kiện `devtools-opened`; khi chạy dev (`npm start`, `!app.isPackaged`) tự gọi `mainWindow.webContents.toggleDevTools()` khi bấm `F12`, `Ctrl+Shift+I` hoặc `Ctrl+Shift+J`.
+
+## 17. Thuật Toán Tìm Kiếm Người Thuê 2 Pha (`src/input/resident-search.js`)
+
+- **Sửa lỗi trùng tên hàm gốc**: Tách bộ chuẩn hóa tìm kiếm (`normalizeSearchWithTone`, `normalizeSearchNoTone`, `normalizeCharVi`) sang module riêng `src/input/resident-search.js` — tách biệt khỏi hàm `removeVietnameseTones` dùng viết hoa Chủ TK ngân hàng (loại bỏ triệt để lỗi ghi đè mất `.toLowerCase()` trước đây).
+- **Pre-indexed Cache (`getIndexedResidents`, `buildResidentSearchEntry`)**: Tiền xử lý danh sách hồ sơ + phân bổ phòng 1 lần mỗi khi dữ liệu thay đổi thay vì chạy lại chuẩn hóa chuỗi trên từng phím gõ.
+- **Pha 1 — Tìm chuẩn đa tầng & 2 lớp dấu**:
+  - Giữ song song bản **Có dấu (NFC)** và **Không dấu**: khớp chuẩn dấu tiếng Việt luôn đạt điểm cao hơn chỉ khớp không dấu.
+  - **Ưu tiên tuyệt đối phòng (`1A`..`6B`, `p1a`, `p.1a`, `phòng 1A`)**: cộng `+2000` điểm (Chủ phòng `+80` trước Thành viên) và chặn nhiễu sang chuỗi con email ngắn.
+  - **Chỉ thị ngữ nghĩa (`parseResidentSearchQuery`)**: hỗ trợ `chủ phòng`, `thành viên`, `chủ 1A`, `thành viên 2B`, `chưa xếp` / `trống` (phân biệt `trống` có dấu với tên riêng `Trọng`), đồng thời yêu cầu độ dài `>= 3` cho khớp `.includes` tự do để tránh nhiễu từ 2 ký tự (như `"an"` dính `"Văn"` / `"Trần"`).
+  - **Số & Ngày**: SĐT / CCCD hỗ trợ đầu số, 4 số cuối hoặc cụm `>= 3` số (bỏ qua `.`, `-`, khoảng trắng); Ngày sinh / Ngày vào ở (`buildDateVariants`) hỗ trợ `DD/MM/YYYY`, `DD-MM-YYYY`, `MM/YYYY`, `YYYY`.
+- **Pha 2 — Fuzzy Damerau–Levenshtein tự động (`damerauLevenshtein`, `getFuzzyWordMatch`)**:
+  - **Chỉ kích hoạt khi Pha 1 trả về 0 kết quả**. Nếu Pha 1 có người khớp chuẩn, không trộn thêm kết quả gần đúng.
+  - Chỉ áp dụng cho token chữ cái `>= 3` ký tự trên **Họ tên** và **Quê quán** (`maxDist = 1` cho từ 3–6 ký tự, `maxDist = 2` cho từ ≥ 7 ký tự, có hỗ trợ đảo phím cạnh nhau); tuyệt đối **không** fuzzy mã phòng, SĐT và CCCD.
+- **UI & Unikey IME (`src/input/renderer.js`)**: Hỗ trợ `compositionstart` / `compositionend` khi gõ dấu tiếng Việt, tô vàng `<mark class="search-hl">` bảo toàn dấu và số SĐT có dấu chấm/gạch, và hiển thị nhãn `Gợi ý gần đúng: N / M` (`.search-result-badge.fuzzy`) khi chạy Pha 2.

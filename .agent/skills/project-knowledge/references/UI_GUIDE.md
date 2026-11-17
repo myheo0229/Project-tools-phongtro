@@ -405,3 +405,9 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
      - Cột trái 60% (`.mb-left-panel`): Topbar tên phòng + badge khóa (`🔒 Đã khóa dữ liệu` / `✏️ Đang mở chỉnh sửa`) + nút `⬅ Quay lại`; thẻ nhập tuần tự **Ô 1: Đầu kỳ gốc** (kèm nút `!` tím chàm `.mb-missing-prev-btn` nếu thiếu tháng trước) → **Ô 2: Break kết thúc** → **Ô 3: Break bắt đầu** + thẻ tổng hợp live `.mb-live-summary` + tag quay vòng `.mb-rollover-tag-btn`; Footer gồm `🗑️ Hủy Break`, `⬅ Quay lại`, `✏️ Chỉnh Sửa` / `Hủy thay đổi & Giữ nguyên`, `💾 Lưu ghi nhận`.
      - Cột phải 40% (`.mb-right-panel`): Hướng dẫn sử dụng ngắn gọn, giải thích rõ Ô 1 / Ô 2 / Ô 3, công thức tính tiền cuối tháng, quy tắc xác nhận quay vòng và khóa tự động.
    - **Ô trên Bảng chính (Phần 1)**: Khi phòng có Break đang hiệu lực, ô `Số cũ` nhận giá trị `Break bắt đầu`, khóa nền tím chàm nhạt (`.mb-locked-input`) kèm badge pill `✂️` (`.meter-mb-pill`) cho phép bấm mở nhanh sang Break.
+
+---
+
+## 15. Thanh Tìm Kiếm Người Thuê Trọ (`#resident-search-box`)
+
+- **Trạng thái Gợi ý gần đúng trên thanh tìm kiếm (`#resident-search-count.fuzzy`)**: Khi tìm chuẩn trả về 0 kết quả và hệ thống tự động nới sang Fuzzy Damerau–Levenshtein, badge đếm kết quả đổi sang nền vàng hổ phách nhạt (`#fef3c7`, viền `#fde68a`, chữ `#b45309`) với nhãn `Gợi ý gần đúng: N / M` và tô sáng `<mark class="search-hl">` phần từ khớp gần đúng trong bảng.

@@ -171,3 +171,12 @@ declare function extractHistoryPayload(rawData: any): { isLocked: boolean; setti
 declare function readHistoryFile(monthYearStr: string): Promise<any>;
 declare function writeHistoryFile(monthYearStr: string, data: any): Promise<boolean>;
 declare function openMeterChangeModal(preselectPhong?: string, preselectType?: string): void;
+declare function normalizeCharVi(ch: string): string;
+declare function normalizeSearchWithTone(str: any): string;
+declare function normalizeSearchNoTone(str: any): string;
+declare function damerauLevenshtein(a: string, b: string): number;
+declare function tokenizeSearchQuery(rawQuery: string, roomsOverride?: any[]): string[] & { _parsed?: any };
+declare function getResidentRoleLabel(person: any, roomsOverride?: any[]): string;
+declare function invalidateResidentSearchCache(): void;
+declare function getFilteredAndRankedResidents(rawQuery: string, residentsOverride?: any[], roomsOverride?: any[]): Array<{ resident: any; score: number; idx: number; matchedExtra: Array<{ label: string; value: string }>; isFuzzy?: boolean; fuzzyWords?: string[] }> & { isFuzzyFallback?: boolean };
+declare function highlightSearchText(rawText: any, tokens: string[], extraFuzzyWords?: string[]): string;
