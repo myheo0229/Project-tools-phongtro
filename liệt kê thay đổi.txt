@@ -351,4 +351,5 @@ v4.2.1
   + Phóng to (`+0.5` mỗi lần, tối đa `+4`): `Ctrl + =`, `Ctrl + +`, `Ctrl + Shift + +` và `Ctrl + Numpad +`.
   + Thu nhỏ (`-0.5` mỗi lần, tối thiểu `-4`): `Ctrl + -`, `Ctrl + Shift + -` và `Ctrl + Numpad -`.
   + Đặt lại 100% (`0`): `Ctrl + 0` (và `Ctrl + Numpad 0`).
+- Khôi phục phím tắt mở/đóng DevTools (`F12`, `Ctrl + Shift + I`, `Ctrl + Shift + J` -> `toggleDevTools()`) ở môi trường dev (`npm start`, khi `!app.isPackaged`), vẫn khóa cứng hoàn toàn ở bản đóng gói `.exe`.
 - Đồng bộ phiên bản `4.2.1` / `v4.2.1` tại toàn bộ 5 vị trí cấu hình và tài liệu (`package.json`, `package-lock.json`, 4 chỗ trong `src/input/index.html`, `README.md`, `liệt kê thay đổi.txt`).

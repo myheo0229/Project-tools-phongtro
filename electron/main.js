@@ -189,15 +189,21 @@ function createWindow() {
       }
     }
 
-    // Ở bản đóng gói: Chặn phím tắt mở DevTools / xem mã nguồn
+    // Xử lý phím tắt DevTools theo Phương án A (chặn ở bản đóng gói, cho phép bật/tắt khi chạy npm start)
+    const isToggleDevTools =
+      key === 'f12' ||
+      (hasModifier && input.shift && (key === 'i' || key === 'j'));
+    const isInspectOrSource =
+      (hasModifier && input.shift && key === 'c') ||
+      (hasModifier && !input.shift && key === 'u');
+
     if (isPackaged) {
-      const isDevToolsShortcut =
-        key === 'f12' ||
-        (hasModifier && input.shift && (key === 'i' || key === 'j' || key === 'c')) ||
-        (hasModifier && !input.shift && key === 'u');
-      if (isDevToolsShortcut) {
+      if (isToggleDevTools || isInspectOrSource) {
         event.preventDefault();
       }
+    } else if (isToggleDevTools) {
+      event.preventDefault();
+      mainWindow.webContents.toggleDevTools();
     }
   });
 
