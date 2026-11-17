@@ -353,6 +353,12 @@ v4.2.1
   + Đặt lại 100% (`0`): `Ctrl + 0` (và `Ctrl + Numpad 0`).
 - Khôi phục phím tắt mở/đóng DevTools (`F12`, `Ctrl + Shift + I`, `Ctrl + Shift + J` -> `toggleDevTools()`) ở môi trường dev (`npm start`, khi `!app.isPackaged`), vẫn khóa cứng hoàn toàn ở bản đóng gói `.exe`.
 - Đồng bộ phiên bản `4.2.1` / `v4.2.1` tại toàn bộ 5 vị trí cấu hình và tài liệu (`package.json`, `package-lock.json`, 4 chỗ trong `src/input/index.html`, `README.md`, `liệt kê thay đổi.txt`).
+
+================================================================================
+PHIÊN BẢN CHÍNH THỨC: v4.3.0 (TÌM KIẾM 2 PHA, FREEZE PANES & THANH CUỘN GHIM ĐÁY)
+================================================================================
+v4.3.0
+- Đồng bộ phiên bản `4.3.0` / `v4.3.0` tại toàn bộ 5 vị trí cấu hình và tài liệu (`package.json`, `package-lock.json`, 4 chỗ trong `src/input/index.html`, `README.md`, `liệt kê thay đổi.txt`).
 - Cải tạo toàn diện thuật toán tìm kiếm Người thuê trọ bằng Vanilla JS (`src/input/resident-search.js`, `src/input/renderer.js`, `src/input/index.html`, `src/input/style.css`, `src/input/globals.d.ts`):
   + Sửa triệt để lỗi ghi đè hàm `removeVietnameseTones` gây mất chữ thường/chữ hoa trong lúc đối chiếu tên, phòng, giới tính và quê quán.
   + Xây dựng bộ tìm kiếm 2 pha + 2 lớp dấu (Có dấu > Không dấu) kèm Pre-indexed cache: ưu tiên tuyệt đối mã phòng (`1A`..`6B`, `p1a`, `phòng 1A`), hỗ trợ vai trò/trạng thái (`chủ phòng`, `thành viên`, `chủ 1A`, `chưa xếp`, `trống`), 4 số cuối/đầu số SĐT & CCCD (bỏ dấu chấm/gạch), ngày sinh/vào ở đa định dạng (`DD/MM/YYYY`, `DD-MM-YYYY`, `YYYY`), và khống chế từ ngắn giảm nhiễu.
