@@ -339,6 +339,6 @@ v4.2.0
   + Bổ sung và chạy đạt 100% E2E Electron (`e2e/test-meter-break-e2e.js`), kiểm thử hồi quy (`e2e/test-meter-change-e2e.js`, `test-receipt-zalo-excel.js`), `node --check` và `tsc --checkJs` (0 lỗi).
 - Bảo mật cửa sổ & đồng bộ phát hành v4.2.0 (`electron/main.js`, `package.json`, `package-lock.json`, `src/input/index.html`, `README.md`):
   + Khóa đơn tiến trình (`app.requestSingleInstanceLock()` + `second-instance`): chỉ cho phép mở duy nhất 1 cửa sổ ứng dụng, nếu mở thêm lần nữa sẽ tự khôi phục/focus cửa sổ cũ và chặn mở cửa sổ con bằng `setWindowOpenHandler`.
-  + Ẩn hoàn toàn thanh menu mặc định (`File - Edit - View - Window`) qua `Menu.setApplicationMenu(null)`, `autoHideMenuBar: true` và `removeMenu()`, vẫn giữ hoạt động bình thường cho `F5` / `Ctrl+R` và Copy/Paste.
+  + Ẩn hoàn toàn thanh menu mặc định (`File - Edit - View - Window`) qua `Menu.setApplicationMenu(null)`, `autoHideMenuBar: true` và `removeMenu()`, vẫn giữ hoạt động bình thường cho `F5` / `Ctrl+R`, phóng to/thu nhỏ (`Ctrl + +`, `Ctrl + Shift + +`, `Ctrl + -`, `Ctrl + Shift + -`, `Ctrl + 0`) và Copy/Paste.
   + Khóa triệt để DevTools ở bản đóng gói phát hành (`app.isPackaged`): đặt `devTools: false`, chặn `F12`, `Ctrl+Shift+I`, `Ctrl+Shift+J`, `Ctrl+Shift+C`, `Ctrl+U` và tự đóng nếu bị kích hoạt (`devtools-opened`), vẫn giữ DevTools khi chạy dev (`npm start`).
   + Đồng bộ phiên bản `4.2.0` / `v4.2.0` trên toàn bộ `package.json`, `package-lock.json`, 4 vị trí trong `src/input/index.html`, `README.md` và `liệt kê thay đổi.txt`.

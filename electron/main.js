@@ -161,6 +161,34 @@ function createWindow() {
       return;
     }
 
+    // Giữ chức năng phóng to / thu nhỏ nội dung (Ctrl + '+', Ctrl + Shift + '+', Ctrl + '-', Ctrl + Shift + '-', Ctrl + '0')
+    if (hasModifier && !input.alt) {
+      const code = String(input.code || '');
+      const isZoomIn = key === '+' || key === '=' || code === 'Equal' || code === 'NumpadAdd';
+      const isZoomOut = key === '-' || key === '_' || code === 'Minus' || code === 'NumpadSubtract';
+      const isZoomReset = !input.shift && (key === '0' || code === 'Digit0' || code === 'Numpad0');
+
+      if (isZoomIn) {
+        event.preventDefault();
+        const curr = mainWindow.webContents.getZoomLevel();
+        const next = Math.min(4, Math.round((curr + 0.5) * 2) / 2);
+        mainWindow.webContents.setZoomLevel(next);
+        return;
+      }
+      if (isZoomOut) {
+        event.preventDefault();
+        const curr = mainWindow.webContents.getZoomLevel();
+        const next = Math.max(-4, Math.round((curr - 0.5) * 2) / 2);
+        mainWindow.webContents.setZoomLevel(next);
+        return;
+      }
+      if (isZoomReset) {
+        event.preventDefault();
+        mainWindow.webContents.setZoomLevel(0);
+        return;
+      }
+    }
+
     // Ở bản đóng gói: Chặn phím tắt mở DevTools / xem mã nguồn
     if (isPackaged) {
       const isDevToolsShortcut =
