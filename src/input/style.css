@@ -209,11 +209,11 @@ body {
 .app-header {
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-color);
-  padding: 12px 24px;
+  padding: clamp(8px, 0.8vw, 12px) clamp(12px, 1.5vw, 24px);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: clamp(8px, 1.1vw, 20px);
   flex-shrink: 0;
   z-index: 100;
   box-shadow: var(--shadow-sm);
@@ -222,13 +222,15 @@ body {
 .header-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: clamp(8px, 0.8vw, 12px);
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .brand-icon {
-  width: 48px;
-  height: 48px;
-  flex: 0 0 48px;
+  width: clamp(34px, 2.8vw, 48px);
+  height: clamp(34px, 2.8vw, 48px);
+  flex: 0 0 clamp(34px, 2.8vw, 48px);
   border-radius: var(--radius-md);
 
   display: flex;
@@ -245,18 +247,26 @@ body {
   display: block;
 }
 
+.brand-text {
+  min-width: 0;
+}
+
 .brand-text h1 {
-  font-size: 18px;
+  font-size: clamp(14.5px, 1.1vw, 18px);
   font-weight: 700;
   color: var(--text-main);
   letter-spacing: -0.02em;
   display: flex;
   align-items: center;
+  white-space: nowrap;
 }
 
 .brand-text p {
-  font-size: 14px;
+  font-size: clamp(11.5px, 0.85vw, 14px);
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .title-version-tag {
@@ -269,16 +279,19 @@ body {
   margin-left: 8px;
   display: inline-flex;
   align-items: center;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* TAB NAVIGATION */
 .nav-tabs {
   display: flex;
   background: #f1f5f9;
-  padding: 5px;
+  padding: clamp(3px, 0.35vw, 5px);
   border-radius: var(--radius-md, 10px);
-  gap: 6px;
+  gap: clamp(3px, 0.4vw, 6px);
   position: relative;
+  flex-shrink: 0;
 }
 
 /* KHÓA CHUYỂN TAB TRONG SUỐT 700MS CHUYỂN CẢNH (CHỐNG CLICK NHANH GÂY ĐÈ CHỒNG TRANG) */
@@ -296,22 +309,25 @@ body {
 .tab-btn {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 10px 20px;
+  gap: clamp(4px, 0.5vw, 9px);
+  padding: clamp(7px, 0.6vw, 10px) clamp(8px, 1.1vw, 20px);
   border: none;
   background: transparent;
   color: var(--text-muted);
   font-weight: 600;
   font-size: 16px;
   /* Bắt buộc tối thiểu 16px để dễ nhìn, dễ thao tác */
+  line-height: 1.25;
+  white-space: nowrap;
+  flex-shrink: 0;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .tab-btn svg {
-  width: 20px;
-  height: 20px;
+  width: clamp(16px, 1.2vw, 20px);
+  height: clamp(16px, 1.2vw, 20px);
   flex-shrink: 0;
 }
 
@@ -331,27 +347,35 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: clamp(6px, 0.75vw, 12px);
+  flex-shrink: 0;
 }
 
 
 .month-select-wrapper {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: clamp(4px, 0.5vw, 8px);
   font-weight: 600;
-  font-size: 17px;
+  font-size: clamp(13.5px, 1.05vw, 17px);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.month-select-wrapper label {
+  white-space: nowrap;
 }
 
 .custom-select {
-  padding: 8px 12px;
+  padding: clamp(6px, 0.5vw, 8px) clamp(8px, 0.75vw, 12px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background-color: var(--bg-card);
   color: var(--text-main);
   font-family: inherit;
   font-weight: 600;
-  font-size: 13px;
+  font-size: clamp(12.5px, 0.85vw, 13px);
+  white-space: nowrap;
   outline: none;
   cursor: pointer;
   transition: border-color 0.2s;
@@ -399,6 +423,135 @@ body {
   background: linear-gradient(135deg, #059669, #047857);
   color: white;
   box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+  padding: clamp(7px, 0.65vw, 10px) clamp(10px, 1.1vw, 18px);
+  font-size: clamp(15px, 1.05vw, 16px);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-save-export svg {
+  width: clamp(16px, 1.15vw, 18px);
+  height: clamp(16px, 1.15vw, 18px);
+  flex-shrink: 0;
+}
+
+/* BƯỚC 1 & BƯỚC 2 CO GỌN HEADER KHI PHÓNG ZOOM / MÀN HÌNH HẸP */
+@media (max-width: 1560px) {
+  .app-header .btn-activity-log-header {
+    padding: 8px 10px;
+    gap: 0;
+  }
+
+  .app-header .btn-activity-log-header span {
+    display: none;
+  }
+}
+
+.app-header.header-compact-log .btn-activity-log-header {
+  padding: 8px 10px;
+  gap: 0;
+}
+
+.app-header.header-compact-log .btn-activity-log-header span {
+  display: none;
+}
+
+@media (max-width: 1360px) {
+  .app-header {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .app-header .brand-text h1 {
+    font-size: 14px;
+  }
+
+  .app-header .brand-text p,
+  .app-header .title-version-tag,
+  .app-header .month-select-wrapper label {
+    display: none;
+  }
+
+  .app-header .tab-btn {
+    padding: 7px 7px;
+    gap: 4px;
+  }
+
+  .app-header .tab-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+.app-header.header-compact-minmax {
+  padding: 8px 10px;
+  gap: 6px;
+}
+
+.app-header.header-compact-minmax .brand-text h1 {
+  font-size: 14px;
+}
+
+.app-header.header-compact-minmax .brand-text p,
+.app-header.header-compact-minmax .title-version-tag,
+.app-header.header-compact-minmax .month-select-wrapper label {
+  display: none;
+}
+
+.app-header.header-compact-minmax .tab-btn {
+  padding: 7px 7px;
+  gap: 4px;
+}
+
+.app-header.header-compact-minmax .tab-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.app-header.header-compact-ultra {
+  padding: 6px 8px;
+  gap: 5px;
+}
+
+.app-header.header-compact-ultra .brand-icon {
+  width: 28px;
+  height: 28px;
+  flex-basis: 28px;
+}
+
+.app-header.header-compact-ultra .brand-text {
+  display: none;
+}
+
+.app-header.header-compact-ultra .nav-tabs {
+  padding: 2px;
+  gap: 2px;
+}
+
+.app-header.header-compact-ultra .tab-btn {
+  padding: 6px 5px;
+}
+
+.app-header.header-compact-ultra .tab-btn svg {
+  display: none;
+}
+
+.app-header.header-compact-ultra .header-actions {
+  gap: 4px;
+}
+
+.app-header.header-compact-ultra .custom-select {
+  padding: 5px 6px;
+  font-size: 12px;
+}
+
+.app-header.header-compact-ultra .btn-save-export {
+  padding: 6px 9px;
+  gap: 4px;
+}
+
+.app-header.header-compact-ultra .btn-save-export svg {
+  display: none;
 }
 
 .btn-save-export:hover:not(:disabled) {
@@ -428,7 +581,7 @@ body {
    ============================================================ */
 .app-main {
   flex: 1;
-  padding: 20px 24px;
+  padding: 20px 24px 0 24px;
   overflow-x: hidden;
   overflow-y: auto;
   scroll-padding-top: 48px;
@@ -442,6 +595,7 @@ body {
   display: none;
   grid-area: 1 / 1 / 2 / 2;
   width: 100%;
+  padding-bottom: 20px;
 }
 
 .tab-content.active {
@@ -576,7 +730,7 @@ body {
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-md);
-  overflow: hidden;
+  overflow: clip;
 }
 
 .table-card-header {
@@ -1170,6 +1324,37 @@ body {
 
 #section-data .table-wrapper {
   scroll-padding-left: 132px;
+  scrollbar-width: none;
+}
+
+#section-data .table-wrapper::-webkit-scrollbar,
+#section-residents .table-wrapper::-webkit-scrollbar {
+  height: 0;
+  display: none;
+}
+
+/* THANH CUỘN NGANG GHIM DƯỚI ĐÁY KHUNG NHÌN (PHẦN 1 & PHẦN 3) */
+.table-sticky-scrollbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 35;
+  width: 100%;
+  height: 17px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: #dcdcdc;
+  border-top: 1px solid #b5b5b5;
+  box-shadow: 0 -2px 8px rgba(15, 23, 42, 0.08);
+  display: none;
+}
+
+.table-sticky-scrollbar.is-visible {
+  display: block;
+}
+
+.table-sticky-scrollbar__spacer {
+  height: 1px;
+  pointer-events: none;
 }
 
 .data-table {
@@ -2673,7 +2858,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   margin-bottom: 24px;
-  overflow: hidden;
+  overflow: clip;
   box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
 }
 
@@ -3034,6 +3219,7 @@ mark.search-hl {
   position: relative;
   overflow-x: auto;
   scroll-padding-left: 316px;
+  scrollbar-width: none;
 }
 
 #section-residents table {
@@ -6377,6 +6563,8 @@ input[type="number"] {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.2s ease;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }

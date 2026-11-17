@@ -820,8 +820,48 @@ function forceSwitchTab(tabName) {
 
 let isTableFreezePanesInitialized = false;
 
+const STICKY_SCROLLBAR_BINDINGS = [
+  {
+    wrapperSelector: '#section-data .table-wrapper',
+    barId: 'rooms-sticky-scrollbar',
+    spacerId: 'rooms-sticky-scrollbar-spacer',
+  },
+  {
+    wrapperSelector: '#section-residents .table-wrapper',
+    barId: 'residents-sticky-scrollbar',
+    spacerId: 'residents-sticky-scrollbar-spacer',
+  },
+];
+
 /**
- * Khởi tạo sự kiện cuộn dọc/ngang và resize để đồng bộ Freeze Panes cho bảng Phần 1 và Phần 3
+ * Tự động co gọn Header 2 bước khi phóng zoom hoặc cửa sổ hẹp để không bị rớt dòng:
+ * - Bước 1: Ẩn chữ "Nhật Ký", chỉ giữ icon SVG + viền nút
+ * - Bước 2 (và dự phòng cực hẹp): Áp dụng ngưỡng min-max gọn hơn để luôn giữ 1 hàng
+ */
+function syncHeaderCompactMode() {
+  const header = /** @type {HTMLElement | null} */ (document.querySelector('.app-header'));
+  if (!header) return;
+
+  header.classList.remove('header-compact-log', 'header-compact-minmax', 'header-compact-ultra');
+
+  const winW = window.innerWidth || document.documentElement.clientWidth || 0;
+  const isOverflowing = () => header.scrollWidth > header.clientWidth + 1;
+
+  if (winW <= 1560 || isOverflowing()) {
+    header.classList.add('header-compact-log');
+  }
+
+  if (winW <= 1360 || isOverflowing()) {
+    header.classList.add('header-compact-minmax');
+  }
+
+  if (isOverflowing()) {
+    header.classList.add('header-compact-ultra');
+  }
+}
+
+/**
+ * Khởi tạo sự kiện cuộn dọc/ngang, thanh cuộn ngang ghim đáy & resize để đồng bộ Freeze Panes + Header
  */
 function initTableFreezePanes() {
   if (isTableFreezePanesInitialized) return;
@@ -832,10 +872,32 @@ function initTableFreezePanes() {
     appMain.addEventListener('scroll', syncStickyTableHeaders, { passive: true });
   }
 
-  document.querySelectorAll('#section-data .table-wrapper, #section-residents .table-wrapper').forEach((wrapper) => {
+  STICKY_SCROLLBAR_BINDINGS.forEach(({ wrapperSelector, barId }) => {
+    const wrapper = /** @type {HTMLElement | null} */ (document.querySelector(wrapperSelector));
+    const stickyBar = document.getElementById(barId);
+    if (!wrapper) return;
+
+    let syncingScrollLeft = false;
+
     wrapper.addEventListener('scroll', () => {
       wrapper.classList.toggle('is-scrolled-x', wrapper.scrollLeft > 1);
+      if (!syncingScrollLeft && stickyBar && Math.abs(stickyBar.scrollLeft - wrapper.scrollLeft) > 0.5) {
+        syncingScrollLeft = true;
+        stickyBar.scrollLeft = wrapper.scrollLeft;
+        syncingScrollLeft = false;
+      }
     }, { passive: true });
+
+    if (stickyBar) {
+      stickyBar.addEventListener('scroll', () => {
+        if (!syncingScrollLeft && Math.abs(wrapper.scrollLeft - stickyBar.scrollLeft) > 0.5) {
+          syncingScrollLeft = true;
+          wrapper.scrollLeft = stickyBar.scrollLeft;
+          wrapper.classList.toggle('is-scrolled-x', wrapper.scrollLeft > 1);
+          syncingScrollLeft = false;
+        }
+      }, { passive: true });
+    }
   });
 
   window.addEventListener('resize', syncStickyTableHeaders, { passive: true });
@@ -843,6 +905,8 @@ function initTableFreezePanes() {
   if (typeof ResizeObserver === 'function') {
     const ro = new ResizeObserver(syncStickyTableHeaders);
     if (appMain) ro.observe(appMain);
+    const appHeader = document.querySelector('.app-header');
+    if (appHeader) ro.observe(appHeader);
     document.querySelectorAll('#rooms-table, #residents-table').forEach((tbl) => ro.observe(tbl));
   }
 
@@ -850,21 +914,24 @@ function initTableFreezePanes() {
 }
 
 /**
- * Đồng bộ hàng tiêu đề đóng băng (`thead`) khi cuộn dọc và offset trái các cột đóng băng
+ * Đồng bộ hàng tiêu đề đóng băng (`thead`), offset cột cố định, thanh cuộn ngang ghim đáy và Header
  */
 function syncStickyTableHeaders() {
   const appMain = /** @type {HTMLElement | null} */ (document.querySelector('.app-main'));
-  if (!appMain) return;
+  if (!appMain) {
+    syncHeaderCompactMode();
+    return;
+  }
 
   const mainRect = appMain.getBoundingClientRect();
-  const wrappers = /** @type {NodeListOf<HTMLElement>} */ (
-    document.querySelectorAll('#section-data .table-wrapper, #section-residents .table-wrapper')
-  );
 
-  /** @type {Array<{ wrapper: HTMLElement, stickyY: number, isScrolledY: boolean, isScrolledX: boolean, vars: Record<string, string> }>} */
+  /** @type {Array<{ wrapper: HTMLElement, stickyBar: HTMLElement | null, spacer: HTMLElement | null, stickyY: number, isScrolledY: boolean, isScrolledX: boolean, scrollWidth: number, hasHorizontalOverflow: boolean, wrapperScrollLeft: number, vars: Record<string, string> }>} */
   const updates = [];
 
-  wrappers.forEach((wrapper) => {
+  STICKY_SCROLLBAR_BINDINGS.forEach(({ wrapperSelector, barId, spacerId }) => {
+    const wrapper = /** @type {HTMLElement | null} */ (document.querySelector(wrapperSelector));
+    if (!wrapper) return;
+
     const tabSection = wrapper.closest('.tab-content');
     if (!tabSection || !tabSection.classList.contains('active') || tabSection.classList.contains('page-out')) {
       return;
@@ -884,6 +951,10 @@ function syncStickyTableHeaders() {
     const rawShift = Math.max(0, mainRect.top - tableRect.top);
     const stickyY = Math.round(Math.min(maxShift, rawShift) * 100) / 100;
 
+    const scrollWidth = wrapper.scrollWidth;
+    const clientWidth = wrapper.clientWidth;
+    const hasHorizontalOverflow = scrollWidth > clientWidth + 1;
+
     /** @type {Record<string, string>} */
     const vars = {};
     if (table.id === 'rooms-table') {
@@ -902,14 +973,19 @@ function syncStickyTableHeaders() {
 
     updates.push({
       wrapper,
+      stickyBar: document.getElementById(barId),
+      spacer: document.getElementById(spacerId),
       stickyY,
       isScrolledY: stickyY > 0.5,
       isScrolledX: wrapper.scrollLeft > 1,
+      scrollWidth,
+      hasHorizontalOverflow,
+      wrapperScrollLeft: wrapper.scrollLeft,
       vars,
     });
   });
 
-  updates.forEach(({ wrapper, stickyY, isScrolledY, isScrolledX, vars }) => {
+  updates.forEach(({ wrapper, stickyBar, spacer, stickyY, isScrolledY, isScrolledX, scrollWidth, hasHorizontalOverflow, wrapperScrollLeft, vars }) => {
     const nextY = `${stickyY}px`;
     if (wrapper.style.getPropertyValue('--sticky-head-y') !== nextY) {
       wrapper.style.setProperty('--sticky-head-y', nextY);
@@ -921,7 +997,22 @@ function syncStickyTableHeaders() {
     });
     wrapper.classList.toggle('is-scrolled-y', isScrolledY);
     wrapper.classList.toggle('is-scrolled-x', isScrolledX);
+
+    if (spacer) {
+      const nextWidth = `${scrollWidth}px`;
+      if (spacer.style.width !== nextWidth) {
+        spacer.style.width = nextWidth;
+      }
+    }
+    if (stickyBar) {
+      stickyBar.classList.toggle('is-visible', hasHorizontalOverflow);
+      if (hasHorizontalOverflow && Math.abs(stickyBar.scrollLeft - wrapperScrollLeft) > 0.5) {
+        stickyBar.scrollLeft = wrapperScrollLeft;
+      }
+    }
   });
+
+  syncHeaderCompactMode();
 }
 
 /**

@@ -423,4 +423,14 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
   - Phân tầng hiển thị: `z-index: 30` (ô góc cố định `thead th`), `z-index: 20` (`thead th` thường), `z-index: 15` (`td.summary-label`), `z-index: 12` (cột cố định `tbody td`).
 - **Trạng thái bóng phân tách & điều hướng phím**:
   - Class `.is-scrolled-x` và `.is-scrolled-y` trên `.table-wrapper` bật bóng đổ nhẹ ở mép phải cột cố định và mép dưới `thead`.
-  - `.app-main` (`scroll-padding-top: 48px;`) cùng `.table-wrapper` (`scroll-padding-left: 132px;` ở Phần 1 và `316px` ở Phần 3) giúp điều hướng Tab/Enter giữ ô nhập liệu nằm ngoài vùng đóng băng.
+  - `.app-main` (`scroll-padding-top: 48px; padding: 20px 24px 0 24px;`) kết hợp `.tab-content { padding-bottom: 20px; }` cùng `.table-wrapper` (`scroll-padding-left: 132px;` ở Phần 1 và `316px` ở Phần 3) giúp điều hướng Tab/Enter giữ ô nhập liệu nằm ngoài vùng đóng băng và ghim thanh cuộn đáy sát mép dưới vùng cuộn.
+- **Thanh cuộn ngang ghim đáy (`.table-sticky-scrollbar`, `.table-sticky-scrollbar__spacer`)**:
+  - Đặt bên dưới `.table-wrapper` trong `.table-card` (Phần 1: `#rooms-sticky-scrollbar`) và `#section-residents .section` (Phần 3: `#residents-sticky-scrollbar`), với container dùng `overflow: clip;` và `.table-wrapper` ẩn scrollbar ngang (`scrollbar-width: none` / `display: none`). Thanh cuộn dùng `position: sticky; bottom: 0; z-index: 35; height: 17px;` và chỉ bật `.is-visible` khi tràn ngang.
+
+---
+
+## 17. Header Chống Rớt Dòng & Co Gọn 2 Bước Khi Phóng Zoom (`.app-header`)
+
+- Áp dụng `white-space: nowrap` cho toàn bộ chữ trên Header và ngưỡng co giãn `clamp(...)` cho padding/gap/brand/controls, giữ nguyên `.tab-btn` `font-size: 16px` (`>= 16px`) và `.btn-save-export` `clamp(15px, 1.05vw, 16px)`.
+- **Bước 1 (`.header-compact-log` / `@media (max-width: 1560px)`)**: Ẩn chữ `"Nhật Ký"` trong `#btn-open-activity-log span`, chỉ giữ icon SVG + viền nút.
+- **Bước 2 (`.header-compact-minmax` / `@media (max-width: 1360px)`) & `.header-compact-ultra`**: Ẩn mô tả phụ `.brand-text p`, `.title-version-tag`, `.month-select-wrapper label` và thu gọn padding/SVG nếu rất hẹp để Header luôn nằm trên 1 hàng ngang.

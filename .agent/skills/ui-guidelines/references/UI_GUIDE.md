@@ -406,4 +406,14 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
   - Phân tầng: `z-index: 30` (ô góc cố định `thead th`), `20` (`thead th` thường), `15` (`td.summary-label`), `12` (cột cố định `tbody td`).
 - **Bóng phân tách & `scroll-padding`**:
   - `.is-scrolled-x` / `.is-scrolled-y` trên `.table-wrapper` bật bóng đổ nhẹ ở mép vùng đóng băng.
-  - `.app-main` (`scroll-padding-top: 48px`) và `.table-wrapper` (`scroll-padding-left: 132px` ở Phần 1, `316px` ở Phần 3) đảm bảo khi bấm Tab/Enter, ô được focus không bị che khuất.
+  - `.app-main` (`scroll-padding-top: 48px; padding: 20px 24px 0 24px;`), `.tab-content { padding-bottom: 20px; }` và `.table-wrapper` (`scroll-padding-left: 132px` ở Phần 1, `316px` ở Phần 3) đảm bảo khi bấm Tab/Enter, ô được focus không bị che khuất và thanh cuộn ngang dính sát mép dưới vùng cuộn.
+- **Thanh cuộn ngang ghim đáy (`.table-sticky-scrollbar`)**:
+  - Container `.table-card` và `#section-residents .section` chuyển từ `overflow: hidden` sang `overflow: clip`; `.table-wrapper` ẩn scrollbar ngang gốc và không đặt `max-height`; thanh `#rooms-sticky-scrollbar` / `#residents-sticky-scrollbar` ghim `position: sticky; bottom: 0; z-index: 35; height: 17px;` đồng bộ 2 chiều với `.table-wrapper.scrollLeft`.
+
+---
+
+## 17. Header Chống Rớt Dòng & Co Gọn 2 Bước Khi Phóng Zoom (`.app-header`)
+
+- Áp dụng `white-space: nowrap` cho chữ Header + co giãn `clamp(...)`, bảo đảm `.tab-btn` luôn `font-size: 16px` và `.btn-save-export` `15px–16px`.
+- **Bước 1 (`.header-compact-log` / `<= 1560px`)**: Ẩn nhãn `"Nhật Ký"`, giữ icon SVG và viền ngoài.
+- **Bước 2 (`.header-compact-minmax` / `<= 1360px` & `.header-compact-ultra`)**: Thu gọn `min–max` padding/gap và ẩn chữ phụ khi rất hẹp để Header không rớt xuống 2 dòng.

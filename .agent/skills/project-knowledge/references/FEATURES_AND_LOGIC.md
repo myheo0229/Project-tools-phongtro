@@ -506,3 +506,13 @@
   - Bảo vệ các dòng trạng thái trống (`td.empty-state` với `colspan="12"`) bằng selector `td:not([colspan])` để không bị thu hẹp hoặc dính cột trái.
 - **File Xuất Excel (`electron/month-excel-service.js` & `electron/excel-service.js`)**:
   - Cả hai workbook xuất `.xlsx` (Excel bảng tháng Phần 1 & Excel danh sách người thuê Phần 3) đều gắn OpenXML `<pane xSplit="2" ySplit="1" topLeftCell="C2" activePane="bottomRight" state="frozen"/>` và `<selection pane="bottomRight" activeCell="C2" sqref="C2"/>` trong `<sheetView>`, cố định **Hàng 1** và **2 cột A:B** (`STT`, `Số Phòng` / `Họ Và Tên`).
+- **Thanh Cuộn Ngang Ghim Đáy Khung Nhìn (`.table-sticky-scrollbar`)**:
+  - Bổ sung thanh cuộn ngang ghim đáy (`#rooms-sticky-scrollbar` ở Phần 1 và `#residents-sticky-scrollbar` ở Phần 3, `position: sticky; bottom: 0; z-index: 35`) bên trong `.table-card` / `#section-residents .section` (chuyển từ `overflow: hidden` sang `overflow: clip`), đồng thời ẩn thanh cuộn ngang gốc trên `.table-wrapper` mà không đặt `max-height` lên bảng (bảo toàn chiều cao tự nhiên khi Zoom).
+  - Đồng bộ 2 chiều `scrollLeft` giữa `.table-wrapper` và `.table-sticky-scrollbar` kèm tự ẩn khi không tràn ngang (`scrollWidth > clientWidth + 1`).
+
+## 19. Header Chống Rớt Dòng & Co Gọn 2 Bước Khi Phóng Zoom (`.app-header`)
+
+- **Chống rớt dòng (Anti-wrap)**: Áp dụng `white-space: nowrap` cho `.brand-text h1`, `.brand-text p`, `.tab-btn`, `.month-select-wrapper`, `.custom-select`, `.btn-activity-log-header` và `.btn-save-export`, giữ font nút tab tối thiểu `16px`.
+- **Co gọn 2 bước (`syncHeaderCompactMode()`) & ngưỡng `min–max` (`clamp`)**:
+  - **Bước 1 (`.header-compact-log` / `<= 1560px`)**: Tự động ẩn chữ `"Nhật Ký"` trong `#btn-open-activity-log`, chỉ giữ biểu tượng SVG và khung viền ngoài.
+  - **Bước 2 (`.header-compact-minmax` / `<= 1360px` & dự phòng `.header-compact-ultra`)**: Điều chỉnh khoảng đệm, khoảng cách, cỡ logo/tiêu đề theo ngưỡng `clamp`, ẩn mô tả phụ, tag phiên bản, nhãn `Tháng / Năm:` (và chữ brand/SVG tab khi cực hẹp) để giữ toàn bộ Header trên **1 hàng ngang duy nhất** ở nhiều mức phóng Zoom.
