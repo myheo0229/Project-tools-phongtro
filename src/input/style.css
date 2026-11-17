@@ -431,6 +431,7 @@ body {
   padding: 20px 24px;
   overflow-x: hidden;
   overflow-y: auto;
+  scroll-padding-top: 48px;
   position: relative;
   display: grid;
   grid-template-columns: 100%;
@@ -1162,14 +1163,21 @@ body {
 }
 
 .table-wrapper {
+  position: relative;
   overflow-x: auto;
   max-width: 100%;
 }
 
+#section-data .table-wrapper {
+  scroll-padding-left: 132px;
+}
+
 .data-table {
   width: 100%;
+  min-width: 1676px;
   table-layout: fixed;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   text-align: center;
   font-size: 14px;
 }
@@ -1185,6 +1193,14 @@ body {
   text-overflow: ellipsis;
 }
 
+.data-table tbody td {
+  background: var(--bg-card);
+}
+
+#rooms-table tbody tr:hover td {
+  background: #f8fafc;
+}
+
 .data-table th {
   background: var(--bg-table-header);
   font-weight: 700;
@@ -1193,10 +1209,60 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   border-bottom: 2px solid var(--border-color);
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  position: relative;
+  z-index: 20;
+  transform: translate3d(0, var(--sticky-head-y, 0px), 0);
+  will-change: transform;
   text-align: center;
+}
+
+#rooms-table th.col-stt,
+#rooms-table td.col-stt {
+  position: sticky;
+  left: 0;
+  width: 45px;
+  min-width: 45px;
+  max-width: 45px;
+}
+
+#rooms-table th.col-phong,
+#rooms-table td.col-phong {
+  position: sticky;
+  left: var(--rooms-col-stt-w, 45px);
+  width: 85px;
+  min-width: 85px;
+  max-width: 85px;
+  border-right: 1px solid var(--border-color);
+}
+
+#rooms-table tbody td.col-stt,
+#rooms-table tbody td.col-phong {
+  z-index: 12;
+  background: var(--bg-card);
+}
+
+#rooms-table tbody tr:hover td.col-stt,
+#rooms-table tbody tr:hover td.col-phong {
+  background: #f8fafc;
+}
+
+#rooms-table thead th.col-stt,
+#rooms-table thead th.col-phong {
+  z-index: 30;
+  background: var(--bg-table-header);
+}
+
+#section-data .table-wrapper.is-scrolled-y .data-table th {
+  box-shadow: 0 4px 10px -4px rgba(15, 23, 42, 0.14);
+}
+
+#section-data .table-wrapper.is-scrolled-x #rooms-table td.col-phong,
+#section-data .table-wrapper.is-scrolled-x #rooms-table thead th.col-phong {
+  box-shadow: 6px 0 12px -4px rgba(15, 23, 42, 0.16);
+}
+
+#section-data .table-wrapper.is-scrolled-x.is-scrolled-y #rooms-table thead th.col-phong {
+  box-shadow: 6px 0 12px -4px rgba(15, 23, 42, 0.16), 0 4px 10px -4px rgba(15, 23, 42, 0.14);
 }
 
 .data-table th.col-total,
@@ -1315,10 +1381,19 @@ body {
 }
 
 .summary-label {
+  position: sticky;
+  left: 0;
+  z-index: 15;
+  background: linear-gradient(135deg, #0f172a, #172336);
+  border-right: 1px solid rgba(148, 163, 184, 0.28) !important;
   font-size: 14px;
   letter-spacing: 0.05em;
   color: #38bdf8;
   text-align: center;
+}
+
+#section-data .table-wrapper.is-scrolled-x #rooms-table td.summary-label {
+  box-shadow: 6px 0 12px -4px rgba(15, 23, 42, 0.35);
 }
 
 .summary-val {
@@ -2956,13 +3031,16 @@ mark.search-hl {
 }
 
 #section-residents .table-wrapper {
+  position: relative;
   overflow-x: auto;
+  scroll-padding-left: 316px;
 }
 
 #section-residents table {
   width: 100%;
-  min-width: 1220px;
-  border-collapse: collapse;
+  min-width: 1280px;
+  border-collapse: separate;
+  border-spacing: 0;
   table-layout: auto;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
@@ -2977,6 +3055,10 @@ mark.search-hl {
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
   background: #ffffff;
+  position: relative;
+  z-index: 20;
+  transform: translate3d(0, var(--sticky-head-y, 0px), 0);
+  will-change: transform;
 }
 
 #section-residents tbody td {
@@ -2986,30 +3068,68 @@ mark.search-hl {
   color: var(--ink);
   vertical-align: middle;
   white-space: nowrap;
+  background: #ffffff;
 }
 
 /* Phân bổ độ rộng cân đối & min-width chống vỡ/đè chữ khi co giãn cho 12 cột bảng người thuê */
 #residents-table th.col-res-check,
-#residents-table td:nth-child(1) {
+#residents-table tbody td:not([colspan]):nth-child(1) {
+  position: sticky;
+  left: 0;
   width: 44px;
   min-width: 44px;
+  max-width: 44px;
   text-align: center;
   padding-left: 10px;
   padding-right: 6px;
 }
 
 #residents-table th.col-res-stt,
-#residents-table td:nth-child(2) {
+#residents-table tbody td:not([colspan]):nth-child(2) {
+  position: sticky;
+  left: var(--res-col-stt-left, 44px);
   width: 50px;
   min-width: 50px;
+  max-width: 50px;
   text-align: center;
 }
 
 #residents-table th.col-res-name,
-#residents-table td:nth-child(3) {
-  width: 19%;
-  min-width: 210px;
+#residents-table tbody td:not([colspan]):nth-child(3) {
+  position: sticky;
+  left: var(--res-col-name-left, 94px);
+  width: 220px;
+  min-width: 220px;
+  max-width: 240px;
   white-space: normal;
+  border-right: 1px solid var(--border);
+}
+
+#residents-table tbody td:not([colspan]):nth-child(1),
+#residents-table tbody td:not([colspan]):nth-child(2),
+#residents-table tbody td:not([colspan]):nth-child(3) {
+  z-index: 12;
+  background: #ffffff;
+}
+
+#residents-table thead th.col-res-check,
+#residents-table thead th.col-res-stt,
+#residents-table thead th.col-res-name {
+  z-index: 30;
+  background: #ffffff;
+}
+
+#section-residents .table-wrapper.is-scrolled-y #residents-table thead th {
+  box-shadow: 0 4px 10px -4px rgba(15, 23, 42, 0.12);
+}
+
+#section-residents .table-wrapper.is-scrolled-x #residents-table th.col-res-name,
+#section-residents .table-wrapper.is-scrolled-x #residents-table tbody td:not([colspan]):nth-child(3) {
+  box-shadow: 6px 0 12px -4px rgba(15, 23, 42, 0.12);
+}
+
+#section-residents .table-wrapper.is-scrolled-x.is-scrolled-y #residents-table thead th.col-res-name {
+  box-shadow: 6px 0 12px -4px rgba(15, 23, 42, 0.12), 0 4px 10px -4px rgba(15, 23, 42, 0.12);
 }
 
 #residents-table th.col-res-phone,
@@ -3083,7 +3203,11 @@ mark.search-hl {
   border-bottom: none;
 }
 
-#section-residents tbody tr:hover {
+#section-residents tbody tr:hover,
+#section-residents tbody tr:hover td,
+#section-residents tbody tr:hover td:not([colspan]):nth-child(1),
+#section-residents tbody tr:hover td:not([colspan]):nth-child(2),
+#section-residents tbody tr:hover td:not([colspan]):nth-child(3) {
   background: #FAFBFC;
 }
 

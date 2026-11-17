@@ -411,3 +411,16 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
 ## 15. Thanh Tìm Kiếm Người Thuê Trọ (`#resident-search-box`)
 
 - **Trạng thái Gợi ý gần đúng trên thanh tìm kiếm (`#resident-search-count.fuzzy`)**: Khi tìm chuẩn trả về 0 kết quả và hệ thống tự động nới sang Fuzzy Damerau–Levenshtein, badge đếm kết quả đổi sang nền vàng hổ phách nhạt (`#fef3c7`, viền `#fde68a`, chữ `#b45309`) với nhãn `Gợi ý gần đúng: N / M` và tô sáng `<mark class="search-hl">` phần từ khớp gần đúng trong bảng.
+
+---
+
+## 16. Freeze Panes Bảng Dữ Liệu (Phần 1 & Phần 3)
+
+- **Mô hình CSS bảng tách ô (`border-collapse: separate; border-spacing: 0;`)**: Cả `#rooms-table` (`.data-table`, `min-width: 1676px`) và `#residents-table` (`min-width: 1280px`) chuyển sang `border-collapse: separate; border-spacing: 0;` kèm nền ô đục (`#ffffff`, riêng `thead` Phần 1 dùng `var(--bg-table-header)`, hàng hover giữ nguyên màu đồng bộ và chân bảng `td.summary-label` dùng gradient tối đục `linear-gradient(135deg, #0f172a, #172336)`).
+- **Biến CSS động & Phân tầng `z-index`**:
+  - Biến `--sticky-head-y` trên `.table-wrapper` dịch chuyển `thead th` theo cuộn dọc `.app-main` bằng `transform: translate3d(0, var(--sticky-head-y, 0px), 0)`.
+  - Các biến `--rooms-col-stt-w`, `--res-col-stt-left`, `--res-col-name-left` định vị chính xác `position: sticky; left: ...` cho cột cố định trái (`#rooms-table`: `STT`, `Số Phòng`, `td.summary-label`; `#residents-table`: `col-res-check`, `col-res-stt`, `col-res-name` giới hạn `220px..240px`, bảo vệ dòng trống bằng `:not([colspan])`).
+  - Phân tầng hiển thị: `z-index: 30` (ô góc cố định `thead th`), `z-index: 20` (`thead th` thường), `z-index: 15` (`td.summary-label`), `z-index: 12` (cột cố định `tbody td`).
+- **Trạng thái bóng phân tách & điều hướng phím**:
+  - Class `.is-scrolled-x` và `.is-scrolled-y` trên `.table-wrapper` bật bóng đổ nhẹ ở mép phải cột cố định và mép dưới `thead`.
+  - `.app-main` (`scroll-padding-top: 48px;`) cùng `.table-wrapper` (`scroll-padding-left: 132px;` ở Phần 1 và `316px` ở Phần 3) giúp điều hướng Tab/Enter giữ ô nhập liệu nằm ngoài vùng đóng băng.

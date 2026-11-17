@@ -533,7 +533,10 @@ function buildMonthDataExcelBuffer(roomsData, monthKey = '') {
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <dimension ref="${dimensionRef}"/>
   <sheetViews>
-    <sheetView tabSelected="1" workbookViewId="0"/>
+    <sheetView tabSelected="1" workbookViewId="0">
+      <pane xSplit="2" ySplit="1" topLeftCell="C2" activePane="bottomRight" state="frozen"/>
+      <selection pane="bottomRight" activeCell="C2" sqref="C2"/>
+    </sheetView>
   </sheetViews>
   <sheetFormatPr defaultRowHeight="20"/>
   <cols>${colsXml}</cols>

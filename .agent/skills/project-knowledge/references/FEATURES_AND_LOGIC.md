@@ -494,3 +494,15 @@
   - **Chỉ kích hoạt khi Pha 1 trả về 0 kết quả**. Nếu Pha 1 có người khớp chuẩn, không trộn thêm kết quả gần đúng.
   - Chỉ áp dụng cho token chữ cái `>= 3` ký tự trên **Họ tên** và **Quê quán** (`maxDist = 1` cho từ 3–6 ký tự, `maxDist = 2` cho từ ≥ 7 ký tự, có hỗ trợ đảo phím cạnh nhau); tuyệt đối **không** fuzzy mã phòng, SĐT và CCCD.
 - **UI & Unikey IME (`src/input/renderer.js`)**: Hỗ trợ `compositionstart` / `compositionend` khi gõ dấu tiếng Việt, tô vàng `<mark class="search-hl">` bảo toàn dấu và số SĐT có dấu chấm/gạch, và hiển thị nhãn `Gợi ý gần đúng: N / M` (`.search-result-badge.fuzzy`) khi chạy Pha 2.
+
+## 18. Freeze Panes Bảng Dữ Liệu & File Xuất Excel (Phần 1 & Phần 3)
+
+- **Bảng Phần 1 (`#rooms-table`)**:
+  - Đóng băng hàng tiêu đề `thead th` khi cuộn dọc vùng nội dung `.app-main` (bằng CSS `--sticky-head-y` cập nhật đồng bộ qua `syncStickyTableHeaders()`).
+  - Đóng băng cố định bên trái 2 cột **`STT`** (`col-stt`, `45px`) và **`Số Phòng`** (`col-phong`, `85px`) kèm nhãn chân bảng **`DOANH THU THÁNG`** (`td.summary-label`, `colspan="2"`, nền tối đục đồng bộ) khi cuộn ngang `.table-wrapper`.
+- **Bảng Phần 3 (`#residents-table`)**:
+  - Đóng băng hàng tiêu đề `thead th` khi cuộn dọc `.app-main`.
+  - Đóng băng cố định bên trái 3 cột **`Checkbox`** (`col-res-check`, `44px`), **`STT`** (`col-res-stt`, `50px`), và **`Họ Và Tên`** (`col-res-name`, `220px..240px`) khi cuộn ngang `.table-wrapper`.
+  - Bảo vệ các dòng trạng thái trống (`td.empty-state` với `colspan="12"`) bằng selector `td:not([colspan])` để không bị thu hẹp hoặc dính cột trái.
+- **File Xuất Excel (`electron/month-excel-service.js` & `electron/excel-service.js`)**:
+  - Cả hai workbook xuất `.xlsx` (Excel bảng tháng Phần 1 & Excel danh sách người thuê Phần 3) đều gắn OpenXML `<pane xSplit="2" ySplit="1" topLeftCell="C2" activePane="bottomRight" state="frozen"/>` và `<selection pane="bottomRight" activeCell="C2" sqref="C2"/>` trong `<sheetView>`, cố định **Hàng 1** và **2 cột A:B** (`STT`, `Số Phòng` / `Họ Và Tên`).

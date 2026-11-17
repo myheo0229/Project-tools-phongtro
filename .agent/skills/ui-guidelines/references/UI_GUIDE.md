@@ -394,3 +394,16 @@ Tất cả các Modal trong dự án bắt buộc dùng khung cấu trúc chuẩ
 ## 15. Thanh Tìm Kiếm Người Thuê Trọ (`#resident-search-box`)
 
 - **Trạng thái Gợi ý gần đúng trên thanh tìm kiếm (`#resident-search-count.fuzzy`)**: Khi tìm chuẩn trả về 0 kết quả và hệ thống tự động nới sang Fuzzy Damerau–Levenshtein, badge đếm kết quả đổi sang nền vàng hổ phách nhạt (`#fef3c7`, viền `#fde68a`, chữ `#b45309`) với nhãn `Gợi ý gần đúng: N / M` và tô sáng `<mark class="search-hl">` phần từ khớp gần đúng trong bảng.
+
+---
+
+## 16. Freeze Panes Bảng Dữ Liệu (Phần 1 & Phần 3)
+
+- **Mô hình CSS bảng tách ô (`border-collapse: separate; border-spacing: 0;`)**: Cả `#rooms-table` (`.data-table`, `min-width: 1676px`) và `#residents-table` (`min-width: 1280px`) dùng `border-collapse: separate; border-spacing: 0;` kèm nền ô đục đồng bộ (kể cả trạng thái `:hover` và chân bảng `td.summary-label`) để nội dung cuộn ngang không xuyên qua ô cố định.
+- **Biến CSS động & Phân tầng `z-index`**:
+  - `--sticky-head-y` trên `.table-wrapper` đẩy `thead th` theo vị trí cuộn dọc của `.app-main` bằng `transform: translate3d(0, var(--sticky-head-y, 0px), 0)`.
+  - `--rooms-col-stt-w`, `--res-col-stt-left`, `--res-col-name-left` định vị chính xác `position: sticky; left: ...` (`#rooms-table`: `STT`, `Số Phòng`, `td.summary-label`; `#residents-table`: `col-res-check`, `col-res-stt`, `col-res-name` giới hạn `220px..240px`, loại trừ dòng trống bằng `:not([colspan])`).
+  - Phân tầng: `z-index: 30` (ô góc cố định `thead th`), `20` (`thead th` thường), `15` (`td.summary-label`), `12` (cột cố định `tbody td`).
+- **Bóng phân tách & `scroll-padding`**:
+  - `.is-scrolled-x` / `.is-scrolled-y` trên `.table-wrapper` bật bóng đổ nhẹ ở mép vùng đóng băng.
+  - `.app-main` (`scroll-padding-top: 48px`) và `.table-wrapper` (`scroll-padding-left: 132px` ở Phần 1, `316px` ở Phần 3) đảm bảo khi bấm Tab/Enter, ô được focus không bị che khuất.

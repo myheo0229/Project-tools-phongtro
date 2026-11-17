@@ -644,6 +644,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Khởi tạo hệ thống Sao lưu Dữ liệu (Local ZIP + Google Drive API)
   initBackupSystem();
+
+  // Khởi tạo Freeze Panes (đóng băng hàng tiêu đề & cột cố định cho bảng Phần 1 và Phần 3)
+  initTableFreezePanes();
 });
 
 /**
@@ -714,6 +717,7 @@ function forceSwitchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active', 'page-out', 'page-in'));
     newSection.classList.add('active');
     if (tabName === 'residents') initResidentsSection();
+    syncStickyTableHeaders();
     return;
   }
 
@@ -772,6 +776,7 @@ function forceSwitchTab(tabName) {
   // Kích hoạt hiệu ứng chuyển trang nhòe mờ (page-out & page-in)
   oldSection.classList.add('page-out');
   newSection.classList.add('active', 'page-in');
+  syncStickyTableHeaders();
 
   // Sau khi kết thúc thời gian hiệu ứng 700ms, dọn dẹp class, biến CSS và MỞ LẠI KHÓA
   tabTransitionTimeout = setTimeout(() => {
@@ -809,7 +814,114 @@ function forceSwitchTab(tabName) {
     if (navTabs) navTabs.classList.remove('nav-locked');
     isTabTransitioning = false;
     tabTransitionTimeout = null;
+    syncStickyTableHeaders();
   }, 700);
+}
+
+let isTableFreezePanesInitialized = false;
+
+/**
+ * Khởi tạo sự kiện cuộn dọc/ngang và resize để đồng bộ Freeze Panes cho bảng Phần 1 và Phần 3
+ */
+function initTableFreezePanes() {
+  if (isTableFreezePanesInitialized) return;
+  isTableFreezePanesInitialized = true;
+
+  const appMain = document.querySelector('.app-main');
+  if (appMain) {
+    appMain.addEventListener('scroll', syncStickyTableHeaders, { passive: true });
+  }
+
+  document.querySelectorAll('#section-data .table-wrapper, #section-residents .table-wrapper').forEach((wrapper) => {
+    wrapper.addEventListener('scroll', () => {
+      wrapper.classList.toggle('is-scrolled-x', wrapper.scrollLeft > 1);
+    }, { passive: true });
+  });
+
+  window.addEventListener('resize', syncStickyTableHeaders, { passive: true });
+
+  if (typeof ResizeObserver === 'function') {
+    const ro = new ResizeObserver(syncStickyTableHeaders);
+    if (appMain) ro.observe(appMain);
+    document.querySelectorAll('#rooms-table, #residents-table').forEach((tbl) => ro.observe(tbl));
+  }
+
+  syncStickyTableHeaders();
+}
+
+/**
+ * Đồng bộ hàng tiêu đề đóng băng (`thead`) khi cuộn dọc và offset trái các cột đóng băng
+ */
+function syncStickyTableHeaders() {
+  const appMain = /** @type {HTMLElement | null} */ (document.querySelector('.app-main'));
+  if (!appMain) return;
+
+  const mainRect = appMain.getBoundingClientRect();
+  const wrappers = /** @type {NodeListOf<HTMLElement>} */ (
+    document.querySelectorAll('#section-data .table-wrapper, #section-residents .table-wrapper')
+  );
+
+  /** @type {Array<{ wrapper: HTMLElement, stickyY: number, isScrolledY: boolean, isScrolledX: boolean, vars: Record<string, string> }>} */
+  const updates = [];
+
+  wrappers.forEach((wrapper) => {
+    const tabSection = wrapper.closest('.tab-content');
+    if (!tabSection || !tabSection.classList.contains('active') || tabSection.classList.contains('page-out')) {
+      return;
+    }
+
+    const table = /** @type {HTMLTableElement | null} */ (wrapper.querySelector('table'));
+    const thead = table ? table.querySelector('thead') : null;
+    if (!table || !thead) return;
+
+    const tableRect = table.getBoundingClientRect();
+    if (tableRect.width === 0 || tableRect.height === 0) return;
+
+    const theadH = thead.offsetHeight;
+    const tfoot = table.querySelector('tfoot');
+    const tfootH = tfoot ? tfoot.offsetHeight : 0;
+    const maxShift = Math.max(0, tableRect.height - theadH - tfootH);
+    const rawShift = Math.max(0, mainRect.top - tableRect.top);
+    const stickyY = Math.round(Math.min(maxShift, rawShift) * 100) / 100;
+
+    /** @type {Record<string, string>} */
+    const vars = {};
+    if (table.id === 'rooms-table') {
+      const sttTh = /** @type {HTMLElement | null} */ (thead.querySelector('th.col-stt'));
+      if (sttTh && sttTh.offsetWidth > 0) {
+        vars['--rooms-col-stt-w'] = `${sttTh.offsetWidth}px`;
+      }
+    } else if (table.id === 'residents-table') {
+      const checkTh = /** @type {HTMLElement | null} */ (thead.querySelector('th.col-res-check'));
+      const sttTh = /** @type {HTMLElement | null} */ (thead.querySelector('th.col-res-stt'));
+      const checkW = checkTh && checkTh.offsetWidth > 0 ? checkTh.offsetWidth : 44;
+      const sttW = sttTh && sttTh.offsetWidth > 0 ? sttTh.offsetWidth : 50;
+      vars['--res-col-stt-left'] = `${checkW}px`;
+      vars['--res-col-name-left'] = `${checkW + sttW}px`;
+    }
+
+    updates.push({
+      wrapper,
+      stickyY,
+      isScrolledY: stickyY > 0.5,
+      isScrolledX: wrapper.scrollLeft > 1,
+      vars,
+    });
+  });
+
+  updates.forEach(({ wrapper, stickyY, isScrolledY, isScrolledX, vars }) => {
+    const nextY = `${stickyY}px`;
+    if (wrapper.style.getPropertyValue('--sticky-head-y') !== nextY) {
+      wrapper.style.setProperty('--sticky-head-y', nextY);
+    }
+    Object.keys(vars).forEach((prop) => {
+      if (wrapper.style.getPropertyValue(prop) !== vars[prop]) {
+        wrapper.style.setProperty(prop, vars[prop]);
+      }
+    });
+    wrapper.classList.toggle('is-scrolled-y', isScrolledY);
+    wrapper.classList.toggle('is-scrolled-x', isScrolledX);
+  });
 }
 
 /**
@@ -1870,6 +1982,7 @@ function renderInitialTable() {
   });
 
   updateFooterTotals();
+  syncStickyTableHeaders();
 }
 
 /**
@@ -1938,6 +2051,7 @@ function handleInputChange(index, field, value) {
 
   updateRowUI(index);
   updateFooterTotals();
+  syncStickyTableHeaders();
 }
 
 /**
@@ -4280,6 +4394,7 @@ function renderResidentsTable() {
     `;
     tbody.appendChild(tr);
     updateResidentsBulkActionUI(0, 0);
+    syncStickyTableHeaders();
     return;
   }
 
@@ -4350,6 +4465,7 @@ function renderResidentsTable() {
   });
 
   updateResidentsBulkActionUI(rankedResults.length, selectedResidentIds.size);
+  syncStickyTableHeaders();
 }
 
 /**
