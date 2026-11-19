@@ -370,3 +370,14 @@ v4.3.0
 - Bổ sung thanh cuộn ngang ghim đáy khung nhìn & tối ưu Header chống rớt dòng khi phóng Zoom (`src/input/index.html`, `src/input/style.css`, `src/input/renderer.js`):
   + Thanh cuộn ngang ghim đáy: Đặt `#rooms-sticky-scrollbar` (Phần 1) và `#residents-sticky-scrollbar` (Phần 3) dùng `position: sticky; bottom: 0; z-index: 35`, chuyển `.table-card` & `#section-residents .section` sang `overflow: clip`, ẩn thanh cuộn ngang gốc ở đáy bảng, giữ nguyên chiều cao bảng (không đặt `max-height`) và đồng bộ 2 chiều `scrollLeft`.
   + Header chống rớt dòng & co gọn 2 bước (`syncHeaderCompactMode`): Đặt `white-space: nowrap` + giá trị `clamp(...)` giữ `.tab-btn` tối thiểu `16px`; tự ẩn chữ `"Nhật Ký"` (giữ SVG + viền) ở Bước 1 (`.header-compact-log` / `<= 1560px`) và tinh chỉnh ngưỡng `min–max` ở Bước 2 (`.header-compact-minmax` / `<= 1360px` & `.header-compact-ultra`) để Header luôn thẳng 1 hàng.
+
+================================================================================
+PHIÊN BẢN CHÍNH THỨC: v4.3.1 (VÁ LỖI AN TOÀN DỮ LIỆU, ĐỒNG HỒ NƯỚC QUAY VÒNG & BẢO MẬT PHIÊN ZALO)
+================================================================================
+v4.3.1
+- Lưu số điện thoại liên hệ trong Cài Đặt Chung (renderer.js): Bổ sung gán appSettings.dienThoai trong saveSettings() để lưu xuống settings.json.
+- Xử lý đúng giá trị 0 (renderer.js, L346-L366): isNotEmpty(val) chấp nhận số 0 hợp lệ (không còn bị xóa về '' khi nhập 0). loadSettingsFile() dùng pickNumericSetting() kiểm tra rõ ràng thay vì toán tử ||, giữ nguyên cấu hình phí dịch vụ hoặc tỷ lệ hao tải bằng 0
+- Cảnh báo quay vòng cột Nước trên bảng chính & hoàn thiện logic nối tiếp quay vòng Điện
+- Ghi file Atomic (.tmp → renameSync) đồng bộ trong Main Process (main.js): Tạo helper writeJsonAtomicSync() và áp dụng cho pointer.json, settings.json, history/*.json, rooms.json, residents.json và xuất JSON nhật ký.
+- Phím Escape trên popup số chữ số ĐH mới (meter-change-modal.js): Đổi Escape trên #mc-digits-modal sang đóng hủy popup (closeMcDigitsModalUI()), không vô tình lưu đè appSettings.meterDigits.
+- Mã hóa phiên đăng nhập Zalo (zalo-manager.js): Bọc zalo_session.json bằng Electron safeStorage + ghi atomic .tmp, đồng thời giữ tương thích ngược đọc trực tiếp file session plaintext cũ.

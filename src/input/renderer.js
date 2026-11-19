@@ -130,13 +130,13 @@ const DEFAULT_ROOM_NAMES = [
 let roomsData = [];
 
 /**
- * Kiểm tra một giá trị xem có khác rỗng, khác null/undefined, khác 0 và là số hợp lệ không
+ * Kiểm tra một giá trị xem có khác rỗng, khác null/undefined và là số hợp lệ không (chấp nhận cả số 0)
  */
 function isNotEmpty(val) {
   if (val === '' || val === null || val === undefined) return false;
+  if (typeof val === 'string' && val.trim() === '') return false;
   const num = Number(val);
-  if (isNaN(num) || num === 0) return false;
-  return true;
+  return !isNaN(num);
 }
 
 /**
@@ -343,15 +343,24 @@ async function loadSettingsFile() {
       try {
         const data = await loadFn();
         if (data && !data.error) {
+          const pickNumericSetting = (primary, legacy, fallback) => {
+            if (primary !== undefined && primary !== null && primary !== '' && !isNaN(Number(primary))) {
+              return Number(primary);
+            }
+            if (legacy !== undefined && legacy !== null && legacy !== '' && !isNaN(Number(legacy))) {
+              return Number(legacy);
+            }
+            return fallback;
+          };
           appSettings = {
             baseFolder: data.baseFolder || "",
-            dienThoai: data.dienThoai || appSettings.dienThoai,
-            giaPhong: data.giaPhong || appSettings.giaPhong,
-            giaDien: data.giaDien || appSettings.giaDien,
-            giaNuoc: data.giaNuoc || appSettings.giaNuoc,
-            tienRac: data.tienRac || data.rac || appSettings.tienRac,
-            tienInternet: data.tienInternet || data.internet || appSettings.tienInternet,
-            tyLeHaoTai: data.tyLeHaoTai || data.tileHaoTai || appSettings.tyLeHaoTai,
+            dienThoai: (data.dienThoai !== undefined && data.dienThoai !== null) ? String(data.dienThoai) : appSettings.dienThoai,
+            giaPhong: pickNumericSetting(data.giaPhong, undefined, appSettings.giaPhong),
+            giaDien: pickNumericSetting(data.giaDien, undefined, appSettings.giaDien),
+            giaNuoc: pickNumericSetting(data.giaNuoc, undefined, appSettings.giaNuoc),
+            tienRac: pickNumericSetting(data.tienRac, data.rac, appSettings.tienRac),
+            tienInternet: pickNumericSetting(data.tienInternet, data.internet, appSettings.tienInternet),
+            tyLeHaoTai: pickNumericSetting(data.tyLeHaoTai, data.tileHaoTai, appSettings.tyLeHaoTai),
             enableRolloverPopup: data.enableRolloverPopup !== undefined ? data.enableRolloverPopup : true,
             enableAnomalyPopup: data.enableAnomalyPopup !== undefined ? data.enableAnomalyPopup : true,
             bankName: data.bankName || "",
@@ -518,6 +527,7 @@ async function autoSaveCurrentMonthData(monthKey) {
     nuocCu: isNotEmpty(r.nuocCu) ? Number(r.nuocCu) : '',
     nuocMoi: isNotEmpty(r.nuocMoi) ? Number(r.nuocMoi) : '',
     confirmedRollover: r.confirmedRollover || false,
+    confirmedWaterRollover: r.confirmedWaterRollover || false,
     confirmedAnomaly: r.confirmedAnomaly || false
   }));
 
@@ -1762,15 +1772,19 @@ async function loadRoomsForMonth(currentMonthYearStr) {
     }
 
     let dienMoi = currRoom && isNotEmpty(currRoom.dienMoi) ? Number(currRoom.dienMoi) : '';
-    const nuocMoi = currRoom && isNotEmpty(currRoom.nuocMoi) ? Number(currRoom.nuocMoi) : '';
+    let nuocMoi = currRoom && isNotEmpty(currRoom.nuocMoi) ? Number(currRoom.nuocMoi) : '';
 
     const alertConfig = monthAlerts[phongName] || {};
-    // Khôi phục số điện mới đã xác nhận nếu chưa có trong history
+    // Khôi phục số điện/nước mới đã xác nhận nếu chưa có trong history
     if (dienMoi === '' && isNotEmpty(alertConfig.dienMoi)) {
       dienMoi = Number(alertConfig.dienMoi);
     }
+    if (nuocMoi === '' && isNotEmpty(alertConfig.waterMoi)) {
+      nuocMoi = Number(alertConfig.waterMoi);
+    }
 
     const isConfirmedRollover = (alertConfig.rollover === true) || (currRoom && currRoom.confirmedRollover === true) || false;
+    const isConfirmedWaterRollover = (alertConfig.waterRollover === true) || (currRoom && currRoom.confirmedWaterRollover === true) || false;
     const isConfirmedAnomaly = (alertConfig.anomaly === true) || (currRoom && currRoom.confirmedAnomaly === true) || false;
 
     // Áp dụng trạng thái thay đổi đồng hồ (nếu có bản ghi trong meter-changes.json)
@@ -1867,6 +1881,7 @@ async function loadRoomsForMonth(currentMonthYearStr) {
       originalPrevNuoc,
       hadOriginalPrevNuoc,
       confirmedRollover: finalConfirmedRollover,
+      confirmedWaterRollover: hasMcWater ? false : isConfirmedWaterRollover,
       confirmedAnomaly: isConfirmedAnomaly,
       hasMcElec,
       mcElecStatus,
@@ -1983,6 +1998,7 @@ function renderInitialTable() {
                ${lockedTooltip}
                onmousedown="if (this.readOnly) event.preventDefault()"
                oninput="if (this.value.length > ${nuocMaxDigits}) this.value = this.value.slice(0, ${nuocMaxDigits}); handleInputChange(${index}, 'nuocMoi', this.value)" 
+               onblur="handleNuocMoiBlur(${index})"
                onfocus="if (!this.readOnly) this.select()">`;
 
     tr.innerHTML = `
@@ -2138,6 +2154,30 @@ function handleInputChange(index, field, value) {
     if (shouldSaveSettings) {
       saveSettingsFile(true);
     }
+  } else if (field === 'nuocMoi' && !roomsData[index].hasMcWater) {
+    const nuocCuNum = isNotEmpty(roomsData[index].nuocCu) ? Number(roomsData[index].nuocCu) : 0;
+    const targetMonth = currentLoadedMonth || document.getElementById('month-year-select')?.value;
+    let shouldSaveSettings = false;
+
+    if (numVal === '' || numVal >= nuocCuNum) {
+      if (roomsData[index].confirmedWaterRollover) {
+        roomsData[index].confirmedWaterRollover = false;
+        const alertMap = targetMonth && appSettings.confirmedAlerts && appSettings.confirmedAlerts[targetMonth];
+        const roomAlerts = alertMap && alertMap[roomsData[index].phong];
+        if (roomAlerts && (roomAlerts.waterRollover || roomAlerts.waterMoi !== undefined)) {
+          delete roomAlerts.waterRollover;
+          delete roomAlerts.waterMoi;
+          if (!roomAlerts.rollover && !roomAlerts.anomaly) {
+            delete alertMap[roomsData[index].phong];
+          }
+          shouldSaveSettings = true;
+        }
+      }
+    }
+
+    if (shouldSaveSettings) {
+      saveSettingsFile(true);
+    }
   }
 
   updateRowUI(index);
@@ -2155,16 +2195,18 @@ function updateRowUI(index) {
   const activeSettings = getActiveMonthSettings();
   const room = roomsData[index];
   const hasDienMoiInput = room.hasMcElec ? (room.mcElecStatus === 'completed') : isNotEmpty(room.dienMoi);
-  const hasNuocMoi = room.hasMcWater ? (room.mcWaterStatus === 'completed') : isNotEmpty(room.nuocMoi);
+  const hasNuocMoiInput = room.hasMcWater ? (room.mcWaterStatus === 'completed') : isNotEmpty(room.nuocMoi);
 
   const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
   const dienMoiNum = hasDienMoiInput ? Number(room.dienMoi) : dienCuNum;
   const nuocCuNum = isNotEmpty(room.nuocCu) ? Number(room.nuocCu) : 0;
-  const nuocMoiNum = hasNuocMoi ? Number(room.nuocMoi) : nuocCuNum;
+  const nuocMoiNum = hasNuocMoiInput ? Number(room.nuocMoi) : nuocCuNum;
 
   // Nếu có thay đồng hồ Điện -> bỏ qua kiểm tra quay vòng giả ở bảng chính
   // Nếu không thay ĐH và điện mới nhỏ hơn điện cũ chưa xác nhận quay vòng -> tạm thời chưa tính
   const isRolloverUnconfirmed = !room.hasMcElec && (appSettings.enableRolloverPopup !== false) && hasDienMoiInput && (dienMoiNum < dienCuNum) && !room.confirmedRollover;
+  const isWaterRolloverUnconfirmed = !room.hasMcWater && (appSettings.enableRolloverPopup !== false) && hasNuocMoiInput && (nuocMoiNum < nuocCuNum) && !room.confirmedWaterRollover;
+  const hasNuocMoi = hasNuocMoiInput && !isWaterRolloverUnconfirmed;
 
   // Kiểm tra bất thường >= 40% so với tháng trước (nếu không thay đồng hồ và đã qua bước quay vòng)
   const prevKwh = Number(room.prevDienKwh) || 0;
@@ -2270,14 +2312,16 @@ function updateFooterTotals() {
 
   roomsData.forEach(room => {
     const hasDienMoiInput = room.hasMcElec ? (room.mcElecStatus === 'completed') : isNotEmpty(room.dienMoi);
-    const hasNuocMoi = room.hasMcWater ? (room.mcWaterStatus === 'completed') : isNotEmpty(room.nuocMoi);
+    const hasNuocMoiInput = room.hasMcWater ? (room.mcWaterStatus === 'completed') : isNotEmpty(room.nuocMoi);
 
     const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
     const dienMoiNum = hasDienMoiInput ? Number(room.dienMoi) : dienCuNum;
     const nuocCuNum = isNotEmpty(room.nuocCu) ? Number(room.nuocCu) : 0;
-    const nuocMoiNum = hasNuocMoi ? Number(room.nuocMoi) : nuocCuNum;
+    const nuocMoiNum = hasNuocMoiInput ? Number(room.nuocMoi) : nuocCuNum;
 
     const isRolloverUnconfirmed = !room.hasMcElec && (appSettings.enableRolloverPopup !== false) && hasDienMoiInput && (dienMoiNum < dienCuNum) && !room.confirmedRollover;
+    const isWaterRolloverUnconfirmed = !room.hasMcWater && (appSettings.enableRolloverPopup !== false) && hasNuocMoiInput && (nuocMoiNum < nuocCuNum) && !room.confirmedWaterRollover;
+    const hasNuocMoi = hasNuocMoiInput && !isWaterRolloverUnconfirmed;
 
     const prevKwh = Number(room.prevDienKwh) || 0;
     let isAnomalyUnconfirmed = false;
@@ -2474,7 +2518,9 @@ async function saveSettings(event) {
   const haoTaiPercent = parseHaoTaiPercent(document.getElementById('set-tileHaoTai').value);
   appSettings.tyLeHaoTai = haoTaiPercent / 100;
   document.getElementById('set-tileHaoTai').value = String(haoTaiPercent);
-  document.getElementById('set-dienThoai').value = (document.getElementById('set-dienThoai').value || '').trim();
+  const dienThoaiVal = (document.getElementById('set-dienThoai').value || '').trim();
+  appSettings.dienThoai = dienThoaiVal;
+  document.getElementById('set-dienThoai').value = dienThoaiVal;
 
   // Định dạng lại các ô tiền trên giao diện để luôn chuẩn dấu chấm phân cách hàng nghìn
   document.getElementById('set-giaPhong').value = formatNumber(appSettings.giaPhong);
@@ -2605,6 +2651,7 @@ async function saveAndExport() {
       nuocCu: isNotEmpty(r.nuocCu) ? Number(r.nuocCu) : '',
       nuocMoi: isNotEmpty(r.nuocMoi) ? Number(r.nuocMoi) : '',
       confirmedRollover: r.confirmedRollover || false,
+      confirmedWaterRollover: r.confirmedWaterRollover || false,
       confirmedAnomaly: r.confirmedAnomaly || false
     }));
 
@@ -3013,6 +3060,7 @@ function showToast(message, type = 'success') {
    XỬ LÝ MODAL XÁC NHẬN ĐỒNG HỒ ĐIỆN QUAY VÒNG (ĐIỆN MỚI < ĐIỆN CŨ)
    ============================================================ */
 let currentRolloverIndex = null;
+let currentRolloverField = 'dien';
 
 /**
  * Kiểm tra khi người dùng rời khỏi ô nhập Điện Mới (blur)
@@ -3031,7 +3079,7 @@ function handleDienMoiBlur(index) {
   // 1. Kiểm tra đồng hồ quay vòng (Điện Mới < Điện Cũ): CHỈ hỏi 1 lần duy nhất nếu chưa xác nhận
   if (appSettings.enableRolloverPopup !== false && dienMoiNum < dienCuNum) {
     if (!room.confirmedRollover) {
-      showRolloverModal(index);
+      showRolloverModal(index, 'dien');
     }
     return;
   }
@@ -3054,32 +3102,85 @@ function handleDienMoiBlur(index) {
 }
 
 /**
- * Hiển thị Modal xác nhận quay vòng
+ * Kiểm tra khi người dùng rời khỏi ô nhập Nước Mới (blur)
  */
-function showRolloverModal(index) {
+function handleNuocMoiBlur(index) {
+  if (isCurrentMonthLocked && !isCurrentMonthEditing) return;
+  const room = roomsData[index];
+  if (!room || room.hasMcWater) return;
+
+  if (!isNotEmpty(room.nuocMoi)) return;
+
+  const nuocCuNum = isNotEmpty(room.nuocCu) ? Number(room.nuocCu) : 0;
+  const nuocMoiNum = Number(room.nuocMoi);
+
+  if (appSettings.enableRolloverPopup !== false && nuocMoiNum < nuocCuNum) {
+    if (!room.confirmedWaterRollover) {
+      showRolloverModal(index, 'nuoc');
+    }
+  }
+}
+
+/**
+ * Hiển thị Modal xác nhận quay vòng (hỗ trợ cả Điện và Nước)
+ * @param {number} index
+ * @param {'dien' | 'nuoc'} [field='dien']
+ */
+function showRolloverModal(index, field = 'dien') {
   const room = roomsData[index];
   if (!room) return;
 
-  const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
-  const dienMoiNum = isNotEmpty(room.dienMoi) ? Number(room.dienMoi) : 0;
+  const isWater = field === 'nuoc';
+  const cuNum = isWater
+    ? (isNotEmpty(room.nuocCu) ? Number(room.nuocCu) : 0)
+    : (isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0);
+  const moiNum = isWater
+    ? (isNotEmpty(room.nuocMoi) ? Number(room.nuocMoi) : 0)
+    : (isNotEmpty(room.dienMoi) ? Number(room.dienMoi) : 0);
   const activeSettings = getActiveMonthSettings();
   const roomMeterCfg = (activeSettings && activeSettings.meterDigits && activeSettings.meterDigits[room.phong]) || {};
-  const dienDigits = (roomMeterCfg.dien && Number(roomMeterCfg.dien) >= 3 && Number(roomMeterCfg.dien) <= 7) ? Number(roomMeterCfg.dien) : 5;
-  const maxDongHo = typeof getMeterLimitByDigits === 'function' ? getMeterLimitByDigits(dienDigits, 100000) : Math.pow(10, dienDigits);
-  const dienTieuThu = (maxDongHo + dienMoiNum) - dienCuNum;
+  const defaultDigits = isWater ? 4 : 5;
+  const defaultLimit = isWater ? 10000 : 100000;
+  const rawDigits = isWater ? roomMeterCfg.nuoc : roomMeterCfg.dien;
+  const digits = (rawDigits && Number(rawDigits) >= 3 && Number(rawDigits) <= 7) ? Number(rawDigits) : defaultDigits;
+  const maxDongHo = typeof getMeterLimitByDigits === 'function' ? getMeterLimitByDigits(digits, defaultLimit) : Math.pow(10, digits);
+  const tieuThu = (maxDongHo + moiNum) - cuNum;
 
   currentRolloverIndex = index;
+  currentRolloverField = isWater ? 'nuoc' : 'dien';
 
-  const roomNameEl = document.getElementById('modal-room-name');
-  const dienCuEl = document.getElementById('modal-dien-cu');
-  const dienMoiEl = document.getElementById('modal-dien-moi');
+  const titleEl = document.getElementById('rollover-modal-title');
+  const subtitleEl = document.getElementById('rollover-modal-subtitle');
+  const descEl = document.getElementById('rollover-modal-desc');
+  const formulaEl = document.getElementById('rollover-modal-formula');
+  const usageLabelEl = document.getElementById('rollover-modal-usage-label');
   const dienTieuThuEl = document.getElementById('modal-dien-tieu-thu');
   const modalEl = document.getElementById('rollover-modal');
 
-  if (roomNameEl) roomNameEl.textContent = room.phong;
-  if (dienCuEl) dienCuEl.textContent = formatNumber(dienCuNum);
-  if (dienMoiEl) dienMoiEl.textContent = formatNumber(dienMoiNum);
-  if (dienTieuThuEl) dienTieuThuEl.textContent = formatNumber(dienTieuThu) + ' kWh';
+  const labelNew = isWater ? 'Nước Mới' : 'Điện Mới';
+  const labelOld = isWater ? 'Nước Cũ' : 'Điện Cũ';
+  const unit = isWater ? 'm³' : 'kWh';
+
+  if (titleEl) {
+    titleEl.textContent = isWater
+      ? 'Xác nhận số khối nước (Đồng hồ quay vòng)'
+      : 'Xác nhận số kí điện (Đồng hồ quay vòng)';
+  }
+  if (subtitleEl) {
+    subtitleEl.textContent = `Chỉ số ${labelNew} nhỏ hơn ${labelOld}`;
+  }
+  if (descEl) {
+    descEl.innerHTML = `Phòng <strong id="modal-room-name" class="highlight-text">${room.phong}</strong> vừa nhập số ${labelNew} (<strong id="modal-dien-moi">${formatNumber(moiNum)}</strong> ${unit}) <span class="text-danger">nhỏ hơn</span> ${labelOld} (<strong id="modal-dien-cu">${formatNumber(cuNum)}</strong> ${unit}).`;
+  }
+  if (formulaEl) {
+    formulaEl.textContent = `(${formatNumber(maxDongHo)} + ${labelNew}) - ${labelOld}`;
+  }
+  if (usageLabelEl) {
+    usageLabelEl.textContent = isWater ? 'Số nước tiêu thụ dự kiến:' : 'Số điện tiêu thụ dự kiến:';
+  }
+  if (dienTieuThuEl) {
+    dienTieuThuEl.textContent = `${formatNumber(tieuThu)} ${unit}`;
+  }
 
   if (modalEl) {
     modalEl.style.display = 'flex';
@@ -3092,21 +3193,46 @@ function showRolloverModal(index) {
 function confirmRolloverModal() {
   if (currentRolloverIndex !== null && roomsData[currentRolloverIndex]) {
     const idx = currentRolloverIndex;
-    roomsData[idx].confirmedRollover = true;
+    const isWater = currentRolloverField === 'nuoc';
+    const room = roomsData[idx];
+    const targetMonth = currentLoadedMonth || document.getElementById('month-year-select')?.value;
+
+    if (isWater) {
+      room.confirmedWaterRollover = true;
+      updateRowUI(idx);
+      updateFooterTotals();
+      showToast(`Đã áp dụng phương pháp đồng hồ nước quay vòng cho phòng ${room.phong}`, 'success');
+
+      if (targetMonth) {
+        if (!appSettings.confirmedAlerts) appSettings.confirmedAlerts = {};
+        if (!appSettings.confirmedAlerts[targetMonth]) appSettings.confirmedAlerts[targetMonth] = {};
+        appSettings.confirmedAlerts[targetMonth][room.phong] = {
+          ...(appSettings.confirmedAlerts[targetMonth][room.phong] || {}),
+          waterRollover: true,
+          waterMoi: room.nuocMoi
+        };
+        saveSettingsFile(true);
+        autoSaveCurrentMonthData(targetMonth);
+      }
+
+      closeRolloverModal();
+      return;
+    }
+
+    room.confirmedRollover = true;
     updateRowUI(idx);
     updateFooterTotals();
-    showToast(`Đã áp dụng phương pháp đồng hồ quay vòng cho phòng ${roomsData[idx].phong}`, 'success');
+    showToast(`Đã áp dụng phương pháp đồng hồ quay vòng cho phòng ${room.phong}`, 'success');
 
     // Lưu vào settings.json và file history ngay lập tức
-    const targetMonth = currentLoadedMonth || document.getElementById('month-year-select')?.value;
     if (targetMonth) {
       if (!appSettings.confirmedAlerts) appSettings.confirmedAlerts = {};
       if (!appSettings.confirmedAlerts[targetMonth]) appSettings.confirmedAlerts[targetMonth] = {};
-      const roomKey = roomsData[idx].phong;
+      const roomKey = room.phong;
       appSettings.confirmedAlerts[targetMonth][roomKey] = {
         ...(appSettings.confirmedAlerts[targetMonth][roomKey] || {}),
         rollover: true,
-        dienMoi: roomsData[idx].dienMoi
+        dienMoi: room.dienMoi
       };
       saveSettingsFile(true);
       autoSaveCurrentMonthData(targetMonth);
@@ -3115,13 +3241,15 @@ function confirmRolloverModal() {
     // Sau khi xác nhận quay vòng, kiểm tra tiếp xem có bị bất thường >= 40% không
     closeRolloverModal();
 
-    const room = roomsData[idx];
     const dienCuNum = isNotEmpty(room.dienCu) ? Number(room.dienCu) : 0;
     const dienMoiNum = isNotEmpty(room.dienMoi) ? Number(room.dienMoi) : 0;
     const surrogate = { ...room, dienCu: dienCuNum, dienMoi: dienMoiNum };
     const activeSettings = getActiveMonthSettings();
+    const roomMeterCfg = (activeSettings && activeSettings.meterDigits && activeSettings.meterDigits[room.phong]) || {};
+    const dienDigits = (roomMeterCfg.dien && Number(roomMeterCfg.dien) >= 3 && Number(roomMeterCfg.dien) <= 7) ? Number(roomMeterCfg.dien) : 5;
+    const maxDongHo = typeof getMeterLimitByDigits === 'function' ? getMeterLimitByDigits(dienDigits, 100000) : Math.pow(10, dienDigits);
     const roomCalc = typeof calcRoom === 'function' ? calcRoom(surrogate, activeSettings) : null;
-    const currKwh = roomCalc ? roomCalc.dienKwh : Math.max(0, (10000 - dienCuNum) + dienMoiNum);
+    const currKwh = roomCalc ? roomCalc.dienKwh : Math.max(0, (maxDongHo + dienMoiNum) - dienCuNum);
 
     if (typeof logRolloverConfirmedEvent === 'function') {
       logRolloverConfirmedEvent({
@@ -3134,7 +3262,7 @@ function confirmRolloverModal() {
     }
 
     const prevKwh = Number(room.prevDienKwh) || 0;
-    if (prevKwh > 0) {
+    if (!room.hasMbElec && appSettings.enableAnomalyPopup !== false && prevKwh > 0) {
       const diff = currKwh - prevKwh;
       const percentChange = (diff / prevKwh) * 100;
 
@@ -3153,15 +3281,47 @@ function confirmRolloverModal() {
 function cancelRolloverModal() {
   if (currentRolloverIndex !== null && roomsData[currentRolloverIndex]) {
     const idx = currentRolloverIndex;
-    roomsData[idx].dienMoi = '';
-    roomsData[idx].confirmedRollover = false;
+    const isWater = currentRolloverField === 'nuoc';
+    const targetMonth = currentLoadedMonth || document.getElementById('month-year-select')?.value;
+    const room = roomsData[idx];
+
+    if (isWater) {
+      room.nuocMoi = '';
+      room.confirmedWaterRollover = false;
+
+      const alertMap = targetMonth && appSettings.confirmedAlerts && appSettings.confirmedAlerts[targetMonth];
+      const roomAlerts = alertMap && alertMap[room.phong];
+      if (roomAlerts) {
+        delete roomAlerts.waterRollover;
+        delete roomAlerts.waterMoi;
+        if (!roomAlerts.rollover && !roomAlerts.anomaly) {
+          delete alertMap[room.phong];
+        }
+        saveSettingsFile(true);
+        autoSaveCurrentMonthData(targetMonth);
+      }
+
+      const inputEl = document.querySelector(`input[data-row="${idx}"][data-field="nuocMoi"]`);
+      if (inputEl) {
+        inputEl.value = '';
+        setTimeout(() => inputEl.focus(), 50);
+      }
+
+      updateRowUI(idx);
+      updateFooterTotals();
+      showToast(`Đã xóa số nước mới nhập sai của phòng ${room.phong}`, 'warning');
+      closeRolloverModal();
+      return;
+    }
+
+    room.dienMoi = '';
+    room.confirmedRollover = false;
 
     // Xóa khỏi settings.json và file history
-    const targetMonth = currentLoadedMonth || document.getElementById('month-year-select')?.value;
-    if (targetMonth && appSettings.confirmedAlerts && appSettings.confirmedAlerts[targetMonth] && appSettings.confirmedAlerts[targetMonth][roomsData[idx].phong]) {
-      delete appSettings.confirmedAlerts[targetMonth][roomsData[idx].phong].rollover;
-      if (!appSettings.confirmedAlerts[targetMonth][roomsData[idx].phong].anomaly) {
-        delete appSettings.confirmedAlerts[targetMonth][roomsData[idx].phong];
+    if (targetMonth && appSettings.confirmedAlerts && appSettings.confirmedAlerts[targetMonth] && appSettings.confirmedAlerts[targetMonth][room.phong]) {
+      delete appSettings.confirmedAlerts[targetMonth][room.phong].rollover;
+      if (!appSettings.confirmedAlerts[targetMonth][room.phong].anomaly && !appSettings.confirmedAlerts[targetMonth][room.phong].waterRollover) {
+        delete appSettings.confirmedAlerts[targetMonth][room.phong];
       }
       saveSettingsFile(true);
       autoSaveCurrentMonthData(targetMonth);
@@ -3175,7 +3335,7 @@ function cancelRolloverModal() {
 
     updateRowUI(idx);
     updateFooterTotals();
-    showToast(`Đã xóa số điện mới nhập sai của phòng ${roomsData[idx].phong}`, 'warning');
+    showToast(`Đã xóa số điện mới nhập sai của phòng ${room.phong}`, 'warning');
   }
   closeRolloverModal();
 }
@@ -3185,6 +3345,7 @@ function cancelRolloverModal() {
  */
 function closeRolloverModal() {
   currentRolloverIndex = null;
+  currentRolloverField = 'dien';
   const modalEl = document.getElementById('rollover-modal');
   if (modalEl) {
     modalEl.style.display = 'none';

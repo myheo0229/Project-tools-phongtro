@@ -69,14 +69,26 @@ function getPointer() {
   return null;
 }
 
+/**
+ * Ghi JSON nguyên tử (.tmp -> parse kiểm chứng -> renameSync) nhằm tránh hỏng file khi mất điện
+ * @param {string} filePath
+ * @param {any} data
+ */
+function writeJsonAtomicSync(filePath, data) {
+  const dir = path.dirname(filePath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const jsonText = JSON.stringify(data, null, 2);
+  const tmpPath = `${filePath}.tmp`;
+  fs.writeFileSync(tmpPath, jsonText, 'utf8');
+  fs.renameSync(tmpPath, filePath);
+}
+
 // Ghi thông tin vào pointer.json
 function savePointer(pointerObj) {
   try {
-    const dir = path.dirname(POINTER_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(POINTER_FILE, JSON.stringify(pointerObj, null, 2), 'utf8');
+    writeJsonAtomicSync(POINTER_FILE, pointerObj);
   } catch (err) {
     console.error('Lỗi khi ghi pointer.json:', err);
   }
@@ -427,11 +439,11 @@ ipcMain.handle('settings:save', async (event, data) => {
     // Khởi tạo các file mặc định nếu thư mục đích chưa có (không bao giờ ghi đè nếu đã có dữ liệu)
     const targetRoomsFile = path.join(targetDataDir, 'rooms.json');
     if (!fs.existsSync(targetRoomsFile)) {
-      fs.writeFileSync(targetRoomsFile, JSON.stringify(getDefaultRooms(), null, 2), 'utf8');
+      writeJsonAtomicSync(targetRoomsFile, getDefaultRooms());
     }
     const targetResidentsFile = path.join(targetDataDir, 'residents.json');
     if (!fs.existsSync(targetResidentsFile)) {
-      fs.writeFileSync(targetResidentsFile, JSON.stringify([], null, 2), 'utf8');
+      writeJsonAtomicSync(targetResidentsFile, []);
     }
 
     // Ghi pointer.json mới trỏ tới baseFolder vừa chọn
@@ -458,7 +470,7 @@ ipcMain.handle('settings:save', async (event, data) => {
       ...data,
       baseFolder: cleanNewBaseFolder
     };
-    fs.writeFileSync(settingsFile, JSON.stringify(settingsToSave, null, 2), 'utf8');
+    writeJsonAtomicSync(settingsFile, settingsToSave);
 
     return { success: true, baseFolder: cleanNewBaseFolder };
   } catch (err) {
@@ -478,11 +490,8 @@ ipcMain.handle('month-data:save', async (event, monthKey, data) => {
       return { error: 'Chưa chọn thư mục lưu dữ liệu!' };
     }
     const historyDir = path.join(pointer.baseFolder, pointer.dataFolderName || 'data', 'history');
-    if (!fs.existsSync(historyDir)) {
-      fs.mkdirSync(historyDir, { recursive: true });
-    }
     const filePath = path.join(historyDir, `${monthKey}.json`);
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    writeJsonAtomicSync(filePath, data);
     return { success: true, filePath };
   } catch (err) {
     console.error('Lỗi khi ghi month-data:', err);
@@ -977,7 +986,7 @@ ipcMain.handle('residents:save', async (event, data) => {
   try {
     const dataDir = getActiveDataDir();
     const filePath = path.join(dataDir, 'residents.json');
-    fs.writeFileSync(filePath, JSON.stringify(data || [], null, 2), 'utf8');
+    writeJsonAtomicSync(filePath, data || []);
     return { success: true };
   } catch (err) {
     console.error('Lỗi khi lưu residents.json:', err);
@@ -1008,7 +1017,7 @@ ipcMain.handle('rooms:save', async (event, data) => {
   try {
     const dataDir = getActiveDataDir();
     const filePath = path.join(dataDir, 'rooms.json');
-    fs.writeFileSync(filePath, JSON.stringify(data || [], null, 2), 'utf8');
+    writeJsonAtomicSync(filePath, data || []);
     return { success: true };
   } catch (err) {
     console.error('Lỗi khi lưu rooms.json:', err);
@@ -1680,7 +1689,7 @@ ipcMain.handle('activity-logs:export-json', async () => {
       logs
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(exportPayload, null, 2), 'utf8');
+    writeJsonAtomicSync(filePath, exportPayload);
     shell.showItemInFolder(filePath);
     return { ok: true, filePath, count: logs.length };
   } catch (err) {

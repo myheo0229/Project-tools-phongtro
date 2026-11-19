@@ -1,4 +1,4 @@
-const { app } = require('electron');
+const { app, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 /** @type {any} */
@@ -41,14 +41,50 @@ class ZaloManager {
   }
 
   /**
+   * Đọc và giải mã file session (hỗ trợ cả safeStorage đã mã hóa lẫn plaintext cũ)
+   */
+  readSessionFile(filePath) {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.encrypted === true && parsed.algorithm === 'safeStorage' && typeof parsed.payload === 'string') {
+      if (!safeStorage || !safeStorage.isEncryptionAvailable()) {
+        throw new Error('safeStorage không khả dụng để giải mã phiên Zalo');
+      }
+      const decrypted = safeStorage.decryptString(Buffer.from(parsed.payload, 'base64'));
+      return JSON.parse(decrypted);
+    }
+    return parsed;
+  }
+
+  /**
+   * Ghi file session theo cơ chế Atomic (.tmp -> rename) và mã hóa bằng safeStorage nếu khả dụng
+   */
+  writeSessionFile(filePath, sessionData) {
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const plainJson = JSON.stringify(sessionData, null, 2);
+    let contentToWrite = plainJson;
+    if (safeStorage && safeStorage.isEncryptionAvailable()) {
+      const encryptedBuf = safeStorage.encryptString(plainJson);
+      contentToWrite = JSON.stringify({
+        encrypted: true,
+        algorithm: 'safeStorage',
+        payload: encryptedBuf.toString('base64')
+      }, null, 2);
+    }
+    const tmpPath = `${filePath}.tmp`;
+    fs.writeFileSync(tmpPath, contentToWrite, 'utf8');
+    fs.renameSync(tmpPath, filePath);
+  }
+
+  /**
    * Đọc session đã lưu
    */
   loadSavedSession(baseFolder) {
     // 1. Thử đọc từ userData
     try {
       if (fs.existsSync(this.sessionFilePath)) {
-        const raw = fs.readFileSync(this.sessionFilePath, 'utf8');
-        return JSON.parse(raw);
+        return this.readSessionFile(this.sessionFilePath);
       }
     } catch (err) {
       console.warn('Lỗi đọc session từ userData:', err.message);
@@ -59,8 +95,7 @@ class ZaloManager {
     if (backupPath) {
       try {
         if (fs.existsSync(backupPath)) {
-          const raw = fs.readFileSync(backupPath, 'utf8');
-          return JSON.parse(raw);
+          return this.readSessionFile(backupPath);
         }
       } catch (err) {
         console.warn('Lỗi đọc session từ backup baseFolder:', err.message);
@@ -75,9 +110,7 @@ class ZaloManager {
    */
   saveSession(sessionData, baseFolder) {
     try {
-      const dir = path.dirname(this.sessionFilePath);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(this.sessionFilePath, JSON.stringify(sessionData, null, 2), 'utf8');
+      this.writeSessionFile(this.sessionFilePath, sessionData);
     } catch (err) {
       console.error('Lỗi khi lưu session vào userData:', err);
     }
@@ -85,9 +118,7 @@ class ZaloManager {
     const backupPath = this.getBackupSessionPath(baseFolder);
     if (backupPath) {
       try {
-        const dir = path.dirname(backupPath);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(backupPath, JSON.stringify(sessionData, null, 2), 'utf8');
+        this.writeSessionFile(backupPath, sessionData);
       } catch (err) {
         console.error('Lỗi khi lưu session vào baseFolder:', err);
       }

@@ -23,3 +23,6 @@ electron/google-oauth-client.json
 
 #e2e sinh test
 e2e/test-meter-change-e2e.js
+
+#báo cáo
+BAO_CAO_NGHIEN_CUU/

@@ -2767,7 +2767,8 @@ if (typeof document !== 'undefined') {
     }
     const digitsModal = document.getElementById('mc-digits-modal');
     if (digitsModal && digitsModal.style.display === 'flex') {
-      confirmMcNewMeterDigits();
+      mcDigitsCtx = null;
+      closeMcDigitsModalUI();
       return;
     }
     const rollModal = document.getElementById('mc-rollover-modal');
